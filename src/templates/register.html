@@ -1,24 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Cadastrar Usuário</title>
-</head>
-<body>
-    <h2>Cadastrar novo usuário</h2>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>{% for cat, msg in messages %}<li>{{ msg }}</li>{% endfor %}</ul>
-      {% endif %}
-    {% endwith %}
-    <form method="POST">
-        <label for="nome">Nome:</label>
-        <input type="text" name="nome" required><br>
-        <label for="email">E-mail:</label>
-        <input type="email" name="email" required><br>
-        <label for="senha">Senha:</label>
-        <input type="password" name="senha" required><br>
-        <button type="submit">Cadastrar</button>
-    </form>
-    <p><a href="{{ url_for('auth.login') }}">Voltar ao login</a></p>
-</body>
-</html>
+{% extends "layouts/auth_base.html" %}
+{% block title %}Criar Conta - Gestão Agrícola{% endblock %}
+{% block content %}
+<form method="POST" class="p-4 rounded bg-white border shadow-sm">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label for="email" class="form-label">E-mail</label>
+        <input type="email" name="email" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label for="senha" class="form-label">Senha</label>
+        <input type="password" name="senha" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Registrar</button>
+    <div class="mt-3 text-center">
+        <a href="{{ url_for('auth.login') }}">Já tenho conta</a>
+    </div>
+</form>
+{% endblock %}

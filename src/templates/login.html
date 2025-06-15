@@ -1,21 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-    <h2>Login</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul>{% for msg in messages %}<li>{{ msg }}</li>{% endfor %}</ul>
-      {% endif %}
-    {% endwith %}
-    <form method="POST">
-        <label for="email">E-mail:</label>
-        <input type="email" name="email" required><br>
-        <label for="senha">Senha:</label>
-        <input type="password" name="senha" required><br>
-        <button type="submit">Entrar</button>
-    </form>
-</body>
-</html>
+{% extends "layouts/auth_base.html" %}
+{% block title %}Login - Gestão Agrícola{% endblock %}
+{% block content %}
+<form method="POST" class="p-4 rounded bg-white border shadow-sm">
+    <div class="mb-3">
+        <label for="email" class="form-label">E-mail</label>
+        <input type="email" name="email" class="form-control" required autofocus>
+    </div>
+    <div class="mb-3">
+        <label for="senha" class="form-label">Senha</label>
+        <input type="password" name="senha" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-success w-100">Entrar</button>
+    <div class="mt-3 text-center">
+        <a href="{{ url_for('auth.register') }}">Criar novo usuário</a>
+    </div>
+</form>
+{% endblock %}

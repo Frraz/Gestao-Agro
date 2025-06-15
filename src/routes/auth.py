@@ -15,7 +15,7 @@ def login():
         usuario = Usuario.query.filter_by(email=email).first()
         if usuario and usuario.check_password(senha):
             login_user(usuario)
-            return redirect(url_for('home'))  # Substitua 'home' pela sua rota principal real
+            return redirect(url_for('admin.index'))
         else:
             flash('Usuário ou senha inválidos', 'danger')
 
