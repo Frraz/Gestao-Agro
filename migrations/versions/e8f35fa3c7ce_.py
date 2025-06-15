@@ -1,5 +1,3 @@
-#migrations/versions/e8f35fa3c7ce_.py
-
 """empty message
 
 Revision ID: e8f35fa3c7ce
@@ -25,7 +23,6 @@ def upgrade():
         batch_op.drop_index(batch_op.f('idx_documento_tipo'))
 
     with op.batch_alter_table('endividamento', schema=None) as batch_op:
-        
         batch_op.drop_index(batch_op.f('idx_endividamento_banco'))
         batch_op.drop_index(batch_op.f('idx_endividamento_created_at'))
         batch_op.drop_index(batch_op.f('idx_endividamento_data_vencimento'))
@@ -37,7 +34,7 @@ def upgrade():
         batch_op.drop_index(batch_op.f('idx_notificacao_endividamento_ativo'))
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
-        batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')
+        # batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')  # Removido pois não existe
         batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
         batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
         batch_op.drop_index(batch_op.f('idx_parcela_pago'))
@@ -56,7 +53,7 @@ def downgrade():
         batch_op.create_index(batch_op.f('idx_pessoa_cpf_cnpj'), ['cpf_cnpj'], unique=False)
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
-        batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')
+        # batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')  # Removido pois não existe
         batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
         batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
         batch_op.drop_index(batch_op.f('idx_parcela_pago'))
