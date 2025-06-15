@@ -3,6 +3,16 @@ import os
 import sys
 import logging
 from logging.handlers import RotatingFileHandler
+from flask_login import LoginManager
+from src.models.usuario import Usuario
+from src.routes.auth import auth_bp
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
 
 # Adicionar o diretório pai ao PYTHONPATH
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -120,6 +130,7 @@ def create_app(test_config=None):
     app.register_blueprint(fazenda_bp)
     app.register_blueprint(documento_bp)
     app.register_blueprint(endividamento_bp)
+    app.register_blueprint(auth_bp)
     
     # Rota raiz
     @app.route('/')
