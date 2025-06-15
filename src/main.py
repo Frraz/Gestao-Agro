@@ -87,7 +87,10 @@ def create_app(test_config=None):
     app = configure_logging(app)
     
     # Inicialização do banco de dados
-    db.init_app(app)
+    # ... configs ...
+    db.init_app(app)              # Só aqui!
+    from flask_migrate import Migrate
+    Migrate(app, db)
     
     # Inicializar otimizações de performance
     init_performance_optimizations(app)

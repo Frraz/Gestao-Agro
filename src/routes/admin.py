@@ -623,6 +623,7 @@ def testar_email():
         return jsonify({'sucesso': False, 'mensagem': 'Formato de e-mail inválido.'})
     
     # Enviar e-mail de teste
-    sucesso, mensagem = EmailService().send_test_email(lista_emails)
+    sucesso = EmailService().enviar_email_teste(lista_emails)
+    mensagem = "E-mail de teste enviado com sucesso." if sucesso else "Falha ao enviar e-mail de teste. Verifique as configurações."
     
     return jsonify({'sucesso': sucesso, 'mensagem': mensagem})
