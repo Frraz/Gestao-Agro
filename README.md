@@ -1,6 +1,6 @@
 # Sistema de Gestão Agrícola
 
-![Interface do Sistema](docs/screenshot.gif) <!-- Troque pelo caminho do GIF ou print da interface -->
+![Interface do Sistema](docs/img/Tela%20principal.png) 
 [![Deploy Railway](https://img.shields.io/badge/Railway-Deploy-brightgreen?logo=railway)](https://gestao-agro-production.up.railway.app/)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 <!-- Adicione aqui badge de status do GitHub Actions se usar CI -->
