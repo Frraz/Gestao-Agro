@@ -3,7 +3,10 @@ import sys
 import logging
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory, jsonify
+# Ajuste o sys.path ANTES dos imports locais do projeto:
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from werkzeug.utils import secure_filename
 
 from src.models.db import db
@@ -22,8 +25,6 @@ def configure_logging(app):
     """Configura o sistema de logs da aplicação"""
     if not os.path.exists('logs'):
         os.mkdir('logs')
-    
-    # Configurar log de erros
     file_handler = RotatingFileHandler('logs/sistema_fazendas.log', maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -32,21 +33,19 @@ def configure_logging(app):
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
     app.logger.info('Inicialização do Sistema de Gestão de Fazendas')
-    
     return app
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx'}
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def create_app(test_config=None):
     app = Flask(__name__)
-    
+
     # Flask-Login
     login_manager = LoginManager()
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'  # Redireciona para login se não autenticado
+    login_manager.login_view = 'auth.login'
 
     from src.models.usuario import Usuario
     @login_manager.user_loader
@@ -54,10 +53,7 @@ def create_app(test_config=None):
         return Usuario.query.get(int(user_id))
 
     # Configurações básicas
-    if os.environ.get('SECRET_KEY') is None:
-        app.config['SECRET_KEY'] = os.urandom(24)
-    else:
-        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24)
 
     # Configurações de upload
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
@@ -106,8 +102,6 @@ def create_app(test_config=None):
 
     # Inicializar otimizações de performance
     init_performance_optimizations(app)
-
-    # Adicionar middleware de performance
     PerformanceMiddleware(app)
 
     # Criação dos diretórios de upload
@@ -153,7 +147,7 @@ def create_app(test_config=None):
     @app.errorhandler(500)
     def internal_server_error(error):
         app.logger.error(f'Erro interno do servidor: {error}')
-        db.session.rollback()  # Garantir rollback em caso de erro
+        db.session.rollback()
         return render_template('errors/500.html'), 500
 
     # Manipulador para erros de banco de dados
@@ -191,10 +185,10 @@ def create_app(test_config=None):
     return app
 
 if __name__ == '__main__':
-    # Adicionar o diretório pai ao PYTHONPATH para facilitar imports relativos
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     app = create_app()
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=os.environ.get('FLASK_DEBUG', 'true').lower() in ['true', 'on', '1'],
-            host='0.0.0.0',
-            port=port)
+    app.run(
+        debug=os.environ.get('FLASK_DEBUG', 'true').lower() in ['true', 'on', '1'],
+        host='0.0.0.0',
+        port=port
+    )
