@@ -166,6 +166,8 @@ body {
     z-index: 1000;
     border-right: 1.5px solid var(--border-color);
     box-shadow: 2px 0 12px -4px var(--card-shadow);
+    display: flex;
+    flex-direction: column;
 }
 #sidebar.active {
     margin-left: -240px;
@@ -710,4 +712,40 @@ body {
     .sidebar-header h3 {
         font-size: 1.02rem;
     }
+}
+
+.assinatura {
+    font-size: 0.85rem;
+    color: #aaa;
+    opacity: 0.76;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+    margin-top: 0.5em;
+    margin-bottom: 0.2em;
+}
+.assinatura-nome {
+    display: block;
+    margin-bottom: 0.2em;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: #bbb;
+}
+
+.assinatura-links {
+    margin-top: 0.2em;
+}
+.assinatura-link {
+    color: #888 !important;
+    font-size: 1.02rem;
+    margin: 0 0.12em;
+    transition: color 0.18s, transform 0.18s;
+    vertical-align: middle;
+    display: inline-block;
+    line-height: 1;
+    padding: 0;
+}
+.assinatura-link:hover {
+    color: #00b386 !important;
+    transform: translateY(-1px) scale(1.10);
+    text-decoration: none;
 }

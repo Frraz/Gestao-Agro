@@ -21,13 +21,6 @@ def login():
 
     return render_template('login.html')
 
-
-@auth_bp.route('/logout')
-def logout():
-    logout_user()
-    return redirect(url_for('auth.login'))
-
-
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -49,3 +42,9 @@ def register():
         return redirect(url_for('auth.login'))
 
     return render_template('register.html')
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    logout_user()
+    flash('Logout realizado com sucesso!', 'success')
+    return redirect(url_for('auth.login'))
