@@ -642,3 +642,72 @@ body {
 .btn-action-delete:hover {
     filter: brightness(1.08);
 }
+
+@media (max-width: 992px) {
+    #sidebar {
+        position: fixed;
+        left: -100vw;
+        width: 75vw;
+        max-width: 320px;
+        min-width: 230px;
+        z-index: 1100;
+        height: 100vh;
+        margin-left: 0 !important;
+        transition: left 0.3s;
+    }
+    #sidebar.active {
+        left: 0;
+    }
+    #content {
+        margin-left: 0;
+        width: 100%;
+        padding: 0.5rem 0.5rem 2rem 0.5rem;
+    }
+    .navbar {
+        padding: 0.6rem 1rem;
+    }
+    .card-dashboard, .card {
+        margin-bottom: 1.2rem;
+    }
+    .btn-group {
+        flex-direction: column;
+    }
+    .btn-group .btn {
+        margin-bottom: 0.34rem;
+    }
+    .table-responsive {
+        font-size: 0.95rem;
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    .card, .card-dashboard {
+        margin-bottom: 1.2rem;
+    }
+    .table-responsive {
+        font-size: 0.81rem;
+    }
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.20rem 0.4rem;
+    }
+    .navbar {
+        padding: 0.35rem 0.7rem;
+    }
+    .form-label {
+        display: block;
+        margin-bottom: 0.1em;
+    }
+    .form-control, .form-select {
+        width: 100%;
+        font-size: 1rem;
+    }
+    .sidebar-header h3 {
+        font-size: 1.02rem;
+    }
+}
