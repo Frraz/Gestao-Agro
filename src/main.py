@@ -61,16 +61,29 @@ def create_app(test_config=None):
     
     # Configurações do banco de dados
     if test_config is None:
-        # Usar MySQL se as variáveis de ambiente estiverem definidas, caso contrário, usar SQLite
-        if os.environ.get('DB_TYPE') == 'mysql':
-            app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USERNAME', 'root')}:{os.getenv('DB_PASSWORD', 'password')}@{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '3306')}/{os.getenv('DB_NAME', 'gestao_fazendas')}"
+        # Prioriza DATABASE_URL (Railway/Render/Heroku)
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url:
+            # Railway pode fornecer mysql://, troque para mysql+pymysql:// se necessário
+            if db_url.startswith("mysql://"):
+                db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+            app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+        elif os.environ.get('DB_TYPE') == 'mysql':
+            # Modo antigo com variáveis separadas
+            app.config['SQLALCHEMY_DATABASE_URI'] = (
+                f"mysql+pymysql://{os.getenv('DB_USERNAME', 'root')}:"
+                f"{os.getenv('DB_PASSWORD', 'password')}@"
+                f"{os.getenv('DB_HOST', 'localhost')}:"
+                f"{os.getenv('DB_PORT', '3306')}/"
+                f"{os.getenv('DB_NAME', 'gestao_fazendas')}"
+            )
         else:
+            # Fallback: SQLite local
             app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gestao_fazendas.db')
     else:
-        # Configurações de teste
         app.config.update(test_config)
-    
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Configurações de e-mail para notificações
     app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
