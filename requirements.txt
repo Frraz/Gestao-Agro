@@ -1,33 +1,56 @@
+# Core do Flask
 Flask==3.1.1
+Flask-Login==0.6.3
+Flask-Mail==0.10.0
+Flask-Migrate==4.0.7
 Flask-SQLAlchemy==3.1.1
-python-dotenv==1.0.0
-blinker==1.9.0
-cffi==1.17.1
+Flask-WTF==1.2.1
+Werkzeug==3.1.3
+WTForms==3.1.2
+Jinja2==3.1.6
+itsdangerous==2.2.0
+MarkupSafe==3.0.2
 click==8.2.1
 colorama==0.4.6
-cryptography==36.0.2
-Flask-Mail==0.10.0
-greenlet==3.2.2
-gunicorn==23.0.0
-itsdangerous==2.2.0
-Jinja2==3.1.6
-MarkupSafe==3.0.2
-packaging==25.0
-pycparser==2.22
-PyMySQL==1.1.1
+
+# Banco de Dados e Migrations
 SQLAlchemy==2.0.40
-typing_extensions==4.13.2
-Werkzeug==3.1.3
+PyMySQL==1.1.1
+alembic==1.16.1
+greenlet==3.2.2
+Mako==1.3.10
 
-# Dependências adicionais para melhorias
-Flask-WTF==1.2.1
-WTForms==3.1.2
-Flask-Migrate==4.0.7
-redis==5.2.1
+# Celery + Redis (Tasks e Filas)
 celery==5.4.0
-schedule==1.2.2
+redis==5.2.1
+kombu==5.5.4
+amqp==5.3.1
+billiard==4.2.1
+vine==5.1.0
 
-# Dependências para otimização e monitoramento
+# Outros utilitários
+python-dotenv==1.0.0
+schedule==1.2.2
 psutil==6.1.0
 memory-profiler==0.61.0
+packaging==25.0
+typing_extensions==4.13.2
+gunicorn==23.0.0
+blinker==1.9.0
 
+# Segurança e criptografia
+cryptography==36.0.2
+cffi==1.17.1
+pycparser==2.22
+
+# CLI interativa
+click-didyoumean==0.3.1
+click-plugins==1.1.1
+click-repl==0.3.0
+prompt_toolkit==3.0.51
+wcwidth==0.2.13
+
+# Datas e Timezone
+python-dateutil==2.9.0.post0
+tzdata==2025.2
+six==1.17.0
