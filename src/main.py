@@ -130,7 +130,7 @@ def create_app(test_config=None):
     @app.errorhandler(413)
     def request_entity_too_large(error):
         app.logger.warning(f'Tentativa de upload de arquivo muito grande: {request.url}')
-        flash(f'O arquivo é muito grande. O tamanho máximo permitido é {app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)}MB.', 'danger')
+        flash(f'O arquivo é muito grande. O tamanho máximo permitido é {app.config["MAX_CONTENT_LENGTH"] / (1024 * 1024)}MB.', 'danger')
         return redirect(request.url)
 
     # Manipulador de erro para arquivos não permitidos
