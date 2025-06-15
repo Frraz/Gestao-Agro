@@ -1,4 +1,6 @@
-/* Variáveis CSS para temas */
+/* ==========================
+   Variáveis CSS para temas
+   ========================== */
 :root {
     /* Tema Claro */
     --bg-primary: #ffffff;
@@ -27,7 +29,7 @@
     --table-hover: rgba(0, 0, 0, 0.075);
 }
 
-/* Tema Escuro (apenas variáveis) */
+/* Tema Escuro (sobrescreve variáveis) */
 [data-theme="dark"] {
     --bg-primary: #1a1a1a;
     --bg-secondary: #2d2d2d;
@@ -51,11 +53,38 @@
     --btn-info: #0dcaf0;
     --input-bg: #404040;
     --input-border: #555555;
-    --table-bg: #2d2d2d;
+    --table-bg: #23272b;
     --table-hover: rgba(255, 255, 255, 0.075);
 }
 
-/* Reforço do dark mode - fora do bloco acima */
+/* ==========================
+   Tema escuro para tabelas
+   ========================== */
+html[data-theme="dark"] table,
+html[data-theme="dark"] .table {
+    background-color: var(--table-bg, #23272b) !important;
+    color: var(--text-primary, #e0e0e0) !important;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+html[data-theme="dark"] th,
+html[data-theme="dark"] td,
+html[data-theme="dark"] .table th,
+html[data-theme="dark"] .table td {
+    background-color: var(--table-bg, #23272b) !important;
+    color: var(--text-primary, #e0e0e0) !important;
+    border-color: #444d56 !important;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd),
+html[data-theme="dark"] table.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #282c34 !important;
+}
+
+/* ==========================
+   Formulários e inputs
+   ========================== */
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select,
 [data-theme="dark"] textarea,
@@ -112,22 +141,9 @@
     color: var(--text-primary, #fff) !important;
 }
 
-[data-theme="dark"] .table {
-    background-color: var(--table-bg, #2d2d2d) !important;
-    color: var(--text-primary, #fff) !important;
-}
-
-[data-theme="dark"] .table th {
-    background-color: var(--bg-tertiary, #404040) !important;
-    color: var(--text-primary, #fff) !important;
-}
-
-[data-theme="dark"] .table td {
-    border-color: var(--border-color, #404040) !important;
-    color: var(--text-primary, #fff) !important;
-}
-
-/* Estilos base */
+/* ==========================
+   Estilos base
+   ========================== */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-secondary);
@@ -303,17 +319,20 @@ body {
 .table {
     background-color: var(--table-bg);
     color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .table th {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
     border-color: var(--border-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .table td {
     border-color: var(--border-color);
     color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .table-hover tbody tr:hover {
@@ -417,11 +436,11 @@ body {
     #content {
         margin-left: 0;
     }
-    
+
     #sidebar {
         margin-left: -250px;
     }
-    
+
     #sidebar.active {
         margin-left: 0;
     }
@@ -431,7 +450,7 @@ body {
     .wrapper {
         flex-direction: column;
     }
-    
+
     #sidebar {
         position: fixed;
         top: 0;
@@ -443,32 +462,32 @@ body {
         z-index: 1050;
         margin-left: -100%;
     }
-    
+
     #sidebar.active {
         margin-left: 0;
     }
-    
+
     #content {
         margin-left: 0;
         width: 100%;
     }
-    
+
     .card-dashboard {
         margin-bottom: 1rem;
     }
-    
+
     .table-responsive {
         font-size: 0.875rem;
     }
-    
+
     .btn-group {
         flex-direction: column;
     }
-    
+
     .btn-group .btn {
         margin-bottom: 0.25rem;
     }
-    
+
     #sidebarCollapse span {
         display: none;
     }
@@ -479,30 +498,32 @@ body {
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }
-    
+
     .card {
         margin-bottom: 1rem;
     }
-    
+
     .table-responsive {
         font-size: 0.75rem;
     }
-    
+
     .btn-sm {
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
     }
-    
+
     .navbar {
         padding: 0.5rem;
     }
-    
+
     .sidebar-header h3 {
         font-size: 1rem;
     }
 }
 
-/* Animações e transições */
+/* ==========================
+   Animações e transições
+   ========================== */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -547,23 +568,24 @@ body {
     #sidebar, .navbar, .btn, .card-tools {
         display: none !important;
     }
-    
+
     #content {
         margin-left: 0 !important;
         width: 100% !important;
     }
-    
+
     .card {
         border: 1px solid #000 !important;
         box-shadow: none !important;
     }
-    
+
     body {
         background: white !important;
         color: black !important;
     }
 }
 
+/* Busca de pessoas dropdown */
 #resultadosBusca {
     position: absolute;
     z-index: 1050;
