@@ -1,4 +1,3 @@
-#src/routes/admin.py
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento, TipoEntidade
@@ -7,10 +6,12 @@ from src.models.pessoa import Pessoa
 import os
 import datetime
 from src.utils.email_service import verificar_documentos_vencendo, EmailService
+from flask_login import login_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 @admin_bp.route('/')
+@login_required
 def index():
     """Página inicial do painel administrativo."""
     # Contadores
@@ -38,12 +39,14 @@ def index():
 
 # Rotas para Pessoas
 @admin_bp.route('/pessoas')
+@login_required
 def listar_pessoas():
     """Lista todas as pessoas cadastradas."""
     pessoas = Pessoa.query.all()
     return render_template('admin/pessoas/listar.html', pessoas=pessoas)
 
 @admin_bp.route('/pessoas/nova', methods=['GET', 'POST'])
+@login_required
 def nova_pessoa():
     """Cadastra uma nova pessoa."""
     if request.method == 'POST':
@@ -82,6 +85,7 @@ def nova_pessoa():
     return render_template('admin/pessoas/form.html')
 
 @admin_bp.route('/pessoas/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
 def editar_pessoa(id):
     """Edita uma pessoa existente."""
     pessoa = Pessoa.query.get_or_404(id)
@@ -119,6 +123,7 @@ def editar_pessoa(id):
     return render_template('admin/pessoas/form.html', pessoa=pessoa)
 
 @admin_bp.route('/pessoas/<int:id>/excluir', methods=['POST'])
+@login_required
 def excluir_pessoa(id):
     """Exclui uma pessoa do sistema."""
     pessoa = Pessoa.query.get_or_404(id)
@@ -141,12 +146,14 @@ def excluir_pessoa(id):
     return redirect(url_for('admin.listar_pessoas'))
 
 @admin_bp.route('/pessoas/<int:id>/fazendas')
+@login_required
 def listar_fazendas_pessoa(id):
     """Lista as fazendas associadas a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(id)
     return render_template('admin/pessoas/fazendas.html', pessoa=pessoa)
 
 @admin_bp.route('/pessoas/<int:pessoa_id>/associar-fazenda', methods=['GET', 'POST'])
+@login_required
 def associar_fazenda_pessoa(pessoa_id):
     """Associa uma fazenda a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
@@ -179,6 +186,7 @@ def associar_fazenda_pessoa(pessoa_id):
     return render_template('admin/pessoas/associar_fazenda.html', pessoa=pessoa, fazendas=fazendas_disponiveis)
 
 @admin_bp.route('/pessoas/<int:pessoa_id>/desassociar-fazenda/<int:fazenda_id>', methods=['POST'])
+@login_required
 def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
     """Desassocia uma fazenda de uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
@@ -196,12 +204,14 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
 
 # Rotas para Fazendas
 @admin_bp.route('/fazendas')
+@login_required
 def listar_fazendas():
     """Lista todas as fazendas cadastradas."""
     fazendas = Fazenda.query.all()
     return render_template('admin/fazendas/listar.html', fazendas=fazendas)
 
 @admin_bp.route('/fazendas/nova', methods=['GET', 'POST'])
+@login_required
 def nova_fazenda():
     """Cadastra uma nova fazenda."""
     if request.method == 'POST':
@@ -263,6 +273,7 @@ def nova_fazenda():
     return render_template('admin/fazendas/form.html', tipos_posse=TipoPosse)
 
 @admin_bp.route('/fazendas/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
 def editar_fazenda(id):
     """Edita uma fazenda existente."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -323,6 +334,7 @@ def editar_fazenda(id):
     return render_template('admin/fazendas/form.html', fazenda=fazenda, tipos_posse=TipoPosse)
 
 @admin_bp.route('/fazendas/<int:id>/excluir', methods=['POST'])
+@login_required
 def excluir_fazenda(id):
     """Exclui uma fazenda do sistema."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -344,6 +356,7 @@ def excluir_fazenda(id):
     return redirect(url_for('admin.listar_fazendas'))
 
 @admin_bp.route('/fazendas/<int:id>/documentos')
+@login_required
 def listar_documentos_fazenda(id):
     """Lista os documentos associados a uma fazenda."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -352,12 +365,14 @@ def listar_documentos_fazenda(id):
 
 # Rotas para Documentos
 @admin_bp.route('/documentos')
+@login_required
 def listar_documentos():
     """Lista todos os documentos cadastrados."""
     documentos = Documento.query.all()
     return render_template('admin/documentos/listar.html', documentos=documentos)
 
 @admin_bp.route('/documentos/novo', methods=['GET', 'POST'])
+@login_required
 def novo_documento():
     """Cadastra um novo documento."""
     fazendas = Fazenda.query.all()
@@ -455,6 +470,7 @@ def novo_documento():
                           pessoas=pessoas)
 
 @admin_bp.route('/documentos/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
 def editar_documento(id):
     """Edita um documento existente."""
     documento = Documento.query.get_or_404(id)
@@ -562,6 +578,7 @@ def editar_documento(id):
                           pessoas=pessoas)
 
 @admin_bp.route('/documentos/<int:id>/excluir', methods=['POST'])
+@login_required
 def excluir_documento(id):
     """Exclui um documento do sistema."""
     documento = Documento.query.get_or_404(id)
@@ -574,6 +591,7 @@ def excluir_documento(id):
     return redirect(url_for('admin.listar_documentos'))
 
 @admin_bp.route('/documentos/vencidos')
+@login_required
 def listar_documentos_vencidos():
     """Lista documentos vencidos ou próximos do vencimento."""
     hoje = datetime.date.today()
@@ -595,6 +613,7 @@ def listar_documentos_vencidos():
                           documentos_proximos=documentos_proximos)
 
 @admin_bp.route('/documentos/notificacoes', methods=['GET', 'POST'])
+@login_required
 def notificacoes_documentos():
     """Gerencia notificações de vencimento de documentos."""
     documentos_por_prazo = verificar_documentos_vencendo()
@@ -609,6 +628,7 @@ def notificacoes_documentos():
                           documentos_por_prazo=documentos_por_prazo)
 
 @admin_bp.route('/testar-email', methods=['POST'])
+@login_required
 def testar_email():
     """Envia um e-mail de teste para verificar a configuração."""
     emails = request.form.get('emails', '')
