@@ -563,3 +563,17 @@ body {
         color: black !important;
     }
 }
+
+#resultadosBusca {
+    position: absolute;
+    z-index: 1050;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    max-height: 300px;
+    overflow-y: auto;
+    min-width: 100%;
+}
+.col-md-8.position-relative { position: relative !important; }

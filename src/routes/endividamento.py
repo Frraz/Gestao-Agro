@@ -1,3 +1,4 @@
+#/src/routes/endividamento.py
 # Rotas para gerenciamento de endividamentos
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from sqlalchemy import and_, or_
@@ -94,7 +95,11 @@ def novo():
                     endividamento.pessoas = pessoas
                 
                 # Processar vínculos com fazendas (objeto do crédito)
-                objetos_credito = json.loads(request.form.get('objetos_credito', '[]'))
+                objetos_credito_str = json.loads(request.form.get('objetos_credito') or '[]')
+                if objetos_credito_str:
+                    objetos_credito = json.loads(objetos_credito_str)
+                else:
+                    objetos_credito = []
                 for obj in objetos_credito:
                     vinculo = EndividamentoFazenda(
                         endividamento_id=endividamento.id,
@@ -106,7 +111,7 @@ def novo():
                     db.session.add(vinculo)
                 
                 # Processar garantias
-                garantias = json.loads(request.form.get('garantias', '[]'))
+                garantias = json.loads(request.form.get('garantias') or '[]')
                 for gar in garantias:
                     vinculo = EndividamentoFazenda(
                         endividamento_id=endividamento.id,
@@ -118,7 +123,7 @@ def novo():
                     db.session.add(vinculo)
                 
                 # Processar parcelas
-                parcelas = json.loads(request.form.get('parcelas', '[]'))
+                parcelas = json.loads(request.form.get('parcelas') or '[]')
                 for parc in parcelas:
                     parcela = Parcela(
                         endividamento_id=endividamento.id,
@@ -151,7 +156,11 @@ def novo():
 def visualizar(id):
     """Visualiza detalhes de um endividamento"""
     endividamento = Endividamento.query.get_or_404(id)
-    return render_template('admin/endividamentos/visualizar.html', endividamento=endividamento)
+    return render_template(
+    'admin/endividamentos/visualizar.html',
+    endividamento=endividamento,
+    date=date  # <-- Passe o objeto date para o template!
+)
 
 @endividamento_bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 def editar(id):
@@ -184,7 +193,11 @@ def editar(id):
                 EndividamentoFazenda.query.filter_by(endividamento_id=id).delete()
                 
                 # Recriar vínculos com fazendas
-                objetos_credito = json.loads(request.form.get('objetos_credito', '[]'))
+                objetos_credito_str = request.form.get('objetos_credito')
+                if objetos_credito_str:
+                    objetos_credito = json.loads(objetos_credito_str)
+                else:
+                    objetos_credito = []
                 for obj in objetos_credito:
                     vinculo = EndividamentoFazenda(
                         endividamento_id=endividamento.id,
@@ -195,7 +208,7 @@ def editar(id):
                     )
                     db.session.add(vinculo)
                 
-                garantias = json.loads(request.form.get('garantias', '[]'))
+                garantias = json.loads(request.form.get('garantias', '[]')  or '[]')
                 for gar in garantias:
                     vinculo = EndividamentoFazenda(
                         endividamento_id=endividamento.id,
@@ -210,7 +223,7 @@ def editar(id):
                 Parcela.query.filter_by(endividamento_id=id).delete()
                 
                 # Recriar parcelas
-                parcelas = json.loads(request.form.get('parcelas', '[]'))
+                parcelas  = json.loads(request.form.get('parcelas') or '[]')
                 for parc in parcelas:
                     parcela = Parcela(
                         endividamento_id=endividamento.id,
@@ -315,9 +328,8 @@ def buscar_pessoas():
     termo = request.args.get('q', '').strip()
     
     if len(termo) < 2:
-        return jsonify({'pessoas': []})
+        return jsonify([])  # Retorne um array direto
     
-    # Buscar por nome ou CPF/CNPJ
     pessoas = Pessoa.query.filter(
         or_(
             Pessoa.nome.ilike(f'%{termo}%'),
@@ -325,16 +337,14 @@ def buscar_pessoas():
         )
     ).limit(10).all()
     
-    # Converter para formato JSON
-    resultado = []
-    for pessoa in pessoas:
-        resultado.append({
-            'id': pessoa.id,
-            'nome': pessoa.nome,
-            'cpf_cnpj_formatado': pessoa.formatar_cpf_cnpj()
-        })
+    resultado = [{
+        'id': pessoa.id,
+        'nome': pessoa.nome,
+        'cpf_cnpj': pessoa.cpf_cnpj,
+        'cpf_cnpj_formatado': pessoa.formatar_cpf_cnpj()  # Só se existir
+    } for pessoa in pessoas]
     
-    return jsonify({'pessoas': resultado})
+    return jsonify(resultado)  # <-- ARRAY DIRETO!
 
 
 

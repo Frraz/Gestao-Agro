@@ -12,8 +12,11 @@ class NotificacaoEndividamento(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamentos
-    endividamento = db.relationship('Endividamento', backref='notificacoes')
+    # Relacionamento explícito usando back_populates
+    endividamento = db.relationship(
+        'Endividamento',
+        back_populates='notificacoes'
+    )
     
     def __repr__(self):
         return f'<NotificacaoEndividamento {self.endividamento_id}>'
@@ -40,7 +43,7 @@ class HistoricoNotificacao(db.Model):
     sucesso = db.Column(db.Boolean, default=True)
     erro_mensagem = db.Column(db.Text, nullable=True)
     
-    # Relacionamentos
+    # Relacionamento simples (caso queira histórico por endividamento)
     endividamento = db.relationship('Endividamento')
     
     def __repr__(self):
@@ -57,4 +60,3 @@ class HistoricoNotificacao(db.Model):
             'sucesso': self.sucesso,
             'erro_mensagem': self.erro_mensagem
         }
-

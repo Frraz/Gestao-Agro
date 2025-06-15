@@ -15,10 +15,8 @@
                         </a>
                     </div>
                 </div>
-                
-                <form method="POST" id="formEndividamento">
+                <form method="POST" id="formEndividamento" autocomplete="off">
                     {{ form.hidden_tag() }}
-                    
                     <div class="card-body">
                         <!-- Dados básicos -->
                         <div class="row">
@@ -41,7 +39,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
@@ -71,7 +68,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
@@ -101,25 +97,23 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Seleção de pessoas com busca -->
                         <div class="mb-4">
                             <h5>Pessoas Vinculadas</h5>
                             <div class="row">
-                                <div class="col-md-8">
-                                    <label class="form-label">Buscar Pessoa</label>
+                                <div class="col-md-8 position-relative">
+                                    <label class="form-label" for="buscaPessoa">Buscar Pessoa</label>
                                     <input type="text" id="buscaPessoa" class="form-control" 
-                                           placeholder="Digite o nome ou CPF/CNPJ da pessoa...">
-                                    <div id="resultadosBusca" class="list-group mt-2" style="display: none;"></div>
+                                           placeholder="Digite o nome ou CPF/CNPJ da pessoa..." autocomplete="off">
+                                    <div id="resultadosBusca" class="list-group mt-2"></div>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">&nbsp;</label>
-                                    <button type="button" class="btn btn-primary d-block" onclick="buscarPessoas()">
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary w-100" onclick="window.buscarPessoas()">
                                         <i class="fas fa-search"></i> Buscar
                                     </button>
                                 </div>
                             </div>
-                            
                             <!-- Pessoas selecionadas -->
                             <div class="mt-3">
                                 <label class="form-label">Pessoas Selecionadas:</label>
@@ -136,7 +130,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Objeto do Crédito -->
                         <div class="mb-4">
                             <h5>Objeto do Crédito</h5>
@@ -183,7 +177,6 @@
                                 <i class="fas fa-plus"></i> Adicionar Objeto do Crédito
                             </button>
                         </div>
-                        
                         <!-- Garantias -->
                         <div class="mb-4">
                             <h5>Garantias</h5>
@@ -230,7 +223,6 @@
                                 <i class="fas fa-plus"></i> Adicionar Garantia
                             </button>
                         </div>
-                        
                         <!-- Parcelas -->
                         <div class="mb-4">
                             <h5>Parcelas</h5>
@@ -263,13 +255,11 @@
                                 <i class="fas fa-plus"></i> Adicionar Parcela
                             </button>
                         </div>
-                        
                         <!-- Campos hidden para envio dos dados -->
                         <input type="hidden" name="objetos_credito" id="objetosCreditoData">
                         <input type="hidden" name="garantias" id="garantiasData">
                         <input type="hidden" name="parcelas" id="parcelasData">
                     </div>
-                    
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> {{ 'Atualizar' if endividamento else 'Cadastrar' }}
@@ -313,19 +303,15 @@ function buscarPessoas() {
         alert('Digite pelo menos 2 caracteres para buscar');
         return;
     }
-    
     const resultadosDiv = document.getElementById('resultadosBusca');
     resultadosDiv.innerHTML = '<div class="list-group-item">Buscando...</div>';
     resultadosDiv.style.display = 'block';
-    
-    // Fazer requisição AJAX
     fetch(`/endividamentos/buscar-pessoas?q=${encodeURIComponent(termo)}`)
         .then(response => response.json())
         .then(data => {
             resultadosDiv.innerHTML = '';
-            
-            if (data.pessoas && data.pessoas.length > 0) {
-                data.pessoas.forEach(pessoa => {
+            if (data.length > 0) {
+                data.forEach(pessoa => {
                     const isSelected = pessoasSelecionadasIds.has(pessoa.id);
                     const item = document.createElement('div');
                     item.className = `list-group-item list-group-item-action ${isSelected ? 'disabled' : ''}`;
@@ -333,12 +319,14 @@ function buscarPessoas() {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <strong>${pessoa.nome}</strong><br>
-                                <small class="text-muted">${pessoa.cpf_cnpj_formatado}</small>
+                                <small class="text-muted">${pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj}</small>
                             </div>
-                            ${isSelected ? 
-                                '<span class="badge bg-success">Já selecionado</span>' : 
-                                `<button type="button" class="btn btn-sm btn-primary" onclick="selecionarPessoa(${pessoa.id}, '${pessoa.nome}', '${pessoa.cpf_cnpj_formatado}')">Selecionar</button>`
-                            }
+                            <button type="button" class="btn btn-sm btn-primary selecionar-pessoa"
+                                data-id="${pessoa.id}"
+                                data-nome="${pessoa.nome}"
+                                data-cpf-cnpj="${pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj}" ${isSelected ? 'disabled' : ''}>
+                                Selecionar
+                            </button>
                         </div>
                     `;
                     resultadosDiv.appendChild(item);
@@ -358,9 +346,7 @@ function selecionarPessoa(id, nome, cpfCnpj) {
     if (pessoasSelecionadasIds.has(id)) {
         return; // Já selecionado
     }
-    
     pessoasSelecionadasIds.add(id);
-    
     const container = document.getElementById('pessoasSelecionadas');
     const badge = document.createElement('div');
     badge.className = 'pessoa-selecionada badge bg-primary me-2 mb-2 p-2';
@@ -370,9 +356,7 @@ function selecionarPessoa(id, nome, cpfCnpj) {
         <button type="button" class="btn-close btn-close-white ms-2" onclick="removerPessoa(${id})"></button>
         <input type="hidden" name="pessoas_ids" value="${id}">
     `;
-    
     container.appendChild(badge);
-    
     // Limpar busca
     document.getElementById('buscaPessoa').value = '';
     document.getElementById('resultadosBusca').style.display = 'none';
@@ -395,11 +379,24 @@ document.getElementById('buscaPessoa').addEventListener('keypress', function(e) 
     }
 });
 
-// Esconder resultados ao clicar fora
+// Delegação para seleção de pessoas (adaptação para botão dinâmico)
 document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('selecionar-pessoa')) {
+        const id = parseInt(e.target.getAttribute('data-id'));
+        const nome = e.target.getAttribute('data-nome');
+        const cpfCnpj = e.target.getAttribute('data-cpf-cnpj');
+        selecionarPessoa(id, nome, cpfCnpj);
+    }
+    if (e.target && e.target.classList.contains('btn-close')) {
+        const badge = e.target.closest('.pessoa-selecionada');
+        if (badge) {
+            const id = parseInt(badge.getAttribute('data-pessoa-id'));
+            removerPessoa(id);
+        }
+    }
+    // Esconder resultados ao clicar fora
     const buscaInput = document.getElementById('buscaPessoa');
     const resultadosDiv = document.getElementById('resultadosBusca');
-    
     if (!buscaInput.contains(e.target) && !resultadosDiv.contains(e.target)) {
         resultadosDiv.style.display = 'none';
     }
@@ -503,7 +500,6 @@ document.getElementById('formEndividamento').addEventListener('submit', function
         const fazenda = item.querySelector('[name="objeto_fazenda"]').value;
         const hectares = item.querySelector('[name="objeto_hectares"]').value;
         const descricao = item.querySelector('[name="objeto_descricao"]').value;
-        
         if (fazenda || hectares || descricao) {
             objetosCredito.push({
                 fazenda_id: fazenda || null,
@@ -512,14 +508,12 @@ document.getElementById('formEndividamento').addEventListener('submit', function
             });
         }
     });
-    
     // Coletar garantias
     const garantias = [];
     document.querySelectorAll('.garantia-item').forEach(item => {
         const fazenda = item.querySelector('[name="garantia_fazenda"]').value;
         const hectares = item.querySelector('[name="garantia_hectares"]').value;
         const descricao = item.querySelector('[name="garantia_descricao"]').value;
-        
         if (fazenda || hectares || descricao) {
             garantias.push({
                 fazenda_id: fazenda || null,
@@ -528,13 +522,11 @@ document.getElementById('formEndividamento').addEventListener('submit', function
             });
         }
     });
-    
     // Coletar parcelas
     const parcelas = [];
     document.querySelectorAll('.parcela-item').forEach(item => {
         const data = item.querySelector('[name="parcela_data"]').value;
         const valor = item.querySelector('[name="parcela_valor"]').value;
-        
         if (data && valor) {
             parcelas.push({
                 data_vencimento: data,
@@ -542,7 +534,6 @@ document.getElementById('formEndividamento').addEventListener('submit', function
             });
         }
     });
-    
     // Definir dados nos campos hidden
     document.getElementById('objetosCreditoData').value = JSON.stringify(objetosCredito);
     document.getElementById('garantiasData').value = JSON.stringify(garantias);
@@ -554,13 +545,11 @@ document.getElementById('formEndividamento').addEventListener('submit', function
 .min-height-50 {
     min-height: 50px;
 }
-
 .pessoa-selecionada {
     display: inline-flex;
     align-items: center;
     font-size: 0.9rem;
 }
-
 #resultadosBusca {
     position: absolute;
     z-index: 1000;
@@ -570,4 +559,3 @@ document.getElementById('formEndividamento').addEventListener('submit', function
 }
 </style>
 {% endblock %}
-

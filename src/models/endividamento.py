@@ -1,4 +1,5 @@
 # Modelo para Endividamento
+
 from src.models.db import db
 from datetime import datetime
 
@@ -18,9 +19,27 @@ class Endividamento(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
-    pessoas = db.relationship('Pessoa', secondary='endividamento_pessoa', back_populates='endividamentos')
-    fazenda_vinculos = db.relationship('EndividamentoFazenda', back_populates='endividamento', cascade='all, delete-orphan')
-    parcelas = db.relationship('Parcela', back_populates='endividamento', cascade='all, delete-orphan')
+    pessoas = db.relationship(
+        'Pessoa',
+        secondary='endividamento_pessoa',
+        back_populates='endividamentos'
+    )
+    fazenda_vinculos = db.relationship(
+        'EndividamentoFazenda',
+        back_populates='endividamento',
+        cascade='all, delete-orphan'
+    )
+    parcelas = db.relationship(
+        'Parcela',
+        back_populates='endividamento',
+        cascade='all, delete-orphan',
+        order_by='Parcela.data_vencimento'
+    )
+    notificacoes = db.relationship(
+        'NotificacaoEndividamento',
+        back_populates='endividamento',
+        cascade="all, delete-orphan"
+    )
     
     def __repr__(self):
         return f'<Endividamento {self.banco} - {self.numero_proposta}>'
@@ -41,7 +60,8 @@ class Endividamento(db.Model):
         }
 
 # Tabela de associação para relacionamento many-to-many entre Endividamento e Pessoa
-endividamento_pessoa = db.Table('endividamento_pessoa',
+endividamento_pessoa = db.Table(
+    'endividamento_pessoa',
     db.Column('endividamento_id', db.Integer, db.ForeignKey('endividamento.id'), primary_key=True),
     db.Column('pessoa_id', db.Integer, db.ForeignKey('pessoa.id'), primary_key=True)
 )
@@ -103,4 +123,3 @@ class Parcela(db.Model):
             'valor_pago': float(self.valor_pago) if self.valor_pago else None,
             'observacoes': self.observacoes
         }
-

@@ -1,3 +1,5 @@
+// /src/static/js/script.js
+
 $(document).ready(function() {
     // Inicialização de tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -230,4 +232,101 @@ window.debounce = function(func, wait, immediate) {
         timeout = setTimeout(later, wait);
         if (callNow) func.apply(context, args);
     };
+};
+
+// === BUSCA E SELEÇÃO DE PESSOAS ===
+
+// Enter no campo de busca faz buscar (e previne submit)
+$('#buscaPessoa').on('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        window.buscarPessoas();
+    }
+});
+
+// Seleção robusta com Set
+var pessoasSelecionadasIds = new Set();
+
+// Inicializa com badges já renderizados
+$(document).ready(function() {
+    $('#pessoasSelecionadas [data-pessoa-id]').each(function() {
+        pessoasSelecionadasIds.add(String($(this).data('pessoa-id')));
+    });
+});
+
+$(document).on('click', '.selecionar-pessoa', function() {
+    var id = String($(this).data('id'));
+    var nome = $(this).data('nome');
+    var cpfCnpj = $(this).data('cpf-cnpj');
+    if (!pessoasSelecionadasIds.has(id)) {
+        pessoasSelecionadasIds.add(id);
+        $('#pessoasSelecionadas').append(
+            `<div class="pessoa-selecionada badge bg-primary me-2 mb-2 p-2" data-pessoa-id="${id}">
+                ${nome} (${cpfCnpj})
+                <button type="button" class="btn-close btn-close-white ms-2 remover-pessoa" data-id="${id}"></button>
+                <input type="hidden" name="pessoas_ids" value="${id}">
+            </div>`
+        );
+    }
+    $('#resultadosBusca').empty().hide();
+    $('#buscaPessoa').val('');
+});
+
+// Remover pessoa do Set ao remover badge
+$(document).on('click', '.remover-pessoa', function() {
+    var id = String($(this).data('id'));
+    pessoasSelecionadasIds.delete(id);
+    $('#pessoasSelecionadas [data-pessoa-id="' + id + '"]').remove();
+});
+
+// Esconde resultados ao clicar fora
+$(document).on('click', function(e) {
+    if (!$(e.target).closest('#resultadosBusca, #buscaPessoa').length) {
+        $('#resultadosBusca').hide();
+    }
+});
+
+// Impede submit do form se o foco está no campo de busca
+$('#formEndividamento').on('submit', function(event) {
+    if (document.activeElement.id === 'buscaPessoa') {
+        event.preventDefault();
+        window.buscarPessoas();
+        return false;
+    }
+    // ... resto da lógica de submit ...
+});
+
+// Função global para buscar pessoas (Enter ou botão)
+window.buscarPessoas = function() {
+    var termo = $('#buscaPessoa').val();
+    var $resultados = $('#resultadosBusca');
+    $resultados.empty().hide();
+    if (termo.length < 2) {
+        $resultados.append('<div class="list-group-item">Digite pelo menos 2 caracteres.</div>').show();
+        return;
+    }
+    fetch(`/endividamentos/buscar-pessoas?q=${encodeURIComponent(termo)}`)
+        .then(res => res.json())
+        .then(function(pessoas) {
+            $resultados.empty();
+            if (pessoas.length === 0) {
+                $resultados.append('<div class="list-group-item">Nenhuma pessoa encontrada.</div>').show();
+            } else {
+                pessoas.forEach(function(pessoa) {
+                    $resultados.append(
+                        `<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${pessoa.nome}</strong><br>
+                                <small class="text-muted">${pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj}</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary selecionar-pessoa"
+                                data-id="${pessoa.id}" data-nome="${pessoa.nome.replace(/'/g, "\\'")}" data-cpf-cnpj="${(pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj).replace(/'/g, "\\'")}">
+                                Selecionar
+                            </button>
+                        </div>`
+                    );
+                });
+                $resultados.show();
+            }
+        });
 };
