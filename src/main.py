@@ -138,7 +138,7 @@ def create_app(test_config=None):
     def bad_request(error):
         app.logger.warning(f'Bad request: {error}')
         if 'file type not allowed' in str(error).lower():
-            flash(f'Tipo de arquivo não permitido. Tipos permitidos: {", ".join(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx'])}', 'danger')
+            flash(f'Tipo de arquivo não permitido. Tipos permitidos: {", ".join(["pdf", "png", "jpg", "jpeg", "gif", "doc", "docx", "xls", "xlsx"])}', 'danger')
         else:
             flash('Requisição inválida. Verifique os dados informados.', 'danger')
         return redirect(request.url)
