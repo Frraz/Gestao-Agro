@@ -1,0 +1,81 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Fazendas da Pessoa - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Fazendas de {{ pessoa.nome }}</h1>
+        <div>
+            <a href="{{ url_for('admin.associar_fazenda_pessoa', pessoa_id=pessoa.id) }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Associar Fazenda
+            </a>
+            <a href="{{ url_for('admin.listar_pessoas') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Fazendas/Áreas Associadas</h6>
+        </div>
+        <div class="card-body">
+            {% if pessoa.fazendas %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Matrícula</th>
+                                <th>Tamanho Total (ha)</th>
+                                <th>Tipo de Posse</th>
+                                <th>Município/UF</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fazenda in pessoa.fazendas %}
+                                <tr>
+                                    <td>{{ fazenda.nome }}</td>
+                                    <td>{{ fazenda.matricula }}</td>
+                                    <td>{{ fazenda.tamanho_total }}</td>
+                                    <td>
+                                        {% if fazenda.tipo_posse.value == 'própria' %}
+                                            <span class="badge bg-success">Própria</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Arrendada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ fazenda.municipio }}/{{ fazenda.estado }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <a href="{{ url_for('admin.listar_documentos_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-file-alt"></i> Documentos
+                                        </a>
+                                        <form action="{{ url_for('admin.desassociar_fazenda_pessoa', pessoa_id=pessoa.id, fazenda_id=fazenda.id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-warning btn-delete">
+                                                <i class="fas fa-unlink"></i> Desassociar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-map-marked-alt fa-3x text-gray-300 mb-3"></i>
+                    <p class="mb-0">Esta pessoa não possui fazendas/áreas associadas.</p>
+                    <a href="{{ url_for('admin.associar_fazenda_pessoa', pessoa_id=pessoa.id) }}" class="btn btn-success mt-3">
+                        <i class="fas fa-plus"></i> Associar Fazenda
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

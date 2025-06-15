@@ -1,0 +1,120 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Documentos Vencidos - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Documentos com Vencimento</h1>
+        <a href="{{ url_for('admin.novo_documento') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Novo Documento
+        </a>
+    </div>
+
+    <!-- Documentos Vencidos -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-danger text-white">
+            <h6 class="m-0 font-weight-bold">Documentos Vencidos</h6>
+        </div>
+        <div class="card-body">
+            {% if documentos_vencidos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Fazenda</th>
+                                <th>Data de Vencimento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for documento in documentos_vencidos %}
+                                <tr>
+                                    <td>{{ documento.nome }}</td>
+                                    <td>{{ documento.tipo.value }}</td>
+                                    <td>{{ documento.fazenda.nome }}</td>
+                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">Vencido</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        {% if documento.caminho_arquivo %}
+                                            <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <p class="mb-0">Não há documentos vencidos.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Documentos Próximos do Vencimento -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-warning text-dark">
+            <h6 class="m-0 font-weight-bold">Documentos Próximos do Vencimento</h6>
+        </div>
+        <div class="card-body">
+            {% if documentos_proximos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Fazenda</th>
+                                <th>Data de Vencimento</th>
+                                <th>Dias Restantes</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for documento in documentos_proximos %}
+                                <tr>
+                                    <td>{{ documento.nome }}</td>
+                                    <td>{{ documento.tipo.value }}</td>
+                                    <td>{{ documento.fazenda.nome }}</td>
+                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">{{ documento.proximo_vencimento }} dias</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        {% if documento.caminho_arquivo %}
+                                            <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <p class="mb-0">Não há documentos próximos do vencimento.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

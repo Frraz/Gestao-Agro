@@ -1,0 +1,209 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Dashboard - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Dashboard</h1>
+    
+    <div class="row">
+        <!-- Card Pessoas -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow h-100 py-2 card-dashboard card-pessoas">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Pessoas Cadastradas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pessoas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('admin.listar_pessoas') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Fazendas -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow h-100 py-2 card-dashboard card-fazendas">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Fazendas/Áreas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_fazendas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-map-marked-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('admin.listar_fazendas') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Documentos -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow h-100 py-2 card-dashboard card-documentos">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Documentos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_documentos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('admin.listar_documentos') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Documentos Vencidos -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow h-100 py-2 card-dashboard card-vencidos">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Documentos Vencidos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ documentos_vencidos|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{{ url_for('admin.listar_documentos_vencidos') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentos Próximos do Vencimento -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Documentos Próximos do Vencimento</h6>
+                </div>
+                <div class="card-body">
+                    {% if documentos_proximos %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Fazenda</th>
+                                        <th>Data de Vencimento</th>
+                                        <th>Dias Restantes</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for documento in documentos_proximos %}
+                                        <tr>
+                                            <td>{{ documento.nome }}</td>
+                                            <td>{{ documento.tipo.value }}</td>
+                                            <td>{{ documento.fazenda.nome }}</td>
+                                            <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                            <td>
+                                                <span class="badge bg-warning">{{ documento.proximo_vencimento }} dias</span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if documento.caminho_arquivo %}
+                                                    <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="mb-0">Não há documentos próximos do vencimento.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentos Vencidos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-danger">Documentos Vencidos</h6>
+                </div>
+                <div class="card-body">
+                    {% if documentos_vencidos %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Fazenda</th>
+                                        <th>Data de Vencimento</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for documento in documentos_vencidos %}
+                                        <tr>
+                                            <td>{{ documento.nome }}</td>
+                                            <td>{{ documento.tipo.value }}</td>
+                                            <td>{{ documento.fazenda.nome }}</td>
+                                            <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                            <td>
+                                                <span class="badge bg-danger">Vencido</span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if documento.caminho_arquivo %}
+                                                    <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="mb-0">Não há documentos vencidos.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

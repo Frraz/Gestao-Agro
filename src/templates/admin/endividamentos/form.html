@@ -1,0 +1,573 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ 'Editar' if endividamento else 'Novo' }} Endividamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ 'Editar' if endividamento else 'Novo' }} Endividamento</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('endividamento.listar') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <form method="POST" id="formEndividamento">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="card-body">
+                        <!-- Dados básicos -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.banco.label(class="form-label") }}
+                                    {{ form.banco(class="form-control") }}
+                                    {% if form.banco.errors %}
+                                        <div class="text-danger">{{ form.banco.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.numero_proposta.label(class="form-label") }}
+                                    {{ form.numero_proposta(class="form-control") }}
+                                    {% if form.numero_proposta.errors %}
+                                        <div class="text-danger">{{ form.numero_proposta.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.data_emissao.label(class="form-label") }}
+                                    {{ form.data_emissao(class="form-control") }}
+                                    {% if form.data_emissao.errors %}
+                                        <div class="text-danger">{{ form.data_emissao.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.data_vencimento_final.label(class="form-label") }}
+                                    {{ form.data_vencimento_final(class="form-control") }}
+                                    {% if form.data_vencimento_final.errors %}
+                                        <div class="text-danger">{{ form.data_vencimento_final.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.prazo_carencia.label(class="form-label") }}
+                                    {{ form.prazo_carencia(class="form-control") }}
+                                    {% if form.prazo_carencia.errors %}
+                                        <div class="text-danger">{{ form.prazo_carencia.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.taxa_juros.label(class="form-label") }}
+                                    {{ form.taxa_juros(class="form-control") }}
+                                    {% if form.taxa_juros.errors %}
+                                        <div class="text-danger">{{ form.taxa_juros.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.tipo_taxa_juros.label(class="form-label") }}
+                                    {{ form.tipo_taxa_juros(class="form-select") }}
+                                    {% if form.tipo_taxa_juros.errors %}
+                                        <div class="text-danger">{{ form.tipo_taxa_juros.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.valor_operacao.label(class="form-label") }}
+                                    {{ form.valor_operacao(class="form-control") }}
+                                    {% if form.valor_operacao.errors %}
+                                        <div class="text-danger">{{ form.valor_operacao.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Seleção de pessoas com busca -->
+                        <div class="mb-4">
+                            <h5>Pessoas Vinculadas</h5>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <label class="form-label">Buscar Pessoa</label>
+                                    <input type="text" id="buscaPessoa" class="form-control" 
+                                           placeholder="Digite o nome ou CPF/CNPJ da pessoa...">
+                                    <div id="resultadosBusca" class="list-group mt-2" style="display: none;"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary d-block" onclick="buscarPessoas()">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Pessoas selecionadas -->
+                            <div class="mt-3">
+                                <label class="form-label">Pessoas Selecionadas:</label>
+                                <div id="pessoasSelecionadas" class="border rounded p-3 min-height-50">
+                                    {% if endividamento %}
+                                        {% for pessoa in endividamento.pessoas %}
+                                        <div class="pessoa-selecionada badge bg-primary me-2 mb-2 p-2" data-pessoa-id="{{ pessoa.id }}">
+                                            {{ pessoa.nome }} ({{ pessoa.formatar_cpf_cnpj() }})
+                                            <button type="button" class="btn-close btn-close-white ms-2" onclick="removerPessoa({{ pessoa.id }})"></button>
+                                            <input type="hidden" name="pessoas_ids" value="{{ pessoa.id }}">
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Objeto do Crédito -->
+                        <div class="mb-4">
+                            <h5>Objeto do Crédito</h5>
+                            <div id="objetosCredito">
+                                {% if endividamento %}
+                                    {% for vinculo in endividamento.fazenda_vinculos %}
+                                        {% if vinculo.tipo == 'objeto_credito' %}
+                                        <div class="objeto-credito-item border p-3 mb-2">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Fazenda</label>
+                                                    <select class="form-select fazenda-select" name="objeto_fazenda">
+                                                        <option value="">Selecione uma fazenda</option>
+                                                        {% for fazenda in fazendas %}
+                                                        <option value="{{ fazenda.id }}" 
+                                                                {% if vinculo.fazenda_id == fazenda.id %}selected{% endif %}>
+                                                            {{ fazenda.nome }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Hectares</label>
+                                                    <input type="number" class="form-control" name="objeto_hectares" 
+                                                           step="0.01" value="{{ vinculo.hectares or '' }}">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Descrição Livre</label>
+                                                    <input type="text" class="form-control" name="objeto_descricao" 
+                                                           value="{{ vinculo.descricao or '' }}">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarObjetoCredito()">
+                                <i class="fas fa-plus"></i> Adicionar Objeto do Crédito
+                            </button>
+                        </div>
+                        
+                        <!-- Garantias -->
+                        <div class="mb-4">
+                            <h5>Garantias</h5>
+                            <div id="garantias">
+                                {% if endividamento %}
+                                    {% for vinculo in endividamento.fazenda_vinculos %}
+                                        {% if vinculo.tipo == 'garantia' %}
+                                        <div class="garantia-item border p-3 mb-2">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Fazenda</label>
+                                                    <select class="form-select fazenda-select" name="garantia_fazenda">
+                                                        <option value="">Selecione uma fazenda</option>
+                                                        {% for fazenda in fazendas %}
+                                                        <option value="{{ fazenda.id }}" 
+                                                                {% if vinculo.fazenda_id == fazenda.id %}selected{% endif %}>
+                                                            {{ fazenda.nome }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Hectares</label>
+                                                    <input type="number" class="form-control" name="garantia_hectares" 
+                                                           step="0.01" value="{{ vinculo.hectares or '' }}">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Descrição Livre</label>
+                                                    <input type="text" class="form-control" name="garantia_descricao" 
+                                                           value="{{ vinculo.descricao or '' }}">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarGarantia()">
+                                <i class="fas fa-plus"></i> Adicionar Garantia
+                            </button>
+                        </div>
+                        
+                        <!-- Parcelas -->
+                        <div class="mb-4">
+                            <h5>Parcelas</h5>
+                            <div id="parcelas">
+                                {% if endividamento %}
+                                    {% for parcela in endividamento.parcelas %}
+                                    <div class="parcela-item border p-3 mb-2">
+                                        <div class="row">
+                                            <div class="col-md-5">
+                                                <label class="form-label">Data de Vencimento</label>
+                                                <input type="date" class="form-control" name="parcela_data" 
+                                                       value="{{ parcela.data_vencimento.strftime('%Y-%m-%d') if parcela.data_vencimento else '' }}">
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label">Valor (R$)</label>
+                                                <input type="number" class="form-control" name="parcela_valor" 
+                                                       step="0.01" value="{{ parcela.valor or '' }}">
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarParcela()">
+                                <i class="fas fa-plus"></i> Adicionar Parcela
+                            </button>
+                        </div>
+                        
+                        <!-- Campos hidden para envio dos dados -->
+                        <input type="hidden" name="objetos_credito" id="objetosCreditoData">
+                        <input type="hidden" name="garantias" id="garantiasData">
+                        <input type="hidden" name="parcelas" id="parcelasData">
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> {{ 'Atualizar' if endividamento else 'Cadastrar' }}
+                        </button>
+                        <a href="{{ url_for('endividamento.listar') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Opções de fazendas para os selects
+const fazendas = [
+    {% for fazenda in fazendas %}
+    {id: {{ fazenda.id }}, nome: "{{ fazenda.nome }}"},
+    {% endfor %}
+];
+
+// Variáveis globais para controle
+let pessoasSelecionadasIds = new Set();
+
+// Inicializar pessoas já selecionadas
+document.addEventListener('DOMContentLoaded', function() {
+    {% if endividamento %}
+        {% for pessoa in endividamento.pessoas %}
+        pessoasSelecionadasIds.add({{ pessoa.id }});
+        {% endfor %}
+    {% endif %}
+});
+
+// Função para buscar pessoas via AJAX
+function buscarPessoas() {
+    const termo = document.getElementById('buscaPessoa').value.trim();
+    if (termo.length < 2) {
+        alert('Digite pelo menos 2 caracteres para buscar');
+        return;
+    }
+    
+    const resultadosDiv = document.getElementById('resultadosBusca');
+    resultadosDiv.innerHTML = '<div class="list-group-item">Buscando...</div>';
+    resultadosDiv.style.display = 'block';
+    
+    // Fazer requisição AJAX
+    fetch(`/endividamentos/buscar-pessoas?q=${encodeURIComponent(termo)}`)
+        .then(response => response.json())
+        .then(data => {
+            resultadosDiv.innerHTML = '';
+            
+            if (data.pessoas && data.pessoas.length > 0) {
+                data.pessoas.forEach(pessoa => {
+                    const isSelected = pessoasSelecionadasIds.has(pessoa.id);
+                    const item = document.createElement('div');
+                    item.className = `list-group-item list-group-item-action ${isSelected ? 'disabled' : ''}`;
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${pessoa.nome}</strong><br>
+                                <small class="text-muted">${pessoa.cpf_cnpj_formatado}</small>
+                            </div>
+                            ${isSelected ? 
+                                '<span class="badge bg-success">Já selecionado</span>' : 
+                                `<button type="button" class="btn btn-sm btn-primary" onclick="selecionarPessoa(${pessoa.id}, '${pessoa.nome}', '${pessoa.cpf_cnpj_formatado}')">Selecionar</button>`
+                            }
+                        </div>
+                    `;
+                    resultadosDiv.appendChild(item);
+                });
+            } else {
+                resultadosDiv.innerHTML = '<div class="list-group-item">Nenhuma pessoa encontrada</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro na busca:', error);
+            resultadosDiv.innerHTML = '<div class="list-group-item text-danger">Erro na busca</div>';
+        });
+}
+
+// Função para selecionar uma pessoa
+function selecionarPessoa(id, nome, cpfCnpj) {
+    if (pessoasSelecionadasIds.has(id)) {
+        return; // Já selecionado
+    }
+    
+    pessoasSelecionadasIds.add(id);
+    
+    const container = document.getElementById('pessoasSelecionadas');
+    const badge = document.createElement('div');
+    badge.className = 'pessoa-selecionada badge bg-primary me-2 mb-2 p-2';
+    badge.setAttribute('data-pessoa-id', id);
+    badge.innerHTML = `
+        ${nome} (${cpfCnpj})
+        <button type="button" class="btn-close btn-close-white ms-2" onclick="removerPessoa(${id})"></button>
+        <input type="hidden" name="pessoas_ids" value="${id}">
+    `;
+    
+    container.appendChild(badge);
+    
+    // Limpar busca
+    document.getElementById('buscaPessoa').value = '';
+    document.getElementById('resultadosBusca').style.display = 'none';
+}
+
+// Função para remover uma pessoa selecionada
+function removerPessoa(id) {
+    pessoasSelecionadasIds.delete(id);
+    const elemento = document.querySelector(`[data-pessoa-id="${id}"]`);
+    if (elemento) {
+        elemento.remove();
+    }
+}
+
+// Buscar ao pressionar Enter
+document.getElementById('buscaPessoa').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarPessoas();
+    }
+});
+
+// Esconder resultados ao clicar fora
+document.addEventListener('click', function(e) {
+    const buscaInput = document.getElementById('buscaPessoa');
+    const resultadosDiv = document.getElementById('resultadosBusca');
+    
+    if (!buscaInput.contains(e.target) && !resultadosDiv.contains(e.target)) {
+        resultadosDiv.style.display = 'none';
+    }
+});
+
+function adicionarObjetoCredito() {
+    const container = document.getElementById('objetosCredito');
+    const item = document.createElement('div');
+    item.className = 'objeto-credito-item border p-3 mb-2';
+    item.innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Fazenda</label>
+                <select class="form-select fazenda-select" name="objeto_fazenda">
+                    <option value="">Selecione uma fazenda</option>
+                    ${fazendas.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Hectares</label>
+                <input type="number" class="form-control" name="objeto_hectares" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Descrição Livre</label>
+                <input type="text" class="form-control" name="objeto_descricao">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+function adicionarGarantia() {
+    const container = document.getElementById('garantias');
+    const item = document.createElement('div');
+    item.className = 'garantia-item border p-3 mb-2';
+    item.innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <label class="form-label">Fazenda</label>
+                <select class="form-select fazenda-select" name="garantia_fazenda">
+                    <option value="">Selecione uma fazenda</option>
+                    ${fazendas.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Hectares</label>
+                <input type="number" class="form-control" name="garantia_hectares" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Descrição Livre</label>
+                <input type="text" class="form-control" name="garantia_descricao">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+function adicionarParcela() {
+    const container = document.getElementById('parcelas');
+    const item = document.createElement('div');
+    item.className = 'parcela-item border p-3 mb-2';
+    item.innerHTML = `
+        <div class="row">
+            <div class="col-md-5">
+                <label class="form-label">Data de Vencimento</label>
+                <input type="date" class="form-control" name="parcela_data">
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor (R$)</label>
+                <input type="number" class="form-control" name="parcela_valor" step="0.01">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+function removerItem(button) {
+    button.closest('.border').remove();
+}
+
+// Preparar dados antes do envio
+document.getElementById('formEndividamento').addEventListener('submit', function(e) {
+    // Coletar objetos do crédito
+    const objetosCredito = [];
+    document.querySelectorAll('.objeto-credito-item').forEach(item => {
+        const fazenda = item.querySelector('[name="objeto_fazenda"]').value;
+        const hectares = item.querySelector('[name="objeto_hectares"]').value;
+        const descricao = item.querySelector('[name="objeto_descricao"]').value;
+        
+        if (fazenda || hectares || descricao) {
+            objetosCredito.push({
+                fazenda_id: fazenda || null,
+                hectares: hectares || null,
+                descricao: descricao || null
+            });
+        }
+    });
+    
+    // Coletar garantias
+    const garantias = [];
+    document.querySelectorAll('.garantia-item').forEach(item => {
+        const fazenda = item.querySelector('[name="garantia_fazenda"]').value;
+        const hectares = item.querySelector('[name="garantia_hectares"]').value;
+        const descricao = item.querySelector('[name="garantia_descricao"]').value;
+        
+        if (fazenda || hectares || descricao) {
+            garantias.push({
+                fazenda_id: fazenda || null,
+                hectares: hectares || null,
+                descricao: descricao || null
+            });
+        }
+    });
+    
+    // Coletar parcelas
+    const parcelas = [];
+    document.querySelectorAll('.parcela-item').forEach(item => {
+        const data = item.querySelector('[name="parcela_data"]').value;
+        const valor = item.querySelector('[name="parcela_valor"]').value;
+        
+        if (data && valor) {
+            parcelas.push({
+                data_vencimento: data,
+                valor: valor
+            });
+        }
+    });
+    
+    // Definir dados nos campos hidden
+    document.getElementById('objetosCreditoData').value = JSON.stringify(objetosCredito);
+    document.getElementById('garantiasData').value = JSON.stringify(garantias);
+    document.getElementById('parcelasData').value = JSON.stringify(parcelas);
+});
+</script>
+
+<style>
+.min-height-50 {
+    min-height: 50px;
+}
+
+.pessoa-selecionada {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+#resultadosBusca {
+    position: absolute;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+}
+</style>
+{% endblock %}
+

@@ -1,0 +1,211 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Vencimentos de Parcelas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Controle de Vencimentos</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('endividamento.listar') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Parcelas Vencidas -->
+                    {% if parcelas_vencidas %}
+                    <div class="mb-4">
+                        <h5 class="text-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Parcelas Vencidas ({{ parcelas_vencidas | length }})
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-danger">
+                                    <tr>
+                                        <th>Banco</th>
+                                        <th>Nº Proposta</th>
+                                        <th>Pessoas</th>
+                                        <th>Data de Vencimento</th>
+                                        <th>Valor</th>
+                                        <th>Dias em Atraso</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for parcela in parcelas_vencidas %}
+                                    <tr>
+                                        <td>{{ parcela.endividamento.banco }}</td>
+                                        <td>{{ parcela.endividamento.numero_proposta }}</td>
+                                        <td>
+                                            {% for pessoa in parcela.endividamento.pessoas %}
+                                                <span class="badge bg-secondary">{{ pessoa.nome }}</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>{{ parcela.data_vencimento.strftime('%d/%m/%Y') if parcela.data_vencimento else '-' }}</td>
+                                        <td>R$ {{ "%.2f"|format(parcela.valor) if parcela.valor else '-' }}</td>
+                                        <td>
+                                            {% set dias_atraso = (date.today() - parcela.data_vencimento).days %}
+                                            <span class="badge bg-danger">{{ dias_atraso }} dias</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('endividamento.visualizar', id=parcela.endividamento.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Ver Endividamento">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="marcarComoPago({{ parcela.id }}, {{ parcela.valor }})" 
+                                                        title="Marcar como Pago">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Parcelas a Vencer -->
+                    {% if parcelas_a_vencer %}
+                    <div class="mb-4">
+                        <h5 class="text-warning">
+                            <i class="fas fa-clock"></i> Parcelas a Vencer nos Próximos 30 Dias ({{ parcelas_a_vencer | length }})
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-warning">
+                                    <tr>
+                                        <th>Banco</th>
+                                        <th>Nº Proposta</th>
+                                        <th>Pessoas</th>
+                                        <th>Data de Vencimento</th>
+                                        <th>Valor</th>
+                                        <th>Dias para Vencimento</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for parcela in parcelas_a_vencer %}
+                                    <tr>
+                                        <td>{{ parcela.endividamento.banco }}</td>
+                                        <td>{{ parcela.endividamento.numero_proposta }}</td>
+                                        <td>
+                                            {% for pessoa in parcela.endividamento.pessoas %}
+                                                <span class="badge bg-secondary">{{ pessoa.nome }}</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>{{ parcela.data_vencimento.strftime('%d/%m/%Y') if parcela.data_vencimento else '-' }}</td>
+                                        <td>R$ {{ "%.2f"|format(parcela.valor) if parcela.valor else '-' }}</td>
+                                        <td>
+                                            {% set dias_vencimento = (parcela.data_vencimento - date.today()).days %}
+                                            {% if dias_vencimento <= 7 %}
+                                                <span class="badge bg-danger">{{ dias_vencimento }} dias</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">{{ dias_vencimento }} dias</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('endividamento.visualizar', id=parcela.endividamento.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Ver Endividamento">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="marcarComoPago({{ parcela.id }}, {{ parcela.valor }})" 
+                                                        title="Marcar como Pago">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Mensagem quando não há vencimentos -->
+                    {% if not parcelas_vencidas and not parcelas_a_vencer %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <h4>Nenhuma parcela vencida ou próxima do vencimento!</h4>
+                        <p>Todas as parcelas estão em dia ou com vencimento superior a 30 dias.</p>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Resumo -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h5>Parcelas Vencidas</h5>
+                                    <h2>{{ parcelas_vencidas | length }}</h2>
+                                    <p>Valor Total: R$ {{ "%.2f"|format(parcelas_vencidas | sum(attribute='valor')) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h5>Parcelas a Vencer (30 dias)</h5>
+                                    <h2>{{ parcelas_a_vencer | length }}</h2>
+                                    <p>Valor Total: R$ {{ "%.2f"|format(parcelas_a_vencer | sum(attribute='valor')) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para marcar parcela como paga -->
+<div class="modal fade" id="modalPagamento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Marcar Parcela como Paga</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPagamento" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Valor Pago (R$)</label>
+                        <input type="number" class="form-control" name="valor_pago" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" name="observacoes" rows="3" 
+                                  placeholder="Informações adicionais sobre o pagamento..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function marcarComoPago(parcelaId, valorOriginal) {
+    document.getElementById('formPagamento').action = '/endividamentos/parcela/' + parcelaId + '/pagar';
+    document.querySelector('[name="valor_pago"]').value = valorOriginal;
+    new bootstrap.Modal(document.getElementById('modalPagamento')).show();
+}
+</script>
+{% endblock %}
+

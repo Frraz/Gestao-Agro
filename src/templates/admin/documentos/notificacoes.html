@@ -1,0 +1,44 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Enviar Notificações - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Enviar Notificações de Vencimento</h1>
+        <a href="{{ url_for('admin.documentos_vencidos') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Envio Manual de Notificações</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Esta função verifica todos os documentos com data de vencimento e envia notificações por e-mail para aqueles que estão dentro dos prazos configurados.
+            </div>
+            
+            <p>O sistema enviará notificações para:</p>
+            <ul>
+                <li>Documentos com data de vencimento definida</li>
+                <li>Documentos que possuem e-mail de notificação cadastrado</li>
+                <li>Documentos cujo prazo até o vencimento coincide com algum dos prazos de notificação configurados</li>
+            </ul>
+            
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> Certifique-se de que as configurações de e-mail do sistema estão corretas antes de enviar notificações.
+            </div>
+            
+            <form method="POST" class="mt-4">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane"></i> Enviar Notificações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

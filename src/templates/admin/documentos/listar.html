@@ -1,0 +1,93 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Documentos - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Documentos</h1>
+        <a href="{{ url_for('admin.novo_documento') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Novo Documento
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Documentos</h6>
+            <div class="input-group w-50">
+                <input type="text" class="form-control" id="tableSearch" placeholder="Buscar...">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if documentos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Fazenda</th>
+                                <th>Data de Emissão</th>
+                                <th>Data de Vencimento</th>
+                                <th>Status</th>
+                                <th>Arquivo</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for documento in documentos %}
+                                <tr>
+                                    <td>{{ documento.nome }}</td>
+                                    <td>{{ documento.tipo.value }}</td>
+                                    <td>{{ documento.fazenda.nome }}</td>
+                                    <td>{{ documento.data_emissao.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') if documento.data_vencimento else '-' }}</td>
+                                    <td>
+                                        {% if documento.esta_vencido %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% elif documento.precisa_notificar %}
+                                            <span class="badge bg-warning">Vence em {{ documento.proximo_vencimento }} dias</span>
+                                        {% elif documento.data_vencimento %}
+                                            <span class="badge bg-success">Em dia</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Sem vencimento</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if documento.caminho_arquivo %}
+                                            <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Sem arquivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <form action="{{ url_for('admin.excluir_documento', id=documento.id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger btn-delete">
+                                                <i class="fas fa-trash"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-file-alt fa-3x text-gray-300 mb-3"></i>
+                    <p class="mb-0">Nenhum documento cadastrado.</p>
+                    <a href="{{ url_for('admin.novo_documento') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus"></i> Cadastrar Documento
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Cadastro de Fazenda - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">{% if fazenda is defined and fazenda.id %}Editar{% else %}Nova{% endif %} Fazenda/Área</h1>
+        <a href="{{ url_for('admin.listar_fazendas') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% if fazenda is defined and fazenda.id %}Editar{% else %}Cadastrar{% endif %} Fazenda/Área</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="nome" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" value="{{ fazenda.nome if fazenda is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="matricula" class="form-label">Matrícula *</label>
+                        <input type="text" class="form-control" id="matricula" name="matricula" value="{{ fazenda.matricula if fazenda is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe a matrícula.
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="recibo_car" class="form-label">Recibo do CAR</label>
+                        <input type="text" class="form-control" id="recibo_car" name="recibo_car" value="{{ fazenda.recibo_car if fazenda is defined else '' }}">
+                        <small class="form-text text-muted">Opcional. Informe o número do recibo do CAR, se houver.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="tipo_posse" class="form-label">Tipo de Posse *</label>
+                        <select class="form-select" id="tipo_posse" name="tipo_posse" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for tipo in tipos_posse %}
+                                <option value="{{ tipo.value }}" {{ 'selected' if fazenda is defined and fazenda.tipo_posse == tipo else '' }}>
+                                    {{ tipo.value }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione o tipo de posse.
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="tamanho_total" class="form-label">Tamanho Total (ha) *</label>
+                        <input type="number" step="0.01" class="form-control" id="tamanho_total" name="tamanho_total" value="{{ fazenda.tamanho_total if fazenda is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o tamanho total.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="area_consolidada" class="form-label">Área Consolidada (ha) *</label>
+                        <input type="number" step="0.01" class="form-control" id="area_consolidada" name="area_consolidada" value="{{ fazenda.area_consolidada if fazenda is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe a área consolidada.
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="estado" class="form-label">Estado *</label>
+                        <select class="form-select" id="estado" name="estado" required>
+                            <option value="" selected disabled>Selecione o estado...</option>
+                            <option value="AC" {{ 'selected' if fazenda is defined and fazenda.estado == 'AC' else '' }}>Acre</option>
+                            <option value="AL" {{ 'selected' if fazenda is defined and fazenda.estado == 'AL' else '' }}>Alagoas</option>
+                            <option value="AP" {{ 'selected' if fazenda is defined and fazenda.estado == 'AP' else '' }}>Amapá</option>
+                            <option value="AM" {{ 'selected' if fazenda is defined and fazenda.estado == 'AM' else '' }}>Amazonas</option>
+                            <option value="BA" {{ 'selected' if fazenda is defined and fazenda.estado == 'BA' else '' }}>Bahia</option>
+                            <option value="CE" {{ 'selected' if fazenda is defined and fazenda.estado == 'CE' else '' }}>Ceará</option>
+                            <option value="DF" {{ 'selected' if fazenda is defined and fazenda.estado == 'DF' else '' }}>Distrito Federal</option>
+                            <option value="ES" {{ 'selected' if fazenda is defined and fazenda.estado == 'ES' else '' }}>Espírito Santo</option>
+                            <option value="GO" {{ 'selected' if fazenda is defined and fazenda.estado == 'GO' else '' }}>Goiás</option>
+                            <option value="MA" {{ 'selected' if fazenda is defined and fazenda.estado == 'MA' else '' }}>Maranhão</option>
+                            <option value="MT" {{ 'selected' if fazenda is defined and fazenda.estado == 'MT' else '' }}>Mato Grosso</option>
+                            <option value="MS" {{ 'selected' if fazenda is defined and fazenda.estado == 'MS' else '' }}>Mato Grosso do Sul</option>
+                            <option value="MG" {{ 'selected' if fazenda is defined and fazenda.estado == 'MG' else '' }}>Minas Gerais</option>
+                            <option value="PA" {{ 'selected' if fazenda is defined and fazenda.estado == 'PA' else '' }}>Pará</option>
+                            <option value="PB" {{ 'selected' if fazenda is defined and fazenda.estado == 'PB' else '' }}>Paraíba</option>
+                            <option value="PR" {{ 'selected' if fazenda is defined and fazenda.estado == 'PR' else '' }}>Paraná</option>
+                            <option value="PE" {{ 'selected' if fazenda is defined and fazenda.estado == 'PE' else '' }}>Pernambuco</option>
+                            <option value="PI" {{ 'selected' if fazenda is defined and fazenda.estado == 'PI' else '' }}>Piauí</option>
+                            <option value="RJ" {{ 'selected' if fazenda is defined and fazenda.estado == 'RJ' else '' }}>Rio de Janeiro</option>
+                            <option value="RN" {{ 'selected' if fazenda is defined and fazenda.estado == 'RN' else '' }}>Rio Grande do Norte</option>
+                            <option value="RS" {{ 'selected' if fazenda is defined and fazenda.estado == 'RS' else '' }}>Rio Grande do Sul</option>
+                            <option value="RO" {{ 'selected' if fazenda is defined and fazenda.estado == 'RO' else '' }}>Rondônia</option>
+                            <option value="RR" {{ 'selected' if fazenda is defined and fazenda.estado == 'RR' else '' }}>Roraima</option>
+                            <option value="SC" {{ 'selected' if fazenda is defined and fazenda.estado == 'SC' else '' }}>Santa Catarina</option>
+                            <option value="SP" {{ 'selected' if fazenda is defined and fazenda.estado == 'SP' else '' }}>São Paulo</option>
+                            <option value="SE" {{ 'selected' if fazenda is defined and fazenda.estado == 'SE' else '' }}>Sergipe</option>
+                            <option value="TO" {{ 'selected' if fazenda is defined and fazenda.estado == 'TO' else '' }}>Tocantins</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione o estado.
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="municipio" class="form-label">Município *</label>
+                        <input type="text" class="form-control" id="municipio" name="municipio" value="{{ fazenda.municipio if fazenda is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o município.
+                        </div>
+                    </div>
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% if fazenda is defined and fazenda.id %}Atualizar{% else %}Cadastrar{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/municipios.js') }}"></script>
+<script>
+    $(document).ready(function() {
+        // Calcular tamanho disponível automaticamente
+        $('#tamanho_total, #area_consolidada').on('input', function() {
+            const tamanhoTotal = parseFloat($('#tamanho_total').val()) || 0;
+            const areaConsolidada = parseFloat($('#area_consolidada').val()) || 0;
+            
+            if (areaConsolidada > tamanhoTotal) {
+                alert('A área consolidada não pode ser maior que o tamanho total.');
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

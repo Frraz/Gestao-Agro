@@ -1,0 +1,91 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Fazendas - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Fazendas/Áreas</h1>
+        <a href="{{ url_for('admin.nova_fazenda') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nova Fazenda/Área
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Fazendas/Áreas</h6>
+            <div class="input-group w-50">
+                <input type="text" class="form-control" id="tableSearch" placeholder="Buscar...">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if fazendas %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Matrícula</th>
+                                <th>Tamanho Total (ha)</th>
+                                <th>Área Consolidada (ha)</th>
+                                <th>Tamanho Disponível (ha)</th>
+                                <th>Tipo de Posse</th>
+                                <th>Pessoas</th>
+                                <th>Documentos</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fazenda in fazendas %}
+                                <tr>
+                                    <td>{{ fazenda.nome }}</td>
+                                    <td>{{ fazenda.matricula }}</td>
+                                    <td>{{ fazenda.tamanho_total }}</td>
+                                    <td>{{ fazenda.area_consolidada }}</td>
+                                    <td>{{ fazenda.tamanho_disponivel }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if fazenda.tipo_posse.value == 'Própria' else 'info' }}">
+                                            {{ fazenda.tipo_posse.value }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ fazenda.pessoas|length }}</span>
+                                        <a href="{{ url_for('admin.listar_fazendas_pessoa', id=fazenda.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ fazenda.documentos|length }}</span>
+                                        <a href="{{ url_for('admin.listar_documentos_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-outline-warning">
+                                            <i class="fas fa-file-alt"></i> Ver
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                        <form action="{{ url_for('admin.excluir_fazenda', id=fazenda.id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger btn-delete">
+                                                <i class="fas fa-trash"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-map-marked-alt fa-3x text-gray-300 mb-3"></i>
+                    <p class="mb-0">Nenhuma fazenda/área cadastrada.</p>
+                    <a href="{{ url_for('admin.nova_fazenda') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus"></i> Cadastrar Fazenda/Área
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Cadastro de Pessoa - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">{% if pessoa is defined and pessoa.id %}Editar{% else %}Nova{% endif %} Pessoa</h1>
+        <a href="{{ url_for('admin.listar_pessoas') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% if pessoa is defined and pessoa.id %}Editar{% else %}Cadastrar{% endif %} Pessoa</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="nome" class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" value="{{ pessoa.nome if pessoa is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="cpf_cnpj" class="form-label">CPF/CNPJ *</label>
+                        <input type="text" class="form-control cpf-cnpj-mask" id="cpf_cnpj" name="cpf_cnpj" value="{{ pessoa.cpf_cnpj if pessoa is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o CPF ou CNPJ.
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ pessoa.email if pessoa is defined else '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="telefone" class="form-label">Telefone</label>
+                        <input type="text" class="form-control" id="telefone" name="telefone" value="{{ pessoa.telefone if pessoa is defined else '' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="endereco" class="form-label">Endereço</label>
+                    <textarea class="form-control" id="endereco" name="endereco" rows="3">{{ pessoa.endereco if pessoa is defined else '' }}</textarea>
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% if pessoa is defined and pessoa.id %}Atualizar{% else %}Cadastrar{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

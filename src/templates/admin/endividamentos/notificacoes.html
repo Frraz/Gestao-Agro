@@ -1,0 +1,180 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Notificações - {{ endividamento.banco }} - {{ endividamento.numero_proposta }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Configurar Notificações de Endividamento</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('endividamento.visualizar', id=endividamento.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Informações do endividamento -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Endividamento</h5>
+                        <p class="mb-1"><strong>Banco:</strong> {{ endividamento.banco }}</p>
+                        <p class="mb-1"><strong>Número da Proposta:</strong> {{ endividamento.numero_proposta }}</p>
+                        <p class="mb-1"><strong>Data de Vencimento:</strong> {{ endividamento.data_vencimento_final.strftime('%d/%m/%Y') }}</p>
+                        {% if endividamento.valor_operacao %}
+                        <p class="mb-0"><strong>Valor da Operação:</strong> R$ {{ "{:,.2f}".format(endividamento.valor_operacao).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Formulário de configuração -->
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    {{ form.emails.label(class="form-label") }}
+                                    {{ form.emails(class="form-control", rows="6") }}
+                                    {% if form.emails.errors %}
+                                        <div class="text-danger">{{ form.emails.errors[0] }}</div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.emails.description }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Intervalos de Notificação</label>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><i class="fas fa-clock text-primary"></i> 6 meses antes</li>
+                                                <li><i class="fas fa-clock text-primary"></i> 3 meses antes</li>
+                                                <li><i class="fas fa-clock text-warning"></i> 30 dias antes</li>
+                                                <li><i class="fas fa-clock text-warning"></i> 15 dias antes</li>
+                                                <li><i class="fas fa-clock text-danger"></i> 7 dias antes</li>
+                                                <li><i class="fas fa-clock text-danger"></i> 3 dias antes</li>
+                                                <li><i class="fas fa-clock text-danger"></i> 1 dia antes</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    {{ form.ativo(class="form-check-input") }}
+                                    {{ form.ativo.label(class="form-check-label") }}
+                                    <div class="form-text">{{ form.ativo.description }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Configurações
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="testarNotificacoes()">
+                                <i class="fas fa-paper-plane"></i> Testar Notificações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Histórico de notificações -->
+            {% if historico %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Histórico de Notificações</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Tipo</th>
+                                    <th>E-mails</th>
+                                    <th>Status</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in historico %}
+                                <tr>
+                                    <td>{{ item.data_envio[:19].replace('T', ' ') if item.data_envio else '-' }}</td>
+                                    <td>
+                                        {% set tipo_map = {
+                                            '6_meses': '6 meses antes',
+                                            '3_meses': '3 meses antes',
+                                            '30_dias': '30 dias antes',
+                                            '15_dias': '15 dias antes',
+                                            '7_dias': '7 dias antes',
+                                            '3_dias': '3 dias antes',
+                                            '1_dia': '1 dia antes'
+                                        } %}
+                                        {{ tipo_map.get(item.tipo_notificacao, item.tipo_notificacao) }}
+                                    </td>
+                                    <td>
+                                        {% for email in item.emails_enviados %}
+                                            <span class="badge bg-secondary">{{ email }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if item.sucesso %}
+                                            <span class="badge bg-success">Enviado</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Erro</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.erro_mensagem %}
+                                            <small class="text-danger">{{ item.erro_mensagem }}</small>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function testarNotificacoes() {
+    if (confirm('Deseja processar todas as notificações pendentes do sistema? Esta ação enviará e-mails reais.')) {
+        fetch('/endividamentos/api/processar-notificacoes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                alert('Sucesso: ' + data.mensagem);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.erro);
+            }
+        })
+        .catch(error => {
+            alert('Erro ao processar notificações: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}
+

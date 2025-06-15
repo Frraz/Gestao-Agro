@@ -1,0 +1,47 @@
+# Ambiente virtual
+venv/
+ENV/
+env/
+.venv/
+
+# Configurações de IDEs
+.vscode/
+.idea/
+
+# Arquivos Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos de log
+*.log
+
+# Arquivos de banco de dados locais
+*.sqlite3
+*.db
+
+# Arquivos de ambiente
+.env
+*.env
+
+# Pasta de deploy (se aplicável)
+deploy_package/__pycache__/
+deploy_package/*.pyc
+
+# Arquivos temporários e cache
+*.bak
+*.swp
+*.tmp
+.cache/
+*.egg-info/
+
+# Pasta de build (caso use pyinstaller ou similar)
+build/
+dist/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+logs

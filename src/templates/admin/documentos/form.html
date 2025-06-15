@@ -1,0 +1,271 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Cadastro de Documento - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">{% if documento is defined and documento.id %}Editar{% else %}Novo{% endif %} Documento</h1>
+        <a href="{{ url_for('admin.listar_documentos') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% if documento is defined and documento.id %}Editar{% else %}Cadastrar{% endif %} Documento</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="nome" class="form-label">Nome do Documento *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" value="{{ documento.nome if documento is defined else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome do documento.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="tipo" class="form-label">Tipo de Documento *</label>
+                        <select class="form-select" id="tipo" name="tipo" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for tipo in tipos_documento %}
+                                <option value="{{ tipo.value }}" {{ 'selected' if documento is defined and documento.tipo == tipo else '' }}>
+                                    {{ tipo.value }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione o tipo de documento.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3" id="tipo_personalizado_container" style="display: none;">
+                    <div class="col-md-12">
+                        <label for="tipo_personalizado" class="form-label">Tipo Personalizado *</label>
+                        <input type="text" class="form-control" id="tipo_personalizado" name="tipo_personalizado" value="{{ documento.tipo_personalizado if documento is defined else '' }}">
+                        <div class="invalid-feedback">
+                            Por favor, informe o tipo personalizado.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="data_emissao" class="form-label">Data de Emissão *</label>
+                        <input type="date" class="form-control" id="data_emissao" name="data_emissao" value="{{ documento.data_emissao.strftime('%Y-%m-%d') if documento is defined and documento.data_emissao else '' }}" required>
+                        <div class="invalid-feedback">
+                            Por favor, informe a data de emissão.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="data_vencimento" class="form-label">Data de Vencimento</label>
+                        <input type="date" class="form-control" id="data_vencimento" name="data_vencimento" value="{{ documento.data_vencimento.strftime('%Y-%m-%d') if documento is defined and documento.data_vencimento else '' }}">
+                        <small class="form-text text-muted">Deixe em branco se o documento não tiver data de vencimento.</small>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="tipo_entidade" class="form-label">Relacionar documento a: *</label>
+                        <select class="form-select" id="tipo_entidade" name="tipo_entidade" required>
+                            <option value="FAZENDA" {{ 'selected' if documento is defined and documento.tipo_entidade.value == 'Fazenda/Área' else '' }}>Fazenda/Área</option>
+                            <option value="PESSOA" {{ 'selected' if documento is defined and documento.tipo_entidade.value == 'Pessoa' else '' }}>Pessoa</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row mb-3" id="fazenda_container">
+                    <div class="col-md-12">
+                        <label for="fazenda_id" class="form-label">Fazenda/Área *</label>
+                        <select class="form-select" id="fazenda_id" name="fazenda_id">
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for fazenda in fazendas %}
+                                <option value="{{ fazenda.id }}" {{ 'selected' if documento is defined and documento.fazenda_id == fazenda.id else '' }}>
+                                    {{ fazenda.nome }} ({{ fazenda.matricula }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione a fazenda/área.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3" id="pessoa_container" style="display: none;">
+                    <div class="col-md-12">
+                        <label for="pessoa_id" class="form-label">Pessoa *</label>
+                        <select class="form-select" id="pessoa_id" name="pessoa_id">
+                            <option value="" selected disabled>Selecione...</option>
+                            {% for pessoa in pessoas %}
+                                <option value="{{ pessoa.id }}" {{ 'selected' if documento is defined and documento.pessoa_id == pessoa.id else '' }}>
+                                    {{ pessoa.nome }} ({{ pessoa.cpf_cnpj }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione a pessoa.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="emails_notificacao" class="form-label">Emails para Notificação</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="emails_notificacao" name="emails_notificacao" 
+                                   value="{{ ','.join(documento.emails_notificacao) if documento is defined and documento.emails_notificacao else '' }}"
+                                   placeholder="Informe um ou mais emails separados por vírgula">
+                            <button class="btn btn-outline-primary" type="button" id="btn_teste_email">
+                                <i class="fas fa-paper-plane"></i> Testar Email
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Informe um ou mais emails separados por vírgula para receber notificações de vencimento.</small>
+                        <div id="email_teste_resultado" class="mt-2" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Prazos de Notificação</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="30" id="prazo30" {% if documento is defined and 30 in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo30">
+                                    30 dias antes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="15" id="prazo15" {% if documento is defined and 15 in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo15">
+                                    15 dias antes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="7" id="prazo7" {% if documento is defined and 7 in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo7">
+                                    7 dias antes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="3" id="prazo3" {% if documento is defined and 3 in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo3">
+                                    3 dias antes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="1" id="prazo1" {% if documento is defined and 1 in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo1">
+                                    1 dia antes
+                                </label>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Selecione quando deseja receber notificações antes do vencimento.</small>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% if documento is defined and documento.id %}Atualizar{% else %}Cadastrar{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Mostrar/ocultar campo de tipo personalizado
+        function toggleTipoPersonalizado() {
+            if ($('#tipo').val() === 'Outros') {
+                $('#tipo_personalizado_container').show();
+                $('#tipo_personalizado').attr('required', true);
+            } else {
+                $('#tipo_personalizado_container').hide();
+                $('#tipo_personalizado').removeAttr('required');
+            }
+        }
+        
+        // Alternar entre fazenda e pessoa
+        function toggleEntidadeRelacionada() {
+            const tipoEntidade = $('#tipo_entidade').val();
+            
+            if (tipoEntidade === 'FAZENDA') {
+                $('#fazenda_container').show();
+                $('#pessoa_container').hide();
+                $('#fazenda_id').attr('required', true);
+                $('#pessoa_id').removeAttr('required');
+            } else {
+                $('#fazenda_container').hide();
+                $('#pessoa_container').show();
+                $('#fazenda_id').removeAttr('required');
+                $('#pessoa_id').attr('required', true);
+            }
+        }
+        
+        // Verificar ao carregar a página
+        toggleTipoPersonalizado();
+        toggleEntidadeRelacionada();
+        
+        // Verificar ao mudar o tipo
+        $('#tipo').change(toggleTipoPersonalizado);
+        $('#tipo_entidade').change(toggleEntidadeRelacionada);
+        
+        // Botão de teste de email
+        $('#btn_teste_email').click(function() {
+            const emails = $('#emails_notificacao').val();
+            
+            if (!emails) {
+                alert('Por favor, informe pelo menos um email para teste.');
+                return;
+            }
+            
+            // Desabilitar botão durante o teste
+            $(this).prop('disabled', true);
+            $(this).html('<i class="fas fa-spinner fa-spin"></i> Enviando...');
+            
+            // Limpar resultado anterior
+            $('#email_teste_resultado').hide().empty();
+            
+            // Enviar requisição AJAX para teste de email
+            $.ajax({
+                url: "{{ url_for('admin.testar_email') }}",
+                type: 'POST',
+                data: {
+                    emails: emails
+                },
+                success: function(response) {
+                    if (response.sucesso) {
+                        $('#email_teste_resultado')
+                            .removeClass('alert-danger')
+                            .addClass('alert alert-success')
+                            .html('<i class="fas fa-check-circle"></i> ' + response.mensagem)
+                            .show();
+                    } else {
+                        $('#email_teste_resultado')
+                            .removeClass('alert-success')
+                            .addClass('alert alert-danger')
+                            .html('<i class="fas fa-exclamation-circle"></i> ' + response.mensagem)
+                            .show();
+                    }
+                },
+                error: function() {
+                    $('#email_teste_resultado')
+                        .removeClass('alert-success')
+                        .addClass('alert alert-danger')
+                        .html('<i class="fas fa-exclamation-circle"></i> Erro ao enviar email de teste. Verifique a configuração do servidor.')
+                        .show();
+                },
+                complete: function() {
+                    // Reabilitar botão após o teste
+                    $('#btn_teste_email').prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Testar Email');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
