@@ -56,7 +56,8 @@ jobs:
       - name: Run migrations
         run: |
           source venv/bin/activate
-          flask db upgrade
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          flask --app src.main:create_app db upgrade
 
       - name: Run tests
         run: |
