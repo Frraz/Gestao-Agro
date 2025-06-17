@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/endividamentos/form.html-->
+
 {% extends "layouts/base.html" %}
 
 {% block title %}{{ 'Editar' if endividamento else 'Novo' }} Endividamento{% endblock %}
@@ -24,18 +26,18 @@
                                 <div class="mb-3">
                                     {{ form.banco.label(class="form-label") }}
                                     {{ form.banco(class="form-control") }}
-                                    {% if form.banco.errors %}
-                                        <div class="text-danger">{{ form.banco.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.banco.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     {{ form.numero_proposta.label(class="form-label") }}
                                     {{ form.numero_proposta(class="form-control") }}
-                                    {% if form.numero_proposta.errors %}
-                                        <div class="text-danger">{{ form.numero_proposta.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.numero_proposta.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -44,27 +46,27 @@
                                 <div class="mb-3">
                                     {{ form.data_emissao.label(class="form-label") }}
                                     {{ form.data_emissao(class="form-control") }}
-                                    {% if form.data_emissao.errors %}
-                                        <div class="text-danger">{{ form.data_emissao.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.data_emissao.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     {{ form.data_vencimento_final.label(class="form-label") }}
                                     {{ form.data_vencimento_final(class="form-control") }}
-                                    {% if form.data_vencimento_final.errors %}
-                                        <div class="text-danger">{{ form.data_vencimento_final.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.data_vencimento_final.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     {{ form.prazo_carencia.label(class="form-label") }}
                                     {{ form.prazo_carencia(class="form-control") }}
-                                    {% if form.prazo_carencia.errors %}
-                                        <div class="text-danger">{{ form.prazo_carencia.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.prazo_carencia.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -73,27 +75,27 @@
                                 <div class="mb-3">
                                     {{ form.taxa_juros.label(class="form-label") }}
                                     {{ form.taxa_juros(class="form-control") }}
-                                    {% if form.taxa_juros.errors %}
-                                        <div class="text-danger">{{ form.taxa_juros.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.taxa_juros.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     {{ form.tipo_taxa_juros.label(class="form-label") }}
                                     {{ form.tipo_taxa_juros(class="form-select") }}
-                                    {% if form.tipo_taxa_juros.errors %}
-                                        <div class="text-danger">{{ form.tipo_taxa_juros.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.tipo_taxa_juros.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     {{ form.valor_operacao.label(class="form-label") }}
                                     {{ form.valor_operacao(class="form-control") }}
-                                    {% if form.valor_operacao.errors %}
-                                        <div class="text-danger">{{ form.valor_operacao.errors[0] }}</div>
-                                    {% endif %}
+                                    {% for err in form.valor_operacao.errors %}
+                                        <div class="text-danger">{{ err }}</div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -109,7 +111,7 @@
                                     <div id="resultadosBusca" class="list-group mt-2"></div>
                                 </div>
                                 <div class="col-md-4 d-flex align-items-end">
-                                    <button type="button" class="btn btn-primary w-100" onclick="window.buscarPessoas()">
+                                    <button type="button" class="btn btn-primary w-100" onclick="buscarPessoas()">
                                         <i class="fas fa-search"></i> Buscar
                                     </button>
                                 </div>
@@ -289,6 +291,22 @@ document.addEventListener('DOMContentLoaded', function() {
         pessoasSelecionadasIds.add({{ pessoa.id }});
         {% endfor %}
     {% endif %}
+    // Adiciona eventos somente se os elementos existirem
+    const buscaPessoaInput = document.getElementById('buscaPessoa');
+    const resultadosDiv = document.getElementById('resultadosBusca');
+    if (buscaPessoaInput) {
+        buscaPessoaInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarPessoas();
+            }
+        });
+    }
+    document.addEventListener('click', function(e) {
+        if (resultadosDiv && !resultadosDiv.contains(e.target) && e.target !== buscaPessoaInput) {
+            resultadosDiv.style.display = 'none';
+        }
+    });
 });
 function buscarPessoas() {
     const termo = document.getElementById('buscaPessoa').value.trim();
@@ -358,32 +376,6 @@ function removerPessoa(id) {
         elemento.remove();
     }
 }
-document.getElementById('buscaPessoa').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        buscarPessoas();
-    }
-});
-document.addEventListener('click', function(e) {
-    if (e.target && e.target.classList.contains('selecionar-pessoa')) {
-        const id = parseInt(e.target.getAttribute('data-id'));
-        const nome = e.target.getAttribute('data-nome');
-        const cpfCnpj = e.target.getAttribute('data-cpf-cnpj');
-        selecionarPessoa(id, nome, cpfCnpj);
-    }
-    if (e.target && e.target.classList.contains('btn-close')) {
-        const badge = e.target.closest('.pessoa-selecionada');
-        if (badge) {
-            const id = parseInt(badge.getAttribute('data-pessoa-id'));
-            removerPessoa(id);
-        }
-    }
-    const buscaInput = document.getElementById('buscaPessoa');
-    const resultadosDiv = document.getElementById('resultadosBusca');
-    if (!buscaInput.contains(e.target) && !resultadosDiv.contains(e.target)) {
-        resultadosDiv.style.display = 'none';
-    }
-});
 function adicionarObjetoCredito() {
     const container = document.getElementById('objetosCredito');
     const item = document.createElement('div');
@@ -413,6 +405,7 @@ function adicionarObjetoCredito() {
         </div>
     `;
     container.appendChild(item);
+    container.lastChild.scrollIntoView({behavior: 'smooth'});
 }
 function adicionarGarantia() {
     const container = document.getElementById('garantias');
@@ -443,6 +436,7 @@ function adicionarGarantia() {
         </div>
     `;
     container.appendChild(item);
+    container.lastChild.scrollIntoView({behavior: 'smooth'});
 }
 function adicionarParcela() {
     const container = document.getElementById('parcelas');
@@ -466,6 +460,7 @@ function adicionarParcela() {
         </div>
     `;
     container.appendChild(item);
+    container.lastChild.scrollIntoView({behavior: 'smooth'});
 }
 function removerItem(button) {
     button.closest('.border').remove();

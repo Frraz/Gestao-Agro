@@ -1,3 +1,5 @@
+#/src/models/fazenda.py
+
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Table, Enum, Index
 from sqlalchemy.orm import relationship
 from src.models.db import db

@@ -1,0 +1,55 @@
+{% set alerta_cor = {'danger': '#f8d7da', 'warning': '#fff3cd', 'info': '#d1ecf1'}[classe_alerta] %}
+{% set alerta_borda = {'danger': '#f5c2c7', 'warning': '#ffecb5', 'info': '#bee5eb'}[classe_alerta] %}
+{% set alerta_texto = {'danger': '#842029', 'warning': '#664d03', 'info': '#055160'}[classe_alerta] %}
+{% set icone = {'danger': '🚨', 'warning': '⚠️', 'info': '🔔'}[classe_alerta] %}
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>Notificação de Vencimento</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
+      .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; overflow: hidden; }
+      .header { background: #128C7E; color: #fff; padding: 22px 20px 12px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+      .content { padding: 24px 20px 12px 20px; color: #333; }
+      .alert { background: {{ alerta_cor }}; color: {{ alerta_texto }}; border: 1px solid {{ alerta_borda }}; padding: 16px; border-radius: 4px; margin-bottom: 20px; text-align:center;}
+      .footer { background: #f8f9fa; font-size: 12px; color: #888; text-align: center; padding: 16px 20px; border-top: 1px solid #eee; border-radius: 0 0 8px 8px; }
+      ul { padding-left: 18px; }
+      li { margin-bottom: 4px; }
+      h2 { margin: 0 0 12px 0; }
+      h4 { margin: 22px 0 12px 0;}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Sistema de Gestão Agrícola</h2>
+      </div>
+      <div class="content">
+        <div class="alert">
+          <h3 style="margin-top:0;">{{ icone }} {{ nivel_urgencia }}: {{ tipo_objeto|default("Documento") }} prestes a vencer</h3>
+          <p>
+            {% if responsavel %}Olá, <b>{{ responsavel }}</b>!<br>{% endif %}
+            O {{ tipo_objeto|default("documento") }} <strong>{{ nome_documento }}</strong> vencerá em <strong>{{ dias_restantes }} dias</strong> ({{ data_vencimento }}).
+          </p>
+          {% if dias_configurados %}
+          <p style="font-size: 15px; color: #555;"><em>Você optou por ser avisado com <b>{{ dias_configurados }}</b> dias de antecedência.</em></p>
+          {% endif %}
+        </div>
+        <h4>Detalhes:</h4>
+        <ul>
+          <li><b>Nome:</b> {{ nome_documento }}</li>
+          <li><b>Tipo:</b> {{ tipo_documento }}</li>
+          <li><b>Data de Emissão:</b> {{ data_emissao }}</li>
+          <li><b>Data de Vencimento:</b> {{ data_vencimento }}</li>
+          <li><b>{{ tipo_entidade }} Relacionada:</b> {{ nome_entidade }}</li>
+        </ul>
+      </div>
+      <div class="footer">
+        Esta é uma mensagem automática do Sistema de Gestão Agrícola.<br>
+        Não responda a este e-mail.<br>
+        Dúvidas? Contate o suporte: <a href="mailto:ferzion.dev@gmail.com">ferzion.dev@gmail.com</a><br>
+        © {{ ano_atual }} ferzion. Todos os direitos reservados.
+      </div>
+    </div>
+  </body>
+</html>

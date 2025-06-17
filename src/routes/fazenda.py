@@ -1,3 +1,5 @@
+#q/src/routes/fazenda.py
+
 from flask import Blueprint, request, jsonify, current_app
 from src.models.db import db
 from src.models.fazenda import Fazenda, TipoPosse
@@ -40,7 +42,6 @@ def obter_fazenda(id):
     try:
         fazenda = Fazenda.query.get_or_404(id)
         pessoas = [{'id': p.id, 'nome': p.nome} for p in fazenda.pessoas]
-        
         return jsonify({
             'id': fazenda.id,
             'nome': fazenda.nome,
@@ -54,9 +55,9 @@ def obter_fazenda(id):
             'recibo_car': fazenda.recibo_car,
             'pessoas': pessoas
         })
-    except Exception as e:
-        current_app.logger.error(f"Erro ao obter fazenda {id}: {str(e)}")
-        return jsonify({'erro': f'Erro ao obter fazenda {id}', 'detalhes': str(e)}), 500
+    except SQLAlchemyError as e:
+        current_app.logger.error(f"Erro de banco de dados ao obter fazenda {id}: {str(e)}")
+        return jsonify({'erro': f'Erro de banco de dados ao obter fazenda {id}', 'detalhes': str(e)}), 500
 
 @fazenda_bp.route('/', methods=['POST'])
 def criar_fazenda():

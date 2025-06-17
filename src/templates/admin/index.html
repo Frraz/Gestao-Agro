@@ -5,7 +5,6 @@
 {% block content %}
 <div class="container-fluid">
     <h1 class="h3 mb-4 text-gray-800">Dashboard</h1>
-    
     <div class="row">
         <!-- Card Pessoas -->
         <div class="col-xl-3 col-md-6 mb-4">
@@ -13,8 +12,7 @@
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Pessoas Cadastradas</div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pessoas Cadastradas</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pessoas }}</div>
                         </div>
                         <div class="col-auto">
@@ -27,15 +25,13 @@
                 </div>
             </div>
         </div>
-
         <!-- Card Fazendas -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow h-100 py-2 card-dashboard card-fazendas">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Fazendas/Áreas</div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Fazendas/Áreas</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_fazendas }}</div>
                         </div>
                         <div class="col-auto">
@@ -48,15 +44,13 @@
                 </div>
             </div>
         </div>
-
         <!-- Card Documentos -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow h-100 py-2 card-dashboard card-documentos">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Documentos</div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Documentos</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_documentos }}</div>
                         </div>
                         <div class="col-auto">
@@ -69,15 +63,13 @@
                 </div>
             </div>
         </div>
-
         <!-- Card Documentos Vencidos -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow h-100 py-2 card-dashboard card-vencidos">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Documentos Vencidos</div>
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Documentos Vencidos</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ documentos_vencidos|length }}</div>
                         </div>
                         <div class="col-auto">
@@ -138,6 +130,18 @@
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Paginação Próximos -->
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span>Página {{ prox_page }} de {{ total_pag_proximos }}</span>
+                            <div>
+                                {% if prox_page > 1 %}
+                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page-1, venc_page=venc_page) }}" class="btn btn-sm btn-secondary">Anterior</a>
+                                {% endif %}
+                                {% if prox_page < total_pag_proximos %}
+                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page+1, venc_page=venc_page) }}" class="btn btn-sm btn-secondary">Próxima</a>
+                                {% endif %}
+                            </div>
+                        </div>
                     {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
@@ -194,6 +198,18 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Paginação Vencidos -->
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span>Página {{ venc_page }} de {{ total_pag_vencidos }}</span>
+                            <div>
+                                {% if venc_page > 1 %}
+                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page, venc_page=venc_page-1) }}" class="btn btn-sm btn-secondary">Anterior</a>
+                                {% endif %}
+                                {% if venc_page < total_pag_vencidos %}
+                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page, venc_page=venc_page+1) }}" class="btn btn-sm btn-secondary">Próxima</a>
+                                {% endif %}
+                            </div>
                         </div>
                     {% else %}
                         <div class="text-center py-4">

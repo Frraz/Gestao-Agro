@@ -1,3 +1,5 @@
+#/src/models/pessoa.py
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, Index
 from sqlalchemy.orm import relationship

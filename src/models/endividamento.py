@@ -1,3 +1,5 @@
+# /src/models/endividamento.py
+
 # Modelo para Endividamento
 
 from src.models.db import db

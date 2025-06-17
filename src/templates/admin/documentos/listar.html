@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/documentos/listar.html-->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Documentos - Sistema de Gestão de Fazendas{% endblock %}
@@ -11,13 +13,42 @@
         </a>
     </div>
 
+    <!-- Filtros: Fazenda, Pessoa, Nome -->
+    <form method="get" class="row g-2 mb-3 align-items-end">
+        <div class="col-md-4">
+            <label for="fazenda_id" class="form-label mb-0">Filtrar por Fazenda</label>
+            <select id="fazenda_id" name="fazenda_id" class="form-select">
+                <option value="">Todas</option>
+                {% for fazenda in fazendas %}
+                    <option value="{{ fazenda.id }}" {% if fazenda_id == fazenda.id %}selected{% endif %}>
+                        {{ fazenda.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="pessoa_id" class="form-label mb-0">Filtrar por Pessoa</label>
+            <select id="pessoa_id" name="pessoa_id" class="form-select">
+                <option value="">Todas</option>
+                {% for pessoa in pessoas %}
+                    <option value="{{ pessoa.id }}" {% if pessoa_id == pessoa.id %}selected{% endif %}>
+                        {{ pessoa.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="busca" class="form-label mb-0">Nome do Documento</label>
+            <input type="text" name="busca" id="busca" value="{{ nome_busca or '' }}" class="form-control" placeholder="Buscar por nome...">
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i></button>
+        </div>
+    </form>
+
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Lista de Documentos</h6>
-            <div class="input-group w-50">
-                <input type="text" class="form-control" id="tableSearch" placeholder="Buscar...">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-            </div>
         </div>
         <div class="card-body">
             {% if documentos %}
@@ -40,7 +71,9 @@
                                 <tr>
                                     <td>{{ documento.nome }}</td>
                                     <td>{{ documento.tipo.value }}</td>
-                                    <td>{{ documento.fazenda.nome }}</td>
+                                    <td>
+                                        {{ documento.fazenda.nome if documento.fazenda else (documento.pessoa.nome if documento.pessoa else '-') }}
+                                    </td>
                                     <td>{{ documento.data_emissao.strftime('%d/%m/%Y') }}</td>
                                     <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') if documento.data_vencimento else '-' }}</td>
                                     <td>

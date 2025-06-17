@@ -7,6 +7,8 @@ from email.mime.multipart import MIMEMultipart
 from flask import current_app
 import datetime
 import logging
+from flask import render_template, current_app
+import datetime
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,8 @@ class EmailService:
 
     def send_email(self, destinatarios, assunto, corpo, html=False):
         """Envia e-mail para os destinatários."""
+        print("MAIL_USERNAME:", current_app.config.get("MAIL_USERNAME"))
+        print("MAIL_DEFAULT_SENDER:", current_app.config.get("MAIL_DEFAULT_SENDER"))
         if not destinatarios:
             logger.warning("Nenhum destinatário especificado para o e-mail.")
             return False
@@ -63,7 +67,7 @@ class EmailService:
         assunto = "Teste de Notificação - Sistema de Gestão Agrícola"
         data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         corpo_html = f"""
-        <html>
+        <html lang="pt">
         <head>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
@@ -99,14 +103,19 @@ class EmailService:
         """
         return self.send_email(destinatarios, assunto, corpo_html, html=True)
 
-def formatar_email_notificacao(documento, dias_restantes):
+from flask import render_template, current_app
+import datetime
+
+def formatar_email_notificacao(documento, dias_restantes, responsavel=None, link_documento=None):
     """
     Formata o conteúdo do e-mail de notificação de vencimento.
-    
+
     Args:
         documento: Objeto do modelo Documento
         dias_restantes: Número de dias restantes para o vencimento
-    
+        responsavel: Nome do responsável (opcional)
+        link_documento: Link para o documento (opcional)
+
     Returns:
         Tupla com (assunto, corpo_html) do e-mail
     """
@@ -120,78 +129,34 @@ def formatar_email_notificacao(documento, dias_restantes):
     else:
         classe_alerta = "info"
         nivel_urgencia = "AVISO"
-    
+
     # Informações da entidade relacionada
     tipo_entidade = "Fazenda/Área" if documento.tipo_entidade.value == "Fazenda/Área" else "Pessoa"
     nome_entidade = documento.nome_entidade
-    
-    # Assunto do e-mail
-    assunto = f"{nivel_urgencia}: Documento \'{documento.nome}\' vence em {dias_restantes} dias"
-    
-    # Corpo do e-mail em HTML
-    corpo_html = f"""
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background-color: #f8f9fa; padding: 15px; border-bottom: 3px solid #dee2e6; }}
-            .content {{ padding: 20px 0; }}
-            .footer {{ font-size: 12px; color: #6c757d; padding-top: 20px; border-top: 1px solid #dee2e6; }}
-            .alert-info {{ background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; }}
-            .alert-warning {{ background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; }}
-            .alert-danger {{ background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; }}
-            table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-            th, td {{ padding: 12px 15px; text-align: left; border-bottom: 1px solid #dee2e6; }}
-            th {{ background-color: #f8f9fa; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h2>Notificação de Vencimento de Documento</h2>
-            </div>
-            <div class="content">
-                <div class="alert-{classe_alerta}">
-                    <h3>{nivel_urgencia}: Documento prestes a vencer</h3>
-                    <p>O documento <strong>\'{documento.nome}\'</strong> vencerá em <strong>{dias_restantes} dias</strong>.</p>
-                </div>
-                
-                <h3>Detalhes do Documento:</h3>
-                <table>
-                    <tr>
-                        <th>Nome:</th>
-                        <td>{documento.nome}</td>
-                    </tr>
-                    <tr>
-                        <th>Tipo:</th>
-                        <td>{documento.tipo.value}</td>
-                    </tr>
-                    <tr>
-                        <th>Data de Emissão:</th>
-                        <td>{documento.data_emissao.strftime("%d/%m/%Y")}</td>
-                    </tr>
-                    <tr>
-                        <th>Data de Vencimento:</th>
-                        <td>{documento.data_vencimento.strftime("%d/%m/%Y")}</td>
-                    </tr>
-                    <tr>
-                        <th>{tipo_entidade} Relacionada:</th>
-                        <td>{nome_entidade}</td>
-                    </tr>
-                </table>
-                
-                <p>Por favor, tome as providências necessárias para renovação ou regularização deste documento.</p>
-            </div>
-            <div class="footer">
-                <p>Esta é uma mensagem automática do Sistema de Gestão de Fazendas.</p>
-                <p>Não responda a este e-mail.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
+
+    contexto = {
+        "responsavel": responsavel,
+        "nome_documento": documento.nome,
+        "tipo_documento": documento.tipo.value,
+        "data_emissao": documento.data_emissao.strftime('%d/%m/%Y'),
+        "data_vencimento": documento.data_vencimento.strftime('%d/%m/%Y'),
+        "tipo_entidade": tipo_entidade,
+        "nome_entidade": nome_entidade,
+        "dias_restantes": dias_restantes,
+        "nivel_urgencia": nivel_urgencia,
+        "classe_alerta": classe_alerta,
+        "link_documento": link_documento,
+        "ano_atual": datetime.datetime.now().year
+    }
+
+    # Garante contexto de app
+    try:
+        corpo_html = render_template("email/notificacao_vencimento.html", **contexto)
+    except RuntimeError:
+        with current_app.app_context():
+            corpo_html = render_template("email/notificacao_vencimento.html", **contexto)
+
+    assunto = f"{nivel_urgencia}: Documento '{documento.nome}' vence em {dias_restantes} dias"
     return assunto, corpo_html
 
 def verificar_documentos_vencendo():

@@ -53,6 +53,11 @@
                         <i class="fas fa-exclamation-triangle"></i> Vencimentos
                     </a>
                 </li>
+                <li {% if '/admin/auditoria' in request.path %}class="active"{% endif %}>
+                    <a href="{{ url_for('auditoria.painel_auditoria') }}">
+                        <i class="fa fa-clipboard-list"></i> Auditoria
+                    </a>
+                </li>
             </ul>
             <div class="mt-auto mb-2">
                 {% include 'components/assinatura.html' %}
