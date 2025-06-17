@@ -56,6 +56,7 @@ class TestEndividamento(unittest.TestCase):
             matricula='123456',
             tamanho_total=100.0,
             area_consolidada=80.0,
+            tamanho_disponivel=20.0,  # <-- Corrigido aqui!
             tipo_posse=TipoPosse.PROPRIA,
             estado='SP',
             municipio='São Paulo'
