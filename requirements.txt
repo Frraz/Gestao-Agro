@@ -12,6 +12,7 @@ itsdangerous==2.2.0
 MarkupSafe==3.0.2
 click==8.2.1
 colorama==0.4.6
+blinker==1.9.0
 
 # Banco de Dados e Migrations
 SQLAlchemy==2.0.40
@@ -36,7 +37,6 @@ memory-profiler==0.61.0
 packaging==25.0
 typing_extensions==4.13.2
 gunicorn==23.0.0
-blinker==1.9.0
 
 # Segurança e criptografia
 cryptography==36.0.2
@@ -54,3 +54,11 @@ wcwidth==0.2.13
 python-dateutil==2.9.0.post0
 tzdata==2025.2
 six==1.17.0
+
+# Testes e Cobertura
+pytest==8.4.0
+pytest-cov==6.2.1
+coverage==7.9.1
+iniconfig==2.1.0
+pluggy==1.6.0
+Pygments==2.19.1

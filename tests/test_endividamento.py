@@ -53,7 +53,7 @@ class TestEndividamento(unittest.TestCase):
         # Criar fazenda de teste
         self.fazenda = Fazenda(
             nome='Fazenda Teste',
-            matricula_imovel='123456',
+            matricula='123456',
             tamanho_total=100.0,
             area_consolidada=80.0,
             tipo_posse=TipoPosse.PROPRIA,
