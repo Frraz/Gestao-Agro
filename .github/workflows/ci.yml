@@ -10,6 +10,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,12 +30,33 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Create .env for testing
+        run: |
+          echo "FLASK_ENV=testing" > .env
+          echo "SECRET_KEY=test_secret" >> .env
+          echo "MAIL_USERNAME=test@example.com" >> .env
+          echo "MAIL_PASSWORD=test" >> .env
+          echo "DATABASE_URL=mysql+pymysql://test_user:test_pass@127.0.0.1:3306/test_db" >> .env
+
       - name: Install dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
           pip install pytest pytest-cov
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            nc -z 127.0.0.1 3306 && echo "MySQL is up!" && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: |
+          source venv/bin/activate
+          flask db upgrade
 
       - name: Run tests
         run: |
