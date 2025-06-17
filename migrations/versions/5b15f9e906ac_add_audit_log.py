@@ -1,3 +1,5 @@
+#/migrations/versions/5b15f9e906ac_add_audit_log.py
+
 """add audit log
 
 Revision ID: 5b15f9e906ac
@@ -35,7 +37,7 @@ def upgrade():
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
-        batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
+
         batch_op.drop_index(batch_op.f('idx_parcela_pago'))
 
     with op.batch_alter_table('pessoa', schema=None) as batch_op:

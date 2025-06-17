@@ -1,3 +1,5 @@
+#/migrations/versions/d6f167315cb2_aumenta_tamanho_do_campo_senha_hash_em_.py
+
 """Aumenta tamanho do campo senha_hash em usuario
 
 Revision ID: d6f167315cb2
@@ -35,7 +37,7 @@ def upgrade():
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
-        batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
+        #batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
         batch_op.drop_index(batch_op.f('idx_parcela_pago'))
         batch_op.create_foreign_key(None, 'endividamento', ['endividamento_id'], ['id'])
 

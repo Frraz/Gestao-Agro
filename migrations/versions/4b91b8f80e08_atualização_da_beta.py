@@ -1,10 +1,8 @@
-#/migrations/versions/e8f35fa3c7ce_.py
+"""Atualização da beta
 
-"""empty message
-
-Revision ID: e8f35fa3c7ce
-Revises: 
-Create Date: 2025-06-14 21:53:19.232366
+Revision ID: 4b91b8f80e08
+Revises: 5b15f9e906ac
+Create Date: 2025-06-17 02:47:55.088603
 
 """
 from alembic import op
@@ -12,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e8f35fa3c7ce'
-down_revision = None
+revision = '4b91b8f80e08'
+down_revision = '5b15f9e906ac'
 branch_labels = None
 depends_on = None
 
@@ -36,7 +34,6 @@ def upgrade():
         batch_op.drop_index(batch_op.f('idx_notificacao_endividamento_ativo'))
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
-        # batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')  # Removido pois não existe
         batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
         #batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
         batch_op.drop_index(batch_op.f('idx_parcela_pago'))
@@ -55,10 +52,9 @@ def downgrade():
         batch_op.create_index(batch_op.f('idx_pessoa_cpf_cnpj'), ['cpf_cnpj'], unique=False)
 
     with op.batch_alter_table('parcela', schema=None) as batch_op:
-        # batch_op.drop_constraint('parcela_ibfk_1', type_='foreignkey')  # Removido pois não existe
-        batch_op.drop_index(batch_op.f('idx_parcela_data_vencimento'))
-        #batch_op.drop_index(batch_op.f('idx_parcela_endividamento_id'))
-        batch_op.drop_index(batch_op.f('idx_parcela_pago'))
+        batch_op.create_index(batch_op.f('idx_parcela_pago'), ['pago'], unique=False)
+        batch_op.create_index(batch_op.f('idx_parcela_endividamento_id'), ['endividamento_id'], unique=False)
+        batch_op.create_index(batch_op.f('idx_parcela_data_vencimento'), ['data_vencimento'], unique=False)
 
     with op.batch_alter_table('notificacao_endividamento', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('idx_notificacao_endividamento_ativo'), ['ativo'], unique=False)
@@ -70,7 +66,6 @@ def downgrade():
         batch_op.create_index(batch_op.f('idx_endividamento_data_vencimento'), ['data_vencimento_final'], unique=False)
         batch_op.create_index(batch_op.f('idx_endividamento_created_at'), ['created_at'], unique=False)
         batch_op.create_index(batch_op.f('idx_endividamento_banco'), ['banco'], unique=False)
-        batch_op.drop_column('valor_operacao')
 
     with op.batch_alter_table('documento', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('idx_documento_tipo'), ['tipo'], unique=False)
