@@ -12,7 +12,10 @@ from logging.handlers import RotatingFileHandler
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 os.environ["TZ"] = "America/Sao_Paulo"
-time.tzset()  # Só funciona em Unix/Linux (como Railway)
+try:
+    time.tzset()  # Só funciona em Unix/Linux (como Railway)
+except AttributeError:
+    pass  # Ignora em sistemas onde tzset não está disponível
 
 from dotenv import load_dotenv
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
@@ -53,6 +56,7 @@ def configure_logging(app):
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
+    # Não faça prints aqui para evitar repetição
     app.logger.info("Inicialização do Sistema de Gestão de Fazendas")
     return app
 
@@ -229,6 +233,7 @@ def create_app(test_config=None):
 
 
 if __name__ == "__main__":
+    print("Inicialização do Sistema de Gestão de Fazendas")
     app = create_app()
     port = int(os.environ.get("PORT", 5000))
     app.run(
