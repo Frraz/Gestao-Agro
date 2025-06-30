@@ -1,7 +1,9 @@
-#/src/utils/filters.py
+# /src/utils/filters.py
 
 import json
+
 from markupsafe import Markup
+
 
 def prettyjson(value):
     try:
@@ -11,5 +13,6 @@ def prettyjson(value):
     except Exception:
         return value
 
+
 def register_filters(app):
-    app.jinja_env.filters['prettyjson'] = prettyjson
+    app.jinja_env.filters["prettyjson"] = prettyjson

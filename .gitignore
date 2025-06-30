@@ -45,3 +45,6 @@ Thumbs.db
 
 # Logs
 logs
+
+railway_backup.sql
+backup-railway.sql

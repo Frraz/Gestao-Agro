@@ -1,7 +1,28 @@
-from src.models.pessoa import Pessoa
-from src.models.fazenda import Fazenda, TipoPosse
-from src.models.documento import Documento, TipoDocumento
-from src.models.endividamento import Endividamento, EndividamentoFazenda, Parcela
-from src.models.notificacao_endividamento import NotificacaoEndividamento, HistoricoNotificacao
+# /src/models/__init__.py
 
-__all__ = ['Pessoa', 'Fazenda', 'TipoPosse', 'Documento', 'TipoDocumento', 'Endividamento', 'EndividamentoFazenda', 'Parcela', 'NotificacaoEndividamento', 'HistoricoNotificacao']
+"""
+Módulo de inicialização para os modelos do sistema.
+
+Este pacote importa e expõe todas as classes de modelo relacionadas ao domínio da aplicação,
+incluindo pessoas, fazendas, documentos, endividamentos e notificações.
+"""
+
+from .documento import Documento, TipoDocumento
+from .endividamento import Endividamento, EndividamentoFazenda, Parcela
+from .fazenda import Fazenda, TipoPosse
+from .notificacao_endividamento import (HistoricoNotificacao,
+                                        NotificacaoEndividamento)
+from .pessoa import Pessoa
+
+__all__ = [
+    "Pessoa",
+    "Fazenda",
+    "TipoPosse",
+    "Documento",
+    "TipoDocumento",
+    "Endividamento",
+    "EndividamentoFazenda",
+    "Parcela",
+    "NotificacaoEndividamento",
+    "HistoricoNotificacao",
+]

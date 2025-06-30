@@ -1,16 +1,18 @@
-#/src/utils/performance.py
+# /src/utils/performance.py
 
-from functools import wraps
-import time
 import logging
 import re
+import time
+from functools import wraps
 
-from flask import request, jsonify, current_app
+from flask import current_app, jsonify, request
 from sqlalchemy import text
+
 from src.models.db import db
 from src.utils.cache import cache, cached
 
 logger = logging.getLogger(__name__)
+
 
 class PerformanceOptimizer:
     """Classe para otimizações de performance"""
@@ -22,7 +24,7 @@ class PerformanceOptimizer:
             engine = db.get_engine()
             backend = engine.url.get_backend_name()
             logger.info(f"Backend do banco detectado: {backend}")
-            if 'mysql' in backend:
+            if "mysql" in backend:
                 # Detecta versão do MySQL
                 version = db.session.execute(text("SELECT VERSION()")).scalar()
                 logger.info(f"MySQL version detected: {version}")
@@ -30,7 +32,9 @@ class PerformanceOptimizer:
                 try:
                     major_version = int(re.match(r"(\d+)", version).group(1))
                 except Exception as ex:
-                    logger.warning(f"Não foi possível detectar a versão major do MySQL: {version}. Erro: {ex}")
+                    logger.warning(
+                        f"Não foi possível detectar a versão major do MySQL: {version}. Erro: {ex}"
+                    )
                     major_version = 8  # Assume 8 por segurança (não tenta query_cache)
 
                 optimizations = []
@@ -38,7 +42,7 @@ class PerformanceOptimizer:
                 if major_version < 8:
                     optimizations += [
                         "SET SESSION query_cache_type = ON",
-                        "SET SESSION query_cache_size = 67108864"
+                        "SET SESSION query_cache_size = 67108864",
                     ]
                 # Não tente setar innodb_buffer_pool_size como SESSION nem se for MySQL 8
                 # Em ambientes gerenciados, nem tente setar GLOBAL.
@@ -93,26 +97,37 @@ class PerformanceOptimizer:
             logger.error(f"Erro ao criar índices: {e}")
             db.session.rollback()
 
+
 def rate_limit(max_requests=100, window=3600):
     """Decorator para rate limiting"""
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+            client_ip = request.environ.get("HTTP_X_FORWARDED_FOR", request.remote_addr)
             cache_key = f"rate_limit:{client_ip}:{f.__name__}"
             current_requests = cache.get(cache_key) or 0
             if current_requests >= max_requests:
-                return jsonify({
-                    'error': 'Rate limit exceeded',
-                    'message': f'Máximo de {max_requests} requisições por hora'
-                }), 429
+                return (
+                    jsonify(
+                        {
+                            "error": "Rate limit exceeded",
+                            "message": f"Máximo de {max_requests} requisições por hora",
+                        }
+                    ),
+                    429,
+                )
             cache.set(cache_key, current_requests + 1, window)
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
 
 def measure_performance(f):
     """Decorator para medir performance de funções"""
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         start_time = time.time()
@@ -120,76 +135,95 @@ def measure_performance(f):
         end_time = time.time()
         execution_time = end_time - start_time
         if execution_time > 1.0:
-            logger.warning(f"Função {f.__name__} demorou {execution_time:.2f}s para executar")
+            logger.warning(
+                f"Função {f.__name__} demorou {execution_time:.2f}s para executar"
+            )
         return result
+
     return wrapper
 
-@cached(timeout=1800, key_prefix='dashboard')
+
+@cached(timeout=1800, key_prefix="dashboard")
 def get_dashboard_stats():
     """Obtém estatísticas do dashboard com cache"""
     try:
-        from src.models.pessoa import Pessoa
-        from src.models.fazenda import Fazenda
+        from datetime import date, timedelta
+
         from src.models.documento import Documento
         from src.models.endividamento import Endividamento
-        from datetime import date, timedelta
+        from src.models.fazenda import Fazenda
+        from src.models.pessoa import Pessoa
+
         hoje = date.today()
         stats = {
-            'total_pessoas': Pessoa.query.count(),
-            'total_fazendas': Fazenda.query.count(),
-            'total_documentos': Documento.query.count(),
-            'total_endividamentos': Endividamento.query.count(),
-            'documentos_vencidos': Documento.query.filter(Documento.data_vencimento < hoje).count(),
-            'endividamentos_proximos': Endividamento.query.filter(
-                Endividamento.data_vencimento_final.between(hoje, hoje + timedelta(days=30))
-            ).count()
+            "total_pessoas": Pessoa.query.count(),
+            "total_fazendas": Fazenda.query.count(),
+            "total_documentos": Documento.query.count(),
+            "total_endividamentos": Endividamento.query.count(),
+            "documentos_vencidos": Documento.query.filter(
+                Documento.data_vencimento < hoje
+            ).count(),
+            "endividamentos_proximos": Endividamento.query.filter(
+                Endividamento.data_vencimento_final.between(
+                    hoje, hoje + timedelta(days=30)
+                )
+            ).count(),
         }
         return stats
     except Exception as e:
         logger.error(f"Erro ao obter estatísticas do dashboard: {e}")
         return {}
 
-@cached(timeout=3600, key_prefix='pessoas')
+
+@cached(timeout=3600, key_prefix="pessoas")
 def get_pessoas_for_select():
     """Obtém lista de pessoas para selects com cache"""
     try:
         from src.models.pessoa import Pessoa
-        pessoas = Pessoa.query.with_entities(
-            Pessoa.id, 
-            Pessoa.nome, 
-            Pessoa.cpf_cnpj
-        ).order_by(Pessoa.nome).all()
-        return [{'id': p.id, 'nome': p.nome, 'cpf_cnpj': p.cpf_cnpj} for p in pessoas]
+
+        pessoas = (
+            Pessoa.query.with_entities(Pessoa.id, Pessoa.nome, Pessoa.cpf_cnpj)
+            .order_by(Pessoa.nome)
+            .all()
+        )
+        return [{"id": p.id, "nome": p.nome, "cpf_cnpj": p.cpf_cnpj} for p in pessoas]
     except Exception as e:
         logger.error(f"Erro ao obter pessoas para select: {e}")
         return []
 
-@cached(timeout=3600, key_prefix='fazendas')
+
+@cached(timeout=3600, key_prefix="fazendas")
 def get_fazendas_for_select():
     """Obtém lista de fazendas para selects com cache"""
     try:
         from src.models.fazenda import Fazenda
-        fazendas = Fazenda.query.with_entities(
-            Fazenda.id, 
-            Fazenda.nome, 
-            Fazenda.tamanho_total
-        ).order_by(Fazenda.nome).all()
-        return [{'id': f.id, 'nome': f.nome, 'tamanho_total': float(f.tamanho_total)} for f in fazendas]
+
+        fazendas = (
+            Fazenda.query.with_entities(Fazenda.id, Fazenda.nome, Fazenda.tamanho_total)
+            .order_by(Fazenda.nome)
+            .all()
+        )
+        return [
+            {"id": f.id, "nome": f.nome, "tamanho_total": float(f.tamanho_total)}
+            for f in fazendas
+        ]
     except Exception as e:
         logger.error(f"Erro ao obter fazendas para select: {e}")
         return []
 
+
 def clear_related_cache(entity_type):
     """Limpa cache relacionado a uma entidade"""
     patterns = {
-        'pessoa': ['pessoas:*', 'dashboard:*'],
-        'fazenda': ['fazendas:*', 'dashboard:*'],
-        'documento': ['dashboard:*'],
-        'endividamento': ['dashboard:*']
+        "pessoa": ["pessoas:*", "dashboard:*"],
+        "fazenda": ["fazendas:*", "dashboard:*"],
+        "documento": ["dashboard:*"],
+        "endividamento": ["dashboard:*"],
     }
     if entity_type in patterns:
         for pattern in patterns[entity_type]:
             cache.clear_pattern(pattern)
+
 
 class DatabaseOptimizer:
     """Otimizador de consultas ao banco de dados"""
@@ -197,71 +231,88 @@ class DatabaseOptimizer:
     @staticmethod
     def optimize_endividamento_queries():
         """Otimiza consultas de endividamentos usando eager loading"""
-        from src.models.endividamento import Endividamento
         from sqlalchemy.orm import joinedload
+
+        from src.models.endividamento import Endividamento
+
         return Endividamento.query.options(
             joinedload(Endividamento.pessoas),
             joinedload(Endividamento.fazenda_vinculos),
-            joinedload(Endividamento.parcelas)
+            joinedload(Endividamento.parcelas),
         )
 
     @staticmethod
     def optimize_documento_queries():
         """Otimiza consultas de documentos usando eager loading"""
-        from src.models.documento import Documento
         from sqlalchemy.orm import joinedload
+
+        from src.models.documento import Documento
+
         return Documento.query.options(
             joinedload(Documento.pessoa),
             joinedload(Documento.fazenda),
-            joinedload(Documento.tipo_documento)
         )
 
     @staticmethod
     def get_vencimentos_otimizado(dias=30):
         """Obtém vencimentos de forma otimizada"""
-        from src.models.endividamento import Endividamento, Parcela
-        from src.models.documento import Documento
         from datetime import date, timedelta
+
         from sqlalchemy.orm import joinedload
+
+        from src.models.documento import Documento
+        from src.models.endividamento import Endividamento, Parcela
+
         hoje = date.today()
         data_limite = hoje + timedelta(days=dias)
-        parcelas = Parcela.query.options(
-            joinedload(Parcela.endividamento).joinedload(Endividamento.pessoas)
-        ).filter(
-            Parcela.data_vencimento.between(hoje, data_limite),
-            Parcela.pago == False
-        ).order_by(Parcela.data_vencimento).all()
-        documentos = Documento.query.options(
-            joinedload(Documento.pessoa),
-            joinedload(Documento.fazenda),
-            joinedload(Documento.tipo_documento)
-        ).filter(
-            Documento.data_vencimento.between(hoje, data_limite)
-        ).order_by(Documento.data_vencimento).all()
-        return {
-            'parcelas': parcelas,
-            'documentos': documentos
-        }
+        parcelas = (
+            Parcela.query.options(
+                joinedload(Parcela.endividamento).joinedload(Endividamento.pessoas)
+            )
+            .filter(
+                Parcela.data_vencimento.between(hoje, data_limite),
+                Parcela.pago == False,
+            )
+            .order_by(Parcela.data_vencimento)
+            .all()
+        )
+        documentos = (
+            Documento.query.options(
+                joinedload(Documento.pessoa),
+                joinedload(Documento.fazenda),
+            )
+            .filter(Documento.data_vencimento.between(hoje, data_limite))
+            .order_by(Documento.data_vencimento)
+            .all()
+        )
+        return {"parcelas": parcelas, "documentos": documentos}
+
 
 def compress_response(f):
     """Decorator para compressão de respostas"""
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         response = f(*args, **kwargs)
-        if hasattr(response, 'headers'):
-            if request.endpoint and 'static' in request.endpoint:
-                response.headers['Cache-Control'] = 'public, max-age=31536000'
+        if hasattr(response, "headers"):
+            if request.endpoint and "static" in request.endpoint:
+                response.headers["Cache-Control"] = "public, max-age=31536000"
             else:
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response.headers['Pragma'] = 'no-cache'
-                response.headers['Expires'] = '0'
+                response.headers["Cache-Control"] = (
+                    "no-cache, no-store, must-revalidate"
+                )
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
         return response
+
     return wrapper
+
 
 def init_performance_optimizations(app):
     """Inicializa todas as otimizações de performance"""
     try:
         from src.utils.cache import cache
+
         cache.init_app(app)
         with app.app_context():
             optimizer = PerformanceOptimizer()
@@ -270,6 +321,7 @@ def init_performance_optimizations(app):
         app.logger.info("Otimizações de performance inicializadas com sucesso")
     except Exception as e:
         app.logger.error(f"Erro ao inicializar otimizações: {e}")
+
 
 class PerformanceMiddleware:
     def __init__(self, app):
@@ -284,7 +336,7 @@ class PerformanceMiddleware:
         request.start_time = time.time()
 
     def after_request(self, response):
-        if hasattr(request, 'start_time'):
+        if hasattr(request, "start_time"):
             duration = time.time() - request.start_time
             if duration > 2.0:
                 current_app.logger.warning(
