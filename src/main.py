@@ -37,7 +37,6 @@ from src.utils.performance import PerformanceMiddleware, init_performance_optimi
 
 # Carrega variáveis de ambiente
 load_dotenv()
-print("DATABASE_URL:", os.getenv("DATABASE_URL"))
 
 from src.config import config_by_name, parse_str_env
 
@@ -56,7 +55,6 @@ def configure_logging(app):
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-    # Não faça prints aqui para evitar repetição
     app.logger.info("Inicialização do Sistema de Gestão de Fazendas")
     return app
 
@@ -88,9 +86,9 @@ def create_app(test_config=None):
 
     register_filters(app)
 
-    # Debug de variáveis de e-mail (útil para troubleshooting)
-    print("MAIL_USERNAME:", app.config.get("MAIL_USERNAME"))
-    print("MAIL_DEFAULT_SENDER:", app.config.get("MAIL_DEFAULT_SENDER"))
+    # Variáveis de e-mail para debug (opcional, pode remover para produção)
+    # print("MAIL_USERNAME:", app.config.get("MAIL_USERNAME"))
+    # print("MAIL_DEFAULT_SENDER:", app.config.get("MAIL_DEFAULT_SENDER"))
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -108,18 +106,9 @@ def create_app(test_config=None):
     configure_logging(app)
 
     db.init_app(app)
-    from flask_migrate import Migrate, upgrade
+    from flask_migrate import Migrate
 
     Migrate(app, db)
-
-    # --- Sempre roda as migrations ao iniciar ---
-    with app.app_context():
-        try:
-            upgrade()
-            app.logger.info("Migrations aplicadas com sucesso.")
-        except Exception as e:
-            app.logger.error(f"Falha ao aplicar migrations: {e}")
-    # --------------------------------------------
 
     init_performance_optimizations(app)
     PerformanceMiddleware(app)
