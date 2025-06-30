@@ -25,6 +25,15 @@ def index_exists(connection, table_name, index_name):
     res = connection.execute(sa.text(sql), {'table_name': table_name, 'index_name': index_name})
     return res.scalar() > 0
 
+def column_exists(connection, table_name, column_name):
+    sql = """
+    SELECT COUNT(1)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE table_schema=DATABASE() AND table_name=:table_name AND column_name=:column_name
+    """
+    res = connection.execute(sa.text(sql), {'table_name': table_name, 'column_name': column_name})
+    return res.scalar() > 0
+
 def upgrade():
     conn = op.get_bind()
 
@@ -77,9 +86,10 @@ def upgrade():
             batch_op.drop_index('idx_pessoa_nome')
 
     # usuario
-    with op.batch_alter_table('usuario', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('username', sa.String(length=80), nullable=True))
-        batch_op.create_unique_constraint(None, ['username'])
+    if not column_exists(conn, 'usuario', 'username'):
+        with op.batch_alter_table('usuario', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('username', sa.String(length=80), nullable=True))
+            batch_op.create_unique_constraint(None, ['username'])
 
 
 def downgrade():
