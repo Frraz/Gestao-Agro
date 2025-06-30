@@ -89,7 +89,7 @@ jobs:
 
       - name: Cria tabelas manualmente para o CI
         run: |
-          flask shell -c "from src.extensions import db; from src.main import app; with app.app_context(): db.create_all()"
+          python -c "from src.extensions import db; from src.main import app; with app.app_context(): db.create_all()"
         env:
           FLASK_APP: src/main.py
           DATABASE_URL: mysql+pymysql://root:password123@127.0.0.1:3306/gestao_fazendas
