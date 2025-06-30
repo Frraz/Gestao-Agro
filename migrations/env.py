@@ -14,9 +14,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # Importe sua factory para criar a app
 from src.main import create_app
 
-# Crie a app Flask e empurre o contexto
+# Crie a app Flask e use o contexto apenas onde necessário
 app = create_app()
-app.app_context().push()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -46,12 +45,12 @@ def get_engine_url():
 # Define a URL do banco se quiser sobrescrever a do alembic.ini (opcional)
 # config.set_main_option('sqlalchemy.url', 'mysql+pymysql://root:1234@localhost/gestao_agro')
 
-target_db = current_app.extensions['migrate'].db
 
 def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
+    db = current_app.extensions['migrate'].db
+    if hasattr(db, 'metadatas'):
+        return db.metadatas[None]
+    return db.metadata
 
 
 def run_migrations_offline():
@@ -68,7 +67,6 @@ def run_migrations_offline():
 
 def run_migrations_online():
     def process_revision_directives(context, revision, directives):
-        # Corrigido: Confirme que o objeto possui upgrade_ops antes de acessar
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
             if hasattr(script, "upgrade_ops") and script.upgrade_ops.is_empty():
@@ -93,6 +91,8 @@ def run_migrations_online():
 
 
 if context.is_offline_mode():
-    run_migrations_offline()
+    with app.app_context():
+        run_migrations_offline()
 else:
-    run_migrations_online()
+    with app.app_context():
+        run_migrations_online()
