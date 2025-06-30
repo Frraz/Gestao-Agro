@@ -1,50 +1,54 @@
+# .gitignore
+
 # Ambiente virtual
 venv/
+.venv/
 ENV/
 env/
-.venv/
 
 # Configurações de IDEs
 .vscode/
 .idea/
 
-# Arquivos Python compilados
+# Python cache/compilados
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Arquivos de log
+# Logs
+logs/
 *.log
 
-# Arquivos de banco de dados locais
+# Banco de dados locais e backups
 *.sqlite3
 *.db
+app.db
+*.sql
+railway_backup.sql
+backup-railway.sql
 
-# Arquivos de ambiente
+# Variáveis de ambiente
 .env
+.env.*
 *.env
 
-# Pasta de deploy (se aplicável)
-deploy_package/__pycache__/
-deploy_package/*.pyc
-
-# Arquivos temporários e cache
+# Cache, temporários, build e dist
+.cache/
+*.egg-info/
 *.bak
 *.swp
 *.tmp
-.cache/
-*.egg-info/
-
-# Pasta de build (caso use pyinstaller ou similar)
 build/
 dist/
 
-# Arquivos do sistema operacional
+# Deploy package (se aplicável)
+deploy_package/
+deploy_package/__pycache__/
+deploy_package/*.pyc
+
+# Uploads de usuários
+uploads/
+
+# Arquivos de sistema operacional
 .DS_Store
 Thumbs.db
-
-# Logs
-logs
-
-railway_backup.sql
-backup-railway.sql

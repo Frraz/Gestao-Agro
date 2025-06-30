@@ -1,3 +1,5 @@
+# maintenance.py
+
 # Script para executar tarefas de manutenção e otimização
 import os
 import sys
@@ -152,4 +154,4 @@ if __name__ == '__main__':
         print("- banco: Otimizar banco de dados")
         print("- backup: Fazer backup dos logs")
         print("- scheduler: Executar scheduler de tarefas automáticas")
-
+        
