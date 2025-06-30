@@ -87,12 +87,20 @@ jobs:
             sleep 2
           done
 
-      - name: Run migrations
+      - name: Cria tabelas manualmente para o CI
         run: |
-          flask db upgrade
+          flask shell -c "from src.extensions import db; from src.main import app; with app.app_context(): db.create_all()"
         env:
           FLASK_APP: src/main.py
           DATABASE_URL: mysql+pymysql://root:password123@127.0.0.1:3306/gestao_fazendas
+
+      # Removido: Run migrations
+      # - name: Run migrations
+      #   run: |
+      #     flask db upgrade
+      #   env:
+      #     FLASK_APP: src/main.py
+      #     DATABASE_URL: mysql+pymysql://root:password123@127.0.0.1:3306/gestao_fazendas
 
       - name: Run tests
         run: |
