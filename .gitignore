@@ -43,8 +43,6 @@ dist/
 
 # Deploy package (se aplicável)
 deploy_package/
-deploy_package/__pycache__/
-deploy_package/*.pyc
 
 # Uploads de usuários
 uploads/
@@ -53,4 +51,5 @@ uploads/
 .DS_Store
 Thumbs.db
 
+# Arquivo de documentação local
 estrutura.txt
