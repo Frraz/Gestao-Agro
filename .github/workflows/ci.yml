@@ -89,7 +89,7 @@ jobs:
 
       - name: Cria tabelas manualmente para o CI
         run: |
-          PYTHONPATH=$(pwd) python -c "from src.extensions import db; from src.main import app; ctx = app.app_context(); ctx.push(); db.create_all(); ctx.pop()"
+          PYTHONPATH=$(pwd) python -c "from src.models.db import db; from src.main import app; ctx = app.app_context(); ctx.push(); db.create_all(); ctx.pop()"
         env:
           FLASK_APP: src/main.py
           DATABASE_URL: mysql+pymysql://root:password123@127.0.0.1:3306/gestao_fazendas
