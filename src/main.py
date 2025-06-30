@@ -220,10 +220,10 @@ def create_app(test_config=None):
 
     return app
 
+app = create_app()
 
 if __name__ == "__main__":
     print("Inicialização do Sistema de Gestão de Fazendas")
-    app = create_app()
     port = int(os.environ.get("PORT", 5000))
     app.run(
         debug=os.environ.get("FLASK_DEBUG", "true").lower() in ["true", "on", "1"],
