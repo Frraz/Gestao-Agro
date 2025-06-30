@@ -29,4 +29,4 @@ ENV FLASK_APP=src/main.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
 # Executar migrations automaticamente e iniciar aplicação com Gunicorn
-CMD flask db upgrade && gunicorn src.main:app --bind 0.0.0.0:5000
+CMD flask db upgrade && gunicorn src.main:app --bind 0.0.0.0:${PORT:-5000}
