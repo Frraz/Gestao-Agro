@@ -1,3 +1,5 @@
+# /migrations/env.py
+
 import logging
 from logging.config import fileConfig
 import sys
@@ -65,15 +67,15 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-
     def process_revision_directives(context, revision, directives):
+        # Corrigido: Confirme que o objeto possui upgrade_ops antes de acessar
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
-            if script.upgrade_ops.is_empty():
+            if hasattr(script, "upgrade_ops") and script.upgrade_ops.is_empty():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
-    conf_args = current_app.extensions['migrate'].configure_args
+    conf_args = current_app.extensions['migrate'].configure_args.copy()
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
