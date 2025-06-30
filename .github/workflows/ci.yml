@@ -89,6 +89,8 @@ jobs:
 
       - name: Cria tabelas manualmente para o CI
         run: |
+          ls -l
+          ls -l src
           PYTHONPATH=$(pwd) python -c "from src.extensions import db; from src.main import app; ctx = app.app_context(); ctx.push(); db.create_all(); ctx.pop()"
         env:
           FLASK_APP: src/main.py
