@@ -104,9 +104,18 @@ def create_app(test_config=None):
     configure_logging(app)
 
     db.init_app(app)
-    from flask_migrate import Migrate
+    from flask_migrate import Migrate, upgrade
 
     Migrate(app, db)
+
+    # --- Sempre roda as migrations ao iniciar ---
+    with app.app_context():
+        try:
+            upgrade()
+            app.logger.info("Migrations aplicadas com sucesso.")
+        except Exception as e:
+            app.logger.error(f"Falha ao aplicar migrations: {e}")
+    # --------------------------------------------
 
     init_performance_optimizations(app)
     PerformanceMiddleware(app)
