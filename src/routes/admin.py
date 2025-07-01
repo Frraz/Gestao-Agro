@@ -414,22 +414,30 @@ def nova_fazenda():
 
 @admin_bp.route("/fazendas/<int:id>")
 @login_required
-def detalhes_fazenda(id):
-    """Detalha a fazenda, incluindo uso em endividamentos"""
-    from src.models.endividamento import EndividamentoFazenda  # avoid circular import
+def visualizar_fazenda(id):
+    """Visualiza detalhes de uma fazenda."""
+    from src.models.endividamento import EndividamentoFazenda
+    
     fazenda = Fazenda.query.get_or_404(id)
-    vinculos = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
-    vinculos_credito = [v for v in vinculos if v.tipo == 'objeto_credito']
-    vinculos_garantia = [v for v in vinculos if v.tipo == 'garantia']
-    total_consumido = sum(v.hectares or 0 for v in vinculos_credito)
-    saldo_disponivel = (fazenda.tamanho_total or 0) - total_consumido
+    
+    # Obter vínculos com endividamentos
+    vinculos_endividamento = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
+    
+    # Calcular área utilizada em créditos
+    area_usada_credito = sum(
+        float(v.hectares) for v in vinculos_endividamento 
+        if v.tipo == 'objeto_credito' and v.hectares
+    )
+    
+    # Calcular área disponível para crédito
+    area_disponivel_credito = fazenda.tamanho_disponivel - area_usada_credito
+    
     return render_template(
-        "admin/fazendas/detalhes.html",
+        "admin/fazendas/visualizar.html",
         fazenda=fazenda,
-        vinculos_credito=vinculos_credito,
-        vinculos_garantia=vinculos_garantia,
-        total_consumido=total_consumido,
-        saldo_disponivel=saldo_disponivel,
+        vinculos_endividamento=vinculos_endividamento,
+        area_usada_credito=area_usada_credito,
+        area_disponivel_credito=area_disponivel_credito,
     )
 
 

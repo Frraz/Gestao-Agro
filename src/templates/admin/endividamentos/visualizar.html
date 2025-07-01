@@ -114,7 +114,15 @@
                                     <tbody>
                                         {% for vinculo in objetos_credito %}
                                         <tr>
-                                            <td>{{ vinculo.fazenda.nome if vinculo.fazenda else '-' }}</td>
+                                            <td>
+                                                {% if vinculo.fazenda %}
+                                                    <a href="{{ url_for('admin.visualizar_fazenda', id=vinculo.fazenda.id) }}" class="text-decoration-none">
+                                                        {{ vinculo.fazenda.nome }}
+                                                    </a>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
                                             <td>{{ vinculo.hectares if vinculo.hectares else '-' }}</td>
                                             <td>{{ vinculo.descricao if vinculo.descricao else '-' }}</td>
                                         </tr>
@@ -143,7 +151,16 @@
                                     <tbody>
                                         {% for vinculo in garantias %}
                                         <tr>
-                                            <td>{{ vinculo.fazenda.nome if vinculo.fazenda else '-' }}</td>
+                                            <td>
+                                                {% if vinculo.fazenda %}
+                                                    <a href="{{ url_for('admin.visualizar_fazenda', id=vinculo.fazenda.id) }}" class="text-decoration-none">
+                                                        {{ vinculo.fazenda.nome }}
+                                                    </a>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ vinculo.hectares if vinculo.hectares else '-' }}</td>
                                             <td>{{ vinculo.descricao if vinculo.descricao else '-' }}</td>
                                         </tr>
                                         {% endfor %}

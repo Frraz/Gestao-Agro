@@ -123,3 +123,36 @@ class Fazenda(db.Model):  # type: ignore
             for doc in self.documentos
             if not doc.esta_vencido and doc.precisa_notificar
         ]
+
+    @property
+    def area_usada_credito(self) -> float:
+        """Calcula a área total utilizada em operações de crédito."""
+        from src.models.endividamento import EndividamentoFazenda
+        
+        total_usado = 0.0
+        vinculos = EndividamentoFazenda.query.filter_by(
+            fazenda_id=self.id, tipo='objeto_credito'
+        ).all()
+        
+        for vinculo in vinculos:
+            if vinculo.hectares:
+                total_usado += float(vinculo.hectares)
+        
+        return total_usado
+    
+    @property 
+    def area_disponivel_credito(self) -> float:
+        """Calcula a área disponível para novas operações de crédito."""
+        return self.tamanho_disponivel - self.area_usada_credito
+    
+    @property
+    def endividamentos_vinculados(self):
+        """Retorna os endividamentos vinculados a esta fazenda."""
+        from src.models.endividamento import EndividamentoFazenda
+        
+        return EndividamentoFazenda.query.filter_by(fazenda_id=self.id).all()
+    
+    @property
+    def total_endividamentos(self) -> int:
+        """Retorna o número total de endividamentos vinculados."""
+        return len(self.endividamentos_vinculados)
