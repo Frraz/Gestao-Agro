@@ -384,19 +384,39 @@ def api_fazendas_pessoa(pessoa_id):
 
 @endividamento_bp.route("/buscar-pessoas")
 def buscar_pessoas():
-    """Endpoint para busca AJAX de pessoas"""
+    """Endpoint para busca AJAX de pessoas com cache Redis e paginação"""
+    from src.utils.cache import cache
+    
     termo = request.args.get("q", "").strip()
-
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 10, type=int)
+    
+    # Validação de parâmetros
     if len(termo) < 2:
         return jsonify([])
+    
+    # Limitar page e limit para evitar sobrecarga
+    page = max(1, page)
+    limit = min(max(1, limit), 50)  # máximo 50 resultados por página
+    
+    # Gerar chave de cache
+    cache_key = f"buscar_pessoas:{termo}:{page}:{limit}"
+    
+    # Tentar obter do cache primeiro
+    resultado_cache = cache.get(cache_key)
+    if resultado_cache is not None:
+        return jsonify(resultado_cache)
 
-    pessoas = (
-        Pessoa.query.filter(
-            or_(Pessoa.nome.ilike(f"%{termo}%"), Pessoa.cpf_cnpj.ilike(f"%{termo}%"))
-        )
-        .limit(10)
-        .all()
+    # Calcular offset para paginação
+    offset = (page - 1) * limit
+    
+    # Buscar no banco de dados
+    query = Pessoa.query.filter(
+        or_(Pessoa.nome.ilike(f"%{termo}%"), Pessoa.cpf_cnpj.ilike(f"%{termo}%"))
     )
+    
+    total_count = query.count()
+    pessoas = query.offset(offset).limit(limit).all()
 
     resultado = [
         {
@@ -407,8 +427,26 @@ def buscar_pessoas():
         }
         for pessoa in pessoas
     ]
-
-    return jsonify(resultado)
+    
+    # Metadados de paginação (incluídos apenas se paginação for solicitada)
+    response_data = resultado
+    if "page" in request.args or "limit" in request.args:
+        response_data = {
+            "data": resultado,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "has_next": offset + limit < total_count,
+                "has_prev": page > 1,
+                "total_pages": (total_count + limit - 1) // limit
+            }
+        }
+    
+    # Armazenar no cache por 5 minutos (300 segundos)
+    cache.set(cache_key, response_data, timeout=300)
+    
+    return jsonify(response_data)
 
 
 @endividamento_bp.route("/<int:id>/notificacoes", methods=["GET", "POST"])

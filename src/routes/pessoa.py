@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from src.models.db import db
 from src.models.pessoa import Pessoa
+from src.utils.performance import clear_related_cache
 
 pessoa_bp = Blueprint("pessoa", __name__, url_prefix="/api/pessoas")
 
@@ -100,6 +101,9 @@ def criar_pessoa():
 
         db.session.add(nova_pessoa)
         db.session.commit()
+        
+        # Invalidar cache de busca de pessoas
+        clear_related_cache("pessoa")
 
         current_app.logger.info(
             f"Pessoa criada com sucesso: {nova_pessoa.nome} (ID: {nova_pessoa.id})"
@@ -184,6 +188,9 @@ def atualizar_pessoa(id):
             pessoa.endereco = dados.get("endereco")
 
         db.session.commit()
+        
+        # Invalidar cache de busca de pessoas
+        clear_related_cache("pessoa")
 
         current_app.logger.info(
             f"Pessoa atualizada com sucesso: {pessoa.nome} (ID: {pessoa.id})"
@@ -253,6 +260,9 @@ def excluir_pessoa(id):
         nome = pessoa.nome
         db.session.delete(pessoa)
         db.session.commit()
+        
+        # Invalidar cache de busca de pessoas
+        clear_related_cache("pessoa")
 
         current_app.logger.info(f"Pessoa excluída com sucesso: {nome} (ID: {id})")
 

@@ -215,7 +215,7 @@ def get_fazendas_for_select():
 def clear_related_cache(entity_type):
     """Limpa cache relacionado a uma entidade"""
     patterns = {
-        "pessoa": ["pessoas:*", "dashboard:*"],
+        "pessoa": ["pessoas:*", "buscar_pessoas:*", "dashboard:*"],
         "fazenda": ["fazendas:*", "dashboard:*"],
         "documento": ["dashboard:*"],
         "endividamento": ["dashboard:*"],
