@@ -130,4 +130,8 @@ def painel_auditoria():
         log.identificacao = extrair_identificacao(log)
         log.associado = extrair_associado(log)
 
+    # Se for requisição AJAX, retorna só a tabela
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return render_template("admin/_auditoria_table.html", logs=logs, pagination=pagination)
+    # Renderização normal da página
     return render_template("admin/auditoria.html", logs=logs, pagination=pagination)
