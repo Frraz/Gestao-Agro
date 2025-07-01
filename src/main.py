@@ -80,6 +80,9 @@ def create_app(test_config=None):
     # Configuração centralizada
     config_name = parse_str_env("FLASK_ENV", "development")
     app.config.from_object(config_by_name[config_name])
+    # Garantir que REDIS_URL do ambiente (.env) está presente na config Flask
+    if "REDIS_URL" not in app.config or not app.config["REDIS_URL"]:
+        app.config["REDIS_URL"] = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
     if test_config:
         app.config.update(test_config)

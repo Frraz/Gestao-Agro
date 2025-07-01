@@ -1,6 +1,7 @@
 # /src/routes/auditoria.py
 
 import json
+from urllib.parse import urlencode
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
@@ -12,6 +13,13 @@ from src.models.pessoa import Pessoa
 
 auditoria_bp = Blueprint("auditoria", __name__)
 
+# Função auxiliar para paginação no template (preserva filtros)
+@auditoria_bp.app_template_global()
+def url_for_other_page(page):
+    args = request.args.copy()
+    args = args.to_dict(flat=False)  # Aceita múltiplos valores por chave
+    args['page'] = [str(page)]
+    return f"{request.path}?{urlencode(args, doseq=True)}"
 
 @auditoria_bp.route("/admin/auditoria")
 @login_required
@@ -78,7 +86,10 @@ def painel_auditoria():
                 )
             )
 
-    logs = query.order_by(Auditoria.data_hora.desc()).limit(100).all()
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+    pagination = query.order_by(Auditoria.data_hora.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
 
     # Pré-carregar todas as fazendas e pessoas em dicionários para evitar N+1 queries
     fazendas = {f.id: f.nome for f in Fazenda.query.all()}
@@ -119,4 +130,4 @@ def painel_auditoria():
         log.identificacao = extrair_identificacao(log)
         log.associado = extrair_associado(log)
 
-    return render_template("admin/auditoria.html", logs=logs)
+    return render_template("admin/auditoria.html", logs=logs, pagination=pagination)
