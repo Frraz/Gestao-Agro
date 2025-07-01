@@ -409,6 +409,35 @@ def nova_fazenda():
     return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
 
 
+@admin_bp.route("/fazendas/<int:id>")
+@login_required
+def visualizar_fazenda(id):
+    """Visualiza detalhes de uma fazenda."""
+    from src.models.endividamento import EndividamentoFazenda
+    
+    fazenda = Fazenda.query.get_or_404(id)
+    
+    # Obter vínculos com endividamentos
+    vinculos_endividamento = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
+    
+    # Calcular área utilizada em créditos
+    area_usada_credito = sum(
+        float(v.hectares) for v in vinculos_endividamento 
+        if v.tipo == 'objeto_credito' and v.hectares
+    )
+    
+    # Calcular área disponível para crédito
+    area_disponivel_credito = fazenda.tamanho_disponivel - area_usada_credito
+    
+    return render_template(
+        "admin/fazendas/visualizar.html",
+        fazenda=fazenda,
+        vinculos_endividamento=vinculos_endividamento,
+        area_usada_credito=area_usada_credito,
+        area_disponivel_credito=area_disponivel_credito,
+    )
+
+
 @admin_bp.route("/fazendas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_fazenda(id):
