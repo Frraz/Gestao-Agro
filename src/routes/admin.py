@@ -4,8 +4,10 @@ import datetime
 from datetime import date
 from math import ceil
 
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, url_for)
+from flask import (
+    Blueprint, flash, jsonify, redirect, render_template,
+    request, url_for
+)
 from flask_login import login_required
 
 from src.models.db import db
@@ -13,8 +15,9 @@ from src.models.documento import Documento, TipoDocumento, TipoEntidade
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.pessoa import Pessoa
 from src.utils.auditoria import registrar_auditoria
-from src.utils.email_service import (EmailService, formatar_email_notificacao,
-                                     verificar_documentos_vencendo)
+from src.utils.email_service import (
+    EmailService, formatar_email_notificacao, verificar_documentos_vencendo
+)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -42,7 +45,7 @@ def dashboard():
     docs_proximos = (
         docs_proximos_query.offset((prox_page - 1) * per_page).limit(per_page).all()
     )
-    total_pag_proximos = ceil(total_proximos / per_page)
+    total_pag_proximos = ceil(total_proximos / per_page) if total_proximos else 1
 
     docs_vencidos_query = Documento.query.filter(
         Documento.data_vencimento < hoje
@@ -51,7 +54,7 @@ def dashboard():
     docs_vencidos = (
         docs_vencidos_query.offset((venc_page - 1) * per_page).limit(per_page).all()
     )
-    total_pag_vencidos = ceil(total_vencidos / per_page)
+    total_pag_vencidos = ceil(total_vencidos / per_page) if total_vencidos else 1
 
     total_pessoas = Pessoa.query.count()
     total_fazendas = Fazenda.query.count()
@@ -409,6 +412,27 @@ def nova_fazenda():
     return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
 
 
+@admin_bp.route("/fazendas/<int:id>")
+@login_required
+def detalhes_fazenda(id):
+    """Detalha a fazenda, incluindo uso em endividamentos"""
+    from src.models.endividamento import EndividamentoFazenda  # avoid circular import
+    fazenda = Fazenda.query.get_or_404(id)
+    vinculos = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
+    vinculos_credito = [v for v in vinculos if v.tipo == 'objeto_credito']
+    vinculos_garantia = [v for v in vinculos if v.tipo == 'garantia']
+    total_consumido = sum(v.hectares or 0 for v in vinculos_credito)
+    saldo_disponivel = (fazenda.tamanho_total or 0) - total_consumido
+    return render_template(
+        "admin/fazendas/detalhes.html",
+        fazenda=fazenda,
+        vinculos_credito=vinculos_credito,
+        vinculos_garantia=vinculos_garantia,
+        total_consumido=total_consumido,
+        saldo_disponivel=saldo_disponivel,
+    )
+
+
 @admin_bp.route("/fazendas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_fazenda(id):
@@ -616,7 +640,6 @@ def listar_documentos():
     )
 
 
-# --------- Rotas para Documentos ---------
 @admin_bp.route("/documentos/novo", methods=["GET", "POST"])
 @login_required
 def novo_documento():
@@ -770,7 +793,7 @@ def editar_documento(id):
         # Obter múltiplos prazos de notificação
         prazos_notificacao = request.form.getlist("prazo_notificacao[]")
         if not prazos_notificacao:
-            prazos_notificacao = []  # Lista vazia se nenhum prazo selecionado
+            prazos_notificacao = []
         else:
             prazos_notificacao = [int(prazo) for prazo in prazos_notificacao]
 
@@ -785,7 +808,6 @@ def editar_documento(id):
                 pessoas=pessoas,
             )
 
-        # Validação da entidade relacionada
         if tipo_entidade == "FAZENDA" and not fazenda_id:
             flash("Selecione uma fazenda/área para relacionar o documento.", "danger")
             return render_template(
@@ -805,7 +827,6 @@ def editar_documento(id):
                 pessoas=pessoas,
             )
 
-        # Validação do tipo personalizado
         if tipo == "Outros" and not tipo_personalizado:
             flash(
                 'Para o tipo "Outros", é necessário informar o tipo personalizado.',
@@ -838,7 +859,6 @@ def editar_documento(id):
                 pessoas=pessoas,
             )
 
-        # CAPTURE O ESTADO ANTERIOR ANTES DE ALTERAR
         valor_anterior = {
             "id": documento.id,
             "nome": documento.nome,
@@ -857,7 +877,6 @@ def editar_documento(id):
             "prazos_notificacao": documento.prazos_notificacao,
         }
 
-        # Atualizar documento
         documento.nome = nome
         documento.tipo = TipoDocumento(tipo)
         documento.tipo_personalizado = tipo_personalizado if tipo == "Outros" else None
@@ -867,7 +886,6 @@ def editar_documento(id):
             TipoEntidade.FAZENDA if tipo_entidade == "FAZENDA" else TipoEntidade.PESSOA
         )
 
-        # Atualizar relacionamentos
         if tipo_entidade == "FAZENDA":
             documento.fazenda_id = int(fazenda_id)
             documento.pessoa_id = None
@@ -875,15 +893,11 @@ def editar_documento(id):
             documento.fazenda_id = None
             documento.pessoa_id = int(pessoa_id)
 
-        # Atualizar emails para notificação
         documento.emails_notificacao = emails_notificacao
-
-        # Atualizar prazos de notificação
         documento.prazos_notificacao = prazos_notificacao
 
         db.session.commit()
 
-        # LOG DE AUDITORIA
         registrar_auditoria(
             acao="edição",
             entidade="Documento",
@@ -927,7 +941,6 @@ def excluir_documento(id):
     documento = Documento.query.get_or_404(id)
 
     nome = documento.nome
-    # Capture o estado anterior antes de deletar
     valor_anterior = {
         "id": documento.id,
         "nome": documento.nome,
@@ -947,7 +960,6 @@ def excluir_documento(id):
     }
     db.session.delete(documento)
     db.session.commit()
-    # LOG DE AUDITORIA
     registrar_auditoria(
         acao="exclusão",
         entidade="Documento",
@@ -964,14 +976,12 @@ def listar_documentos_vencidos():
     """Lista documentos vencidos ou próximos do vencimento."""
     hoje = datetime.date.today()
 
-    # Documentos já vencidos
     documentos_vencidos = (
         Documento.query.filter(Documento.data_vencimento < hoje)
         .order_by(Documento.data_vencimento)
         .all()
     )
 
-    # Documentos próximos do vencimento (30 dias)
     data_limite = hoje + datetime.timedelta(days=30)
     documentos_proximos = (
         Documento.query.filter(
@@ -988,7 +998,6 @@ def listar_documentos_vencidos():
     )
 
 
-# --------- Envio real de notificações de documentos ---------
 @admin_bp.route("/documentos/notificacoes", methods=["GET", "POST"])
 @login_required
 def notificacoes_documentos():

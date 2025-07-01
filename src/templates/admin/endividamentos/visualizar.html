@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/endividamentos/visualizar.html-->
+
 {% extends "layouts/base.html" %}
 
 {% block title %}Detalhes do Endividamento{% endblock %}
@@ -70,7 +72,6 @@
                                 {% endif %}
                             </table>
                         </div>
-                        
                         <div class="col-md-6">
                             <h5>Pessoas Vinculadas</h5>
                             {% if endividamento.pessoas %}
@@ -98,7 +99,7 @@
                     
                     <!-- Objeto do Crédito -->
                     <div class="mb-4">
-                        <h5>Objeto do Crédito</h5>
+                        <h5>Áreas de Crédito (Objeto do Crédito)</h5>
                         {% set objetos_credito = endividamento.fazenda_vinculos | selectattr('tipo', 'equalto', 'objeto_credito') | list %}
                         {% if objetos_credito %}
                             <div class="table-responsive">
@@ -122,13 +123,13 @@
                                 </table>
                             </div>
                         {% else %}
-                            <p class="text-muted">Nenhum objeto do crédito definido.</p>
+                            <p class="text-muted">Nenhuma área de crédito definida.</p>
                         {% endif %}
                     </div>
                     
                     <!-- Garantias -->
                     <div class="mb-4">
-                        <h5>Garantias</h5>
+                        <h5>Garantias (Áreas)</h5>
                         {% set garantias = endividamento.fazenda_vinculos | selectattr('tipo', 'equalto', 'garantia') | list %}
                         {% if garantias %}
                             <div class="table-responsive">
@@ -136,7 +137,6 @@
                                     <thead>
                                         <tr>
                                             <th>Fazenda</th>
-                                            <th>Hectares</th>
                                             <th>Descrição</th>
                                         </tr>
                                     </thead>
@@ -144,7 +144,6 @@
                                         {% for vinculo in garantias %}
                                         <tr>
                                             <td>{{ vinculo.fazenda.nome if vinculo.fazenda else '-' }}</td>
-                                            <td>{{ vinculo.hectares if vinculo.hectares else '-' }}</td>
                                             <td>{{ vinculo.descricao if vinculo.descricao else '-' }}</td>
                                         </tr>
                                         {% endfor %}
@@ -291,9 +290,5 @@ function marcarComoPago(parcelaId, valorOriginal) {
     document.querySelector('[name="valor_pago"]').value = valorOriginal;
     new bootstrap.Modal(document.getElementById('modalPagamento')).show();
 }
-
-// Importar data atual para comparações
-window.dataAtual = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}
-

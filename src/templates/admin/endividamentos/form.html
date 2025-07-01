@@ -20,6 +20,7 @@
                 <form method="POST" id="formEndividamento" autocomplete="off">
                     {{ form.hidden_tag() }}
                     <div class="card-body">
+
                         <!-- Dados básicos -->
                         <div class="row">
                             <div class="col-md-6">
@@ -188,7 +189,7 @@
                                         {% if vinculo.tipo == 'garantia' %}
                                         <div class="garantia-item border p-3 mb-2">
                                             <div class="row">
-                                                <div class="col-md-4">
+                                                <div class="col-md-6">
                                                     <label class="form-label">Fazenda</label>
                                                     <select class="form-select fazenda-select" name="garantia_fazenda">
                                                         <option value="">Selecione uma fazenda</option>
@@ -200,15 +201,10 @@
                                                         {% endfor %}
                                                     </select>
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Hectares</label>
-                                                    <input type="number" class="form-control" name="garantia_hectares" 
-                                                           step="0.01" value="{{ vinculo.hectares or '' }}">
-                                                </div>
-                                                <div class="col-md-4">
+                                                <div class="col-md-5">
                                                     <label class="form-label">Descrição Livre</label>
                                                     <input type="text" class="form-control" name="garantia_descricao" 
-                                                           value="{{ vinculo.descricao or '' }}">
+                                                        value="{{ vinculo.descricao or '' }}">
                                                 </div>
                                                 <div class="col-md-1 d-flex align-items-end">
                                                     <button type="button" class="btn btn-danger btn-sm" onclick="removerItem(this)">
@@ -221,9 +217,7 @@
                                     {% endfor %}
                                 {% endif %}
                             </div>
-                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarGarantia()">
-                                <i class="fas fa-plus"></i> Adicionar Garantia
-                            </button>
+                            <button type="button" class="btn btn-success btn-sm" onclick="adicionarGarantia()"> <i class="fas fa-plus"></i> Adicionar Garantia</button>
                         </div>
                         <!-- Parcelas -->
                         <div class="mb-4">
@@ -258,9 +252,9 @@
                             </button>
                         </div>
                         <!-- Campos hidden para envio dos dados -->
-                        <input type="hidden" name="objetos_credito" id="objetosCreditoData">
-                        <input type="hidden" name="garantias" id="garantiasData">
-                        <input type="hidden" name="parcelas" id="parcelasData">
+                        {{ form.objetos_credito(id="objetosCreditoData") }}
+                        {{ form.garantias(id="garantiasData") }}
+                        {{ form.parcelas(id="parcelasData") }}
                     </div>
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary">
@@ -291,7 +285,6 @@ document.addEventListener('DOMContentLoaded', function() {
         pessoasSelecionadasIds.add({{ pessoa.id }});
         {% endfor %}
     {% endif %}
-    // Adiciona eventos somente se os elementos existirem
     const buscaPessoaInput = document.getElementById('buscaPessoa');
     const resultadosDiv = document.getElementById('resultadosBusca');
     if (buscaPessoaInput) {
@@ -341,6 +334,16 @@ function buscarPessoas() {
                         </div>
                     `;
                     resultadosDiv.appendChild(item);
+                });
+                // Adiciona evento para seleção
+                resultadosDiv.querySelectorAll('.selecionar-pessoa').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        selecionarPessoa(
+                            parseInt(this.getAttribute('data-id')),
+                            this.getAttribute('data-nome'),
+                            this.getAttribute('data-cpf-cnpj')
+                        );
+                    });
                 });
             } else {
                 resultadosDiv.innerHTML = '<div class="list-group-item">Nenhuma pessoa encontrada</div>';
@@ -413,18 +416,14 @@ function adicionarGarantia() {
     item.className = 'garantia-item border p-3 mb-2';
     item.innerHTML = `
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">Fazenda</label>
                 <select class="form-select fazenda-select" name="garantia_fazenda">
                     <option value="">Selecione uma fazenda</option>
                     ${fazendas.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Hectares</label>
-                <input type="number" class="form-control" name="garantia_hectares" step="0.01">
-            </div>
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <label class="form-label">Descrição Livre</label>
                 <input type="text" class="form-control" name="garantia_descricao">
             </div>
@@ -465,16 +464,23 @@ function adicionarParcela() {
 function removerItem(button) {
     button.closest('.border').remove();
 }
+
+// Torne as funções globais para uso nos onclick dos botões
+window.adicionarObjetoCredito = adicionarObjetoCredito;
+window.adicionarGarantia = adicionarGarantia;
+window.adicionarParcela = adicionarParcela;
+window.removerItem = removerItem;
+
 document.getElementById('formEndividamento').addEventListener('submit', function(e) {
     const objetosCredito = [];
     document.querySelectorAll('.objeto-credito-item').forEach(item => {
         const fazenda = item.querySelector('[name="objeto_fazenda"]').value;
         const hectares = item.querySelector('[name="objeto_hectares"]').value;
         const descricao = item.querySelector('[name="objeto_descricao"]').value;
-        if (fazenda || hectares || descricao) {
+        if (fazenda && hectares) { // só envia se ambos preenchidos
             objetosCredito.push({
-                fazenda_id: fazenda || null,
-                hectares: hectares || null,
+                fazenda_id: fazenda,
+                hectares: hectares,
                 descricao: descricao || null
             });
         }
@@ -482,12 +488,10 @@ document.getElementById('formEndividamento').addEventListener('submit', function
     const garantias = [];
     document.querySelectorAll('.garantia-item').forEach(item => {
         const fazenda = item.querySelector('[name="garantia_fazenda"]').value;
-        const hectares = item.querySelector('[name="garantia_hectares"]').value;
         const descricao = item.querySelector('[name="garantia_descricao"]').value;
-        if (fazenda || hectares || descricao) {
+        if (fazenda) {
             garantias.push({
-                fazenda_id: fazenda || null,
-                hectares: hectares || null,
+                fazenda_id: fazenda,
                 descricao: descricao || null
             });
         }

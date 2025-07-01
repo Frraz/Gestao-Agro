@@ -1,38 +1,11 @@
 # /src/forms/endividamento.py
 
-# Formulários para Endividamentos
-
 from flask_wtf import FlaskForm
-from wtforms import DateField, DecimalField, HiddenField, IntegerField, SelectField, StringField, TextAreaField
+from wtforms import (
+    DateField, DecimalField, HiddenField, IntegerField, SelectField, StringField,
+    TextAreaField
+)
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
-
-class ParcelaForm(FlaskForm):
-    """Formulário para cadastro de parcelas"""
-
-    id = HiddenField()
-    data_vencimento = DateField("Data de Vencimento", validators=[DataRequired()])
-    valor = DecimalField(
-        "Valor (R$)", validators=[DataRequired(), NumberRange(min=0.01)], places=2
-    )
-
-
-class EndividamentoFazendaForm(FlaskForm):
-    """Formulário para vínculo com fazendas"""
-
-    id = HiddenField()
-    fazenda_id = SelectField("Fazenda", coerce=int, validators=[Optional()])
-    hectares = DecimalField(
-        "Hectares", validators=[Optional(), NumberRange(min=0)], places=2
-    )
-    tipo = SelectField(
-        "Tipo",
-        choices=[("objeto_credito", "Objeto do Crédito"), ("garantia", "Garantia")],
-        validators=[DataRequired()],
-    )
-    descricao = TextAreaField(
-        "Descrição Livre", validators=[Optional(), Length(max=1000)]
-    )
-
 
 class EndividamentoForm(FlaskForm):
     """Formulário principal para cadastro de endividamentos"""
@@ -60,21 +33,21 @@ class EndividamentoForm(FlaskForm):
         "Valor da Operação (R$)", validators=[Optional(), NumberRange(min=0)], places=2
     )
 
-    # Campos para seleção de pessoas (será preenchido dinamicamente)
     pessoas_selecionadas = StringField("Pessoas Selecionadas")
 
+    # Campos hidden para as listas (em JSON)
+    objetos_credito = HiddenField("Áreas de Crédito (JSON)")
+    garantias = HiddenField("Garantias (JSON)")
+    parcelas = HiddenField("Parcelas (JSON)")
+
     def validate_data_vencimento_final(self, field):
-        """Valida se a data de vencimento final é posterior à data de emissão"""
         if field.data and self.data_emissao.data:
             if field.data <= self.data_emissao.data:
                 raise ValidationError(
                     "A data de vencimento final deve ser posterior à data de emissão."
                 )
 
-
 class FiltroEndividamentoForm(FlaskForm):
-    """Formulário para filtros na listagem de endividamentos"""
-
     banco = StringField("Banco")
     pessoa_id = SelectField("Pessoa", coerce=int, validators=[Optional()])
     fazenda_id = SelectField("Fazenda", coerce=int, validators=[Optional()])

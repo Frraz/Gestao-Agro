@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ fazenda.nome }} — Detalhes{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mt-3">{{ fazenda.nome }}</h2>
+      <p><strong>Matrícula:</strong> {{ fazenda.matricula }}</p>
+      <p><strong>Município/UF:</strong> {{ fazenda.municipio }} / {{ fazenda.estado }}</p>
+      <p><strong>Área consolidada:</strong> {{ fazenda.tamanho_total }} ha</p>
+      <p><strong>Saldo disponível para crédito:</strong>
+        <span class="{% if saldo_disponivel < 0 %}text-danger{% endif %}">
+          {{ saldo_disponivel }}
+        </span> ha
+      </p>
+      <p><strong>Área já consumida em crédito:</strong> {{ total_consumido }} ha</p>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <h4>Endividamentos como Crédito</h4>
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>Endividamento</th>
+            <th>Hectares usados</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vinculo in vinculos_credito %}
+          <tr>
+            <td>
+              <a href="{{ url_for('endividamento.visualizar', id=vinculo.endividamento_id) }}">
+                {{ vinculo.endividamento.banco }} — {{ vinculo.endividamento.numero_proposta }}
+              </a>
+            </td>
+            <td>{{ vinculo.hectares }}</td>
+            <td>{{ vinculo.descricao or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="text-muted text-center">Nenhum uso como crédito.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <h4>Endividamentos como Garantia</h4>
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>Endividamento</th>
+            <th>Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vinculo in vinculos_garantia %}
+          <tr>
+            <td>
+              <a href="{{ url_for('endividamento.visualizar', id=vinculo.endividamento_id) }}">
+                {{ vinculo.endividamento.banco }} — {{ vinculo.endividamento.numero_proposta }}
+              </a>
+            </td>
+            <td>{{ vinculo.descricao or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="2" class="text-muted text-center">Nenhum uso como garantia.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

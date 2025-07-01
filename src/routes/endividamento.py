@@ -1,5 +1,5 @@
 # /src/routes/endividamento.py
-# Rotas para gerenciamento de endividamentos
+
 import json
 from datetime import date, datetime, timedelta
 
@@ -32,10 +32,8 @@ def listar():
         (f.id, f.nome) for f in Fazenda.query.all()
     ]
 
-    # Construir query base
     query = Endividamento.query
 
-    # Aplicar filtros se fornecidos
     if request.args.get("banco"):
         query = query.filter(
             Endividamento.banco.ilike(f"%{request.args.get('banco')}%")
@@ -73,10 +71,8 @@ def listar():
         ).date()
         query = query.filter(Endividamento.data_vencimento_final <= venc_fim)
 
-    # Ordenar por data de vencimento final
     endividamentos = query.order_by(Endividamento.data_vencimento_final.asc()).all()
 
-    # Passando form_filtro para o template
     return render_template(
         "admin/endividamentos/listar.html",
         endividamentos=endividamentos,
@@ -93,7 +89,6 @@ def novo():
     if request.method == "POST":
         if form.validate_on_submit():
             try:
-                # Criar novo endividamento
                 endividamento = Endividamento(
                     banco=sanitize_input(form.banco.data),
                     numero_proposta=sanitize_input(form.numero_proposta.data),
@@ -115,50 +110,43 @@ def novo():
                     endividamento.pessoas = pessoas
 
                 # Processar vínculos com fazendas (objeto do crédito)
-                objetos_credito_str = json.loads(
-                    request.form.get("objetos_credito") or "[]"
-                )
-                if objetos_credito_str:
-                    objetos_credito = json.loads(objetos_credito_str)
-                else:
-                    objetos_credito = []
+                objetos_credito = json.loads(request.form.get("objetos_credito") or "[]")
                 for obj in objetos_credito:
-                    vinculo = EndividamentoFazenda(
-                        endividamento_id=endividamento.id,
-                        fazenda_id=(
-                            obj.get("fazenda_id") if obj.get("fazenda_id") else None
-                        ),
-                        hectares=obj.get("hectares"),
-                        tipo="objeto_credito",
-                        descricao=sanitize_input(obj.get("descricao")),
-                    )
-                    db.session.add(vinculo)
+                    if obj.get("fazenda_id") and obj.get("hectares"):
+                        vinculo = EndividamentoFazenda(
+                            endividamento_id=endividamento.id,
+                            fazenda_id=int(obj["fazenda_id"]),
+                            hectares=float(obj["hectares"]),
+                            tipo="objeto_credito",
+                            descricao=sanitize_input(obj.get("descricao")),
+                        )
+                        db.session.add(vinculo)
 
                 # Processar garantias
                 garantias = json.loads(request.form.get("garantias") or "[]")
                 for gar in garantias:
-                    vinculo = EndividamentoFazenda(
-                        endividamento_id=endividamento.id,
-                        fazenda_id=(
-                            gar.get("fazenda_id") if gar.get("fazenda_id") else None
-                        ),
-                        hectares=gar.get("hectares"),
-                        tipo="garantia",
-                        descricao=sanitize_input(gar.get("descricao")),
-                    )
-                    db.session.add(vinculo)
+                    if gar.get("fazenda_id"):
+                        vinculo = EndividamentoFazenda(
+                            endividamento_id=endividamento.id,
+                            fazenda_id=int(gar["fazenda_id"]),
+                            hectares=None,
+                            tipo="garantia",
+                            descricao=sanitize_input(gar.get("descricao")),
+                        )
+                        db.session.add(vinculo)
 
                 # Processar parcelas
                 parcelas = json.loads(request.form.get("parcelas") or "[]")
                 for parc in parcelas:
-                    parcela = Parcela(
-                        endividamento_id=endividamento.id,
-                        data_vencimento=datetime.strptime(
-                            parc["data_vencimento"], "%Y-%m-%d"
-                        ).date(),
-                        valor=float(parc["valor"]),
-                    )
-                    db.session.add(parcela)
+                    if parc.get("data_vencimento") and parc.get("valor"):
+                        parcela = Parcela(
+                            endividamento_id=endividamento.id,
+                            data_vencimento=datetime.strptime(
+                                parc["data_vencimento"], "%Y-%m-%d"
+                            ).date(),
+                            valor=float(parc["valor"]),
+                        )
+                        db.session.add(parcela)
 
                 db.session.commit()
                 flash("Endividamento cadastrado com sucesso!", "success")
@@ -173,7 +161,6 @@ def novo():
                 "danger",
             )
 
-    # Carregar dados para os selects
     pessoas = Pessoa.query.all()
     fazendas = Fazenda.query.all()
 
@@ -206,7 +193,6 @@ def editar(id):
     if request.method == "POST":
         if form.validate_on_submit():
             try:
-                # Atualizar dados básicos
                 endividamento.banco = sanitize_input(form.banco.data)
                 endividamento.numero_proposta = sanitize_input(
                     form.numero_proposta.data
@@ -218,7 +204,6 @@ def editar(id):
                 endividamento.prazo_carencia = form.prazo_carencia.data
                 endividamento.valor_operacao = form.valor_operacao.data
 
-                # Atualizar pessoas
                 pessoas_ids = request.form.getlist("pessoas_ids")
                 if pessoas_ids:
                     pessoas = Pessoa.query.filter(Pessoa.id.in_(pessoas_ids)).all()
@@ -226,54 +211,45 @@ def editar(id):
                 else:
                     endividamento.pessoas = []
 
-                # Remover vínculos existentes
                 EndividamentoFazenda.query.filter_by(endividamento_id=id).delete()
 
-                # Recriar vínculos com fazendas
-                objetos_credito_str = request.form.get("objetos_credito")
-                if objetos_credito_str:
-                    objetos_credito = json.loads(objetos_credito_str)
-                else:
-                    objetos_credito = []
+                objetos_credito = json.loads(request.form.get("objetos_credito") or "[]")
                 for obj in objetos_credito:
-                    vinculo = EndividamentoFazenda(
-                        endividamento_id=endividamento.id,
-                        fazenda_id=(
-                            obj.get("fazenda_id") if obj.get("fazenda_id") else None
-                        ),
-                        hectares=obj.get("hectares"),
-                        tipo="objeto_credito",
-                        descricao=sanitize_input(obj.get("descricao")),
-                    )
-                    db.session.add(vinculo)
+                    if obj.get("fazenda_id") and obj.get("hectares"):
+                        vinculo = EndividamentoFazenda(
+                            endividamento_id=endividamento.id,
+                            fazenda_id=int(obj["fazenda_id"]),
+                            hectares=float(obj["hectares"]),
+                            tipo="objeto_credito",
+                            descricao=sanitize_input(obj.get("descricao")),
+                        )
+                        db.session.add(vinculo)
 
-                garantias = json.loads(request.form.get("garantias", "[]") or "[]")
+                garantias = json.loads(request.form.get("garantias") or "[]")
                 for gar in garantias:
-                    vinculo = EndividamentoFazenda(
-                        endividamento_id=endividamento.id,
-                        fazenda_id=(
-                            gar.get("fazenda_id") if gar.get("fazenda_id") else None
-                        ),
-                        hectares=gar.get("hectares"),
-                        tipo="garantia",
-                        descricao=sanitize_input(gar.get("descricao")),
-                    )
-                    db.session.add(vinculo)
+                    if gar.get("fazenda_id"):
+                        vinculo = EndividamentoFazenda(
+                            endividamento_id=endividamento.id,
+                            fazenda_id=int(gar["fazenda_id"]),
+                            hectares=None,
+                            tipo="garantia",
+                            descricao=sanitize_input(gar.get("descricao")),
+                        )
+                        db.session.add(vinculo)
 
-                # Remover parcelas existentes
                 Parcela.query.filter_by(endividamento_id=id).delete()
 
-                # Recriar parcelas
                 parcelas = json.loads(request.form.get("parcelas") or "[]")
                 for parc in parcelas:
-                    parcela = Parcela(
-                        endividamento_id=endividamento.id,
-                        data_vencimento=datetime.strptime(
-                            parc["data_vencimento"], "%Y-%m-%d"
-                        ).date(),
-                        valor=float(parc["valor"]),
-                    )
-                    db.session.add(parcela)
+                    if parc.get("data_vencimento") and parc.get("valor"):
+                        parcela = Parcela(
+                            endividamento_id=endividamento.id,
+                            data_vencimento=datetime.strptime(
+                                parc["data_vencimento"], "%Y-%m-%d"
+                            ).date(),
+                            valor=float(parc["valor"]),
+                        )
+                        db.session.add(parcela)
 
                 db.session.commit()
                 flash("Endividamento atualizado com sucesso!", "success")
@@ -288,7 +264,6 @@ def editar(id):
                 "danger",
             )
 
-    # Carregar dados para os selects
     pessoas = Pessoa.query.all()
     fazendas = Fazenda.query.all()
 
@@ -322,14 +297,12 @@ def vencimentos():
     """Lista parcelas próximas do vencimento"""
     hoje = date.today()
 
-    # Parcelas vencidas
     parcelas_vencidas = (
         Parcela.query.filter(Parcela.data_vencimento < hoje, Parcela.pago.is_(False))
         .order_by(Parcela.data_vencimento.asc())
         .all()
     )
 
-    # Parcelas vencendo nos próximos 30 dias
     data_limite = hoje + timedelta(days=30)
 
     parcelas_a_vencer = (
@@ -386,35 +359,29 @@ def api_fazendas_pessoa(pessoa_id):
 def buscar_pessoas():
     """Endpoint para busca AJAX de pessoas com cache Redis e paginação"""
     from src.utils.cache import cache
-    
+
     termo = request.args.get("q", "").strip()
     page = request.args.get("page", 1, type=int)
     limit = request.args.get("limit", 10, type=int)
-    
-    # Validação de parâmetros
+
     if len(termo) < 2:
         return jsonify([])
-    
-    # Limitar page e limit para evitar sobrecarga
+
     page = max(1, page)
-    limit = min(max(1, limit), 50)  # máximo 50 resultados por página
-    
-    # Gerar chave de cache
+    limit = min(max(1, limit), 50)
+
     cache_key = f"buscar_pessoas:{termo}:{page}:{limit}"
-    
-    # Tentar obter do cache primeiro
+
     resultado_cache = cache.get(cache_key)
     if resultado_cache is not None:
         return jsonify(resultado_cache)
 
-    # Calcular offset para paginação
     offset = (page - 1) * limit
-    
-    # Buscar no banco de dados
+
     query = Pessoa.query.filter(
         or_(Pessoa.nome.ilike(f"%{termo}%"), Pessoa.cpf_cnpj.ilike(f"%{termo}%"))
     )
-    
+
     total_count = query.count()
     pessoas = query.offset(offset).limit(limit).all()
 
@@ -427,8 +394,7 @@ def buscar_pessoas():
         }
         for pessoa in pessoas
     ]
-    
-    # Metadados de paginação (incluídos apenas se paginação for solicitada)
+
     response_data = resultado
     if "page" in request.args or "limit" in request.args:
         response_data = {
@@ -442,10 +408,9 @@ def buscar_pessoas():
                 "total_pages": (total_count + limit - 1) // limit
             }
         }
-    
-    # Armazenar no cache por 5 minutos (300 segundos)
+
     cache.set(cache_key, response_data, timeout=300)
-    
+
     return jsonify(response_data)
 
 
@@ -515,4 +480,3 @@ def processar_notificacoes():
 
     except Exception as e:
         return jsonify({"sucesso": False, "erro": str(e)}), 500
-    
