@@ -15,9 +15,9 @@ from src.models.notificacao_endividamento import NotificacaoEndividamento
 from src.models.pessoa import Pessoa
 from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
 from src.utils.validators import sanitize_input
+from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 
 endividamento_bp = Blueprint("endividamento", __name__, url_prefix="/endividamentos")
-
 
 @endividamento_bp.route("/")
 def listar():
@@ -79,7 +79,6 @@ def listar():
         form_filtro=form_filtro,
         date=date,
     )
-
 
 @endividamento_bp.route("/novo", methods=["GET", "POST"])
 def novo():
@@ -172,17 +171,32 @@ def novo():
         endividamento=None,
     )
 
-
 @endividamento_bp.route("/<int:id>")
 def visualizar(id):
     """Visualiza detalhes de um endividamento"""
     endividamento = Endividamento.query.get_or_404(id)
+    # Obter configuração de notificação
+    config = NotificacaoEndividamento.query.filter_by(endividamento_id=id, ativo=True).first()
+    prazos = [30, 15, 7, 1]
+    if config and hasattr(config, "prazos") and config.prazos:
+        try:
+            prazos = json.loads(config.prazos)
+        except Exception:
+            pass
+    # Já enviadas?
+    from src.models.notificacao_endividamento import HistoricoNotificacao
+    enviados = [
+        n.tipo_notificacao for n in HistoricoNotificacao.query.filter_by(endividamento_id=id, sucesso=True)
+    ]
+    proximas_notificacoes = calcular_proximas_notificacoes_programadas(
+        endividamento.data_vencimento_final, prazos, enviados
+    )
     return render_template(
         "admin/endividamentos/visualizar.html",
         endividamento=endividamento,
         date=date,
+        proximas_notificacoes=proximas_notificacoes,
     )
-
 
 @endividamento_bp.route("/<int:id>/editar", methods=["GET", "POST"])
 def editar(id):
@@ -275,7 +289,6 @@ def editar(id):
         endividamento=endividamento,
     )
 
-
 @endividamento_bp.route("/<int:id>/excluir", methods=["POST"])
 def excluir(id):
     """Exclui um endividamento"""
@@ -291,10 +304,9 @@ def excluir(id):
 
     return redirect(url_for("endividamento.listar"))
 
-
 @endividamento_bp.route("/vencimentos")
 def vencimentos():
-    """Lista parcelas próximas do vencimento"""
+    """Lista parcelas próximas do vencimento e exibe próximas notificações programadas"""
     hoje = date.today()
 
     parcelas_vencidas = (
@@ -317,12 +329,31 @@ def vencimentos():
         .all()
     )
 
+    # Adiciona próximas notificações programadas a cada parcela (baseado no endividamento da parcela)
+    from src.models.notificacao_endividamento import HistoricoNotificacao
+
+    for parcela in parcelas_a_vencer:
+        endividamento = parcela.endividamento
+        config = NotificacaoEndividamento.query.filter_by(endividamento_id=endividamento.id, ativo=True).first()
+        prazos = [30, 15, 7, 1]
+        if config and hasattr(config, "prazos") and config.prazos:
+            try:
+                prazos = json.loads(config.prazos)
+            except Exception:
+                pass
+        enviados = [
+            n.tipo_notificacao for n in HistoricoNotificacao.query.filter_by(endividamento_id=endividamento.id, sucesso=True)
+        ]
+        parcela.proximas_notificacoes = calcular_proximas_notificacoes_programadas(
+            endividamento.data_vencimento_final, prazos, enviados
+        )
+
     return render_template(
         "admin/endividamentos/vencimentos.html",
         parcelas_vencidas=parcelas_vencidas,
         parcelas_a_vencer=parcelas_a_vencer,
+        date=date,
     )
-
 
 @endividamento_bp.route("/parcela/<int:id>/pagar", methods=["POST"])
 def pagar_parcela(id):
@@ -343,7 +374,6 @@ def pagar_parcela(id):
 
     return redirect(url_for("endividamento.vencimentos"))
 
-
 @endividamento_bp.route("/api/fazendas/<int:pessoa_id>")
 def api_fazendas_pessoa(pessoa_id):
     """API para obter fazendas de uma pessoa"""
@@ -353,7 +383,6 @@ def api_fazendas_pessoa(pessoa_id):
         for f in pessoa.fazendas
     ]
     return jsonify(fazendas)
-
 
 @endividamento_bp.route("/buscar-pessoas")
 def buscar_pessoas():
@@ -413,7 +442,6 @@ def buscar_pessoas():
 
     return jsonify(response_data)
 
-
 @endividamento_bp.route("/<int:id>/notificacoes", methods=["GET", "POST"])
 def configurar_notificacoes(id):
     """Configura notificações para um endividamento"""
@@ -461,7 +489,6 @@ def configurar_notificacoes(id):
         form=form,
         historico=historico,
     )
-
 
 @endividamento_bp.route("/api/processar-notificacoes", methods=["POST"])
 def processar_notificacoes():

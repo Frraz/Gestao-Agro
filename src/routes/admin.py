@@ -10,6 +10,7 @@ from flask import (
 )
 from flask_login import login_required
 
+from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento, TipoEntidade
 from src.models.fazenda import Fazenda, TipoPosse
@@ -803,7 +804,7 @@ def editar_documento(id):
         if not prazos_notificacao:
             prazos_notificacao = []
         else:
-            prazos_notificacao = [int(prazo) for prazo in prazos_notificacao]
+            prazos_notificacao = [int(prazo) for prazo in prazos_notificacao if str(prazo).isdigit()]
 
         # Validação básica
         if not nome or not tipo or not data_emissao:
@@ -993,11 +994,19 @@ def listar_documentos_vencidos():
     data_limite = hoje + datetime.timedelta(days=30)
     documentos_proximos = (
         Documento.query.filter(
-            Documento.data_vencimento >= hoje, Documento.data_vencimento <= data_limite
-        )
-        .order_by(Documento.data_vencimento)
-        .all()
+            Documento.data_vencimento >= hoje,
+            Documento.data_vencimento <= data_limite
+        ).order_by(Documento.data_vencimento).all()
     )
+
+    # Garante que os prazos estão como inteiros para cálculo correto das notificações programadas
+    for doc in documentos_proximos:
+        prazos = doc.prazos_notificacao if doc.prazos_notificacao else [30, 15, 7, 1]
+        prazos = [int(p) for p in prazos]
+        enviados = []  # Se houver histórico, preencha
+        doc.proximas_notificacoes = calcular_proximas_notificacoes_programadas(
+            doc.data_vencimento, prazos, enviados
+        )
 
     return render_template(
         "admin/documentos/vencidos.html",

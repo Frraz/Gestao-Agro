@@ -97,6 +97,26 @@
                         </div>
                     </div>
                     
+                    <!-- Próximas Notificações Programadas -->
+                    <div class="mb-4">
+                        <h5>Próximas Notificações Programadas</h5>
+                        {% if proximas_notificacoes and proximas_notificacoes|length %}
+                            <ul class="list-group">
+                                {% for notif in proximas_notificacoes %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-clock text-primary"></i>
+                                            {{ notif.restante_texto }}
+                                        </span>
+                                        <span class="badge bg-info">{{ notif.prazo }} dia{{ "s" if notif.prazo > 1 else "" }} de antecedência</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">Nenhuma notificação futura programada.</p>
+                        {% endif %}
+                    </div>
+                    
                     <!-- Objeto do Crédito -->
                     <div class="mb-4">
                         <h5>Áreas de Crédito (Objeto do Crédito)</h5>

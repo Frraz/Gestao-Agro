@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/documentos/vencidos.html-->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Documentos Vencidos - Sistema de Gestão de Fazendas{% endblock %}
@@ -34,9 +36,23 @@
                             {% for documento in documentos_vencidos %}
                                 <tr>
                                     <td>{{ documento.nome }}</td>
-                                    <td>{{ documento.tipo.value }}</td>
-                                    <td>{{ documento.fazenda.nome }}</td>
-                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        {% if documento.tipo.value is defined %}
+                                            {{ documento.tipo.value }}
+                                        {% else %}
+                                            {{ documento.tipo }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if documento.fazenda is defined and documento.fazenda %}
+                                            {{ documento.fazenda.nome }}
+                                        {% elif documento.entidade_nome is defined and documento.entidade_nome %}
+                                            {{ documento.entidade_nome }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') if documento.data_vencimento else '-' }}</td>
                                     <td>
                                         <span class="badge bg-danger">Vencido</span>
                                     </td>
@@ -80,6 +96,7 @@
                                 <th>Fazenda</th>
                                 <th>Data de Vencimento</th>
                                 <th>Dias Restantes</th>
+                                <th>Próximas Notificações</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -87,11 +104,49 @@
                             {% for documento in documentos_proximos %}
                                 <tr>
                                     <td>{{ documento.nome }}</td>
-                                    <td>{{ documento.tipo.value }}</td>
-                                    <td>{{ documento.fazenda.nome }}</td>
-                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
                                     <td>
-                                        <span class="badge bg-warning text-dark">{{ documento.proximo_vencimento }} dias</span>
+                                        {% if documento.tipo.value is defined %}
+                                            {{ documento.tipo.value }}
+                                        {% else %}
+                                            {{ documento.tipo }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if documento.fazenda is defined and documento.fazenda %}
+                                            {{ documento.fazenda.nome }}
+                                        {% elif documento.entidade_nome is defined and documento.entidade_nome %}
+                                            {{ documento.entidade_nome }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') if documento.data_vencimento else '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">
+                                            {% if documento.proximo_vencimento is defined %}
+                                                {{ documento.proximo_vencimento }}
+                                            {% elif documento.dias_restantes is defined %}
+                                                {{ documento.dias_restantes }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                            dias
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if documento.proximas_notificacoes and documento.proximas_notificacoes|length %}
+                                            <ul class="list-unstyled mb-0">
+                                                {% for notif in documento.proximas_notificacoes %}
+                                                    <li>
+                                                        <i class="fas fa-clock text-primary"></i>
+                                                        {{ notif.restante_texto }}
+                                                        <span class="badge bg-info">{{ notif.prazo }} dia{{ "s" if notif.prazo > 1 else "" }} antes</span>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            <span class="text-muted">Nenhuma notificação programada</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">

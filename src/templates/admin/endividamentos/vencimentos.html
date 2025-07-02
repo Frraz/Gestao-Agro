@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/endividamentos/vencimentos.html-->
+
 {% extends "layouts/base.html" %}
 
 {% block title %}Vencimentos de Parcelas{% endblock %}
@@ -89,6 +91,7 @@
                                         <th>Data de Vencimento</th>
                                         <th>Valor</th>
                                         <th>Dias para Vencimento</th>
+                                        <th>Notificações Programadas</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -110,6 +113,21 @@
                                                 <span class="badge bg-danger">{{ dias_vencimento }} dias</span>
                                             {% else %}
                                                 <span class="badge bg-warning">{{ dias_vencimento }} dias</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if parcela.proximas_notificacoes and parcela.proximas_notificacoes|length %}
+                                                <ul class="list-unstyled mb-0">
+                                                    {% for notif in parcela.proximas_notificacoes %}
+                                                        <li>
+                                                            <i class="fas fa-clock text-primary"></i>
+                                                            {{ notif.restante_texto }}
+                                                            <span class="badge bg-info">{{ notif.prazo }} dia{{ "s" if notif.prazo > 1 else "" }} antes</span>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% else %}
+                                                <span class="text-muted">Nenhuma notificação programada</span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -208,4 +226,3 @@ function marcarComoPago(parcelaId, valorOriginal) {
 }
 </script>
 {% endblock %}
-
