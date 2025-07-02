@@ -1,3 +1,5 @@
+# /tests/conftest.py
+
 import pytest
 from src.main import create_app
 from src.models.db import db
@@ -6,7 +8,9 @@ from src.models.db import db
 def app():
     app = create_app({
         "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        # Opcional: desabilite o cache real durante testes
+        "REDIS_URL": "redis://localhost:6379/15",
     })
     with app.app_context():
         db.create_all()
@@ -25,3 +29,11 @@ def pessoa_obj(app):
     db.session.add(obj)
     db.session.commit()
     return obj
+
+# Fixture opcional para garantir que nenhum teste use Redis real
+import pytest
+from unittest.mock import MagicMock
+
+@pytest.fixture(autouse=True)
+def mock_cache(monkeypatch):
+    monkeypatch.setattr("src.utils.cache.cache", MagicMock())

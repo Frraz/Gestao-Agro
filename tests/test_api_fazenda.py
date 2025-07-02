@@ -1,79 +1,96 @@
-import pytest
-from src.main import create_app
-from src.models.db import db
-from src.models.fazenda import TipoPosse
+# tests/test_api_fazenda.py
 
-@pytest.fixture
-def app():
-    app = create_app({
-        "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "SECRET_KEY": "test"
-    })
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
-@pytest.fixture
-def client(app):
-    return app.test_client()
+import unicodedata
+
+def normalize_enum(val):
+    # Garante que None não quebre a normalização
+    if val is None:
+        return ""
+    return unicodedata.normalize('NFKD', val).encode('ASCII', 'ignore').decode().upper()
 
 def test_criar_listar_fazenda(client):
-    # Cria uma fazenda via POST
-    response = client.post("/api/fazendas/", json={
+    response = client.get("/api/fazendas/")
+    assert response.status_code == 200
+    assert isinstance(response.get_json(), list)
+    assert len(response.get_json()) == 0
+
+    payload = {
         "nome": "Fazenda Teste",
         "matricula": "123",
         "tamanho_total": 100.0,
         "area_consolidada": 20.0,
-        "tipo_posse": TipoPosse.PROPRIA.value,
+        "tipo_posse": "Própria",
         "municipio": "Cidade X",
         "estado": "UF",
         "recibo_car": "CAR-001"
-    })
-    assert response.status_code == 201
+    }
+    response = client.post("/api/fazendas/", json=payload)
+    assert response.status_code == 201, f"Retorno: {response.status_code}, body: {response.get_json()}"
     data = response.get_json()
-    assert data["nome"] == "Fazenda Teste"
+    assert data["nome"] == payload["nome"]
+    # Compara normalizando ambos (caso backend mude futura serialização para .name)
+    assert normalize_enum(data["tipo_posse"]) == normalize_enum("PROPRIA")
     fazenda_id = data["id"]
 
-    # Lista fazendas via GET (com barra final)
     response = client.get("/api/fazendas/")
     assert response.status_code == 200
     data_list = response.get_json()
     assert any(f["id"] == fazenda_id for f in data_list)
 
 def test_get_update_delete_fazenda(client):
-    # Cria uma fazenda
-    response = client.post("/api/fazendas/", json={
+    payload = {
         "nome": "Fazenda API",
         "matricula": "456",
         "tamanho_total": 150.0,
         "area_consolidada": 30.0,
-        "tipo_posse": TipoPosse.PROPRIA.value,
+        "tipo_posse": "Própria",
         "municipio": "Cidade Y",
         "estado": "UF",
         "recibo_car": "CAR-002"
-    })
-    fazenda_id = response.get_json()["id"]
+    }
+    response = client.post("/api/fazendas/", json=payload)
+    assert response.status_code == 201, f"Retorno: {response.status_code}, body: {response.get_json()}"
+    data = response.get_json()
+    fazenda_id = data["id"]
 
-    # GET único
     response = client.get(f"/api/fazendas/{fazenda_id}")
     assert response.status_code == 200
-    assert response.get_json()["nome"] == "Fazenda API"
+    data_get = response.get_json()
+    assert data_get["nome"] == payload["nome"]
+    assert normalize_enum(data_get["tipo_posse"]) == normalize_enum("PROPRIA")
 
-    # PUT (atualiza parcialmente)
     response = client.put(f"/api/fazendas/{fazenda_id}", json={
         "municipio": "Cidade Alterada"
     })
     assert response.status_code == 200
     assert response.get_json()["municipio"] == "Cidade Alterada"
 
-    # DELETE
     response = client.delete(f"/api/fazendas/{fazenda_id}")
     assert response.status_code == 200
     assert "excluída com sucesso" in response.get_json().get("mensagem", "")
 
-    # GET após deleção deve retornar 404
     response = client.get(f"/api/fazendas/{fazenda_id}")
     assert response.status_code == 404
+
+def test_criar_fazenda_faltando_nome(client):
+    payload = {
+        "matricula": "123",
+        "tamanho_total": 100.0,
+        "area_consolidada": 20.0,
+        "tipo_posse": "Própria",
+        "municipio": "Cidade X",
+        "estado": "UF",
+        "recibo_car": "CAR-001"
+    }
+    response = client.post("/api/fazendas/", json=payload)
+    # Exibe o status para entender eventual erro
+    assert response.status_code in (400, 422), f"Status inesperado: {response.status_code}, body: {response.get_json()}"
+
+def test_update_fazenda_inexistente(client):
+    response = client.put("/api/fazendas/9999", json={"municipio": "X"})
+    assert response.status_code == 404, f"Status inesperado: {response.status_code}, body: {response.get_json()}"
+
+def test_delete_fazenda_inexistente(client):
+    response = client.delete("/api/fazendas/9999")
+    assert response.status_code == 404, f"Status inesperado: {response.status_code}, body: {response.get_json()}"

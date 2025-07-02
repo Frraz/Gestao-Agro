@@ -1,9 +1,10 @@
-# q/src/routes/fazenda.py
+# /src/routes/fazenda.py
 
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from werkzeug.exceptions import NotFound  # <-- adicionado
 
 from src.models.db import db
 from src.models.fazenda import Fazenda, TipoPosse
@@ -323,6 +324,11 @@ def atualizar_fazenda(id):
             ),
             400,
         )
+    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+        current_app.logger.error(
+            f"Fazenda não encontrada ao atualizar fazenda {id}: {str(e)}"
+        )
+        return jsonify({"erro": "Fazenda não encontrada", "detalhes": str(e)}), 404
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
@@ -367,6 +373,11 @@ def excluir_fazenda(id):
         current_app.logger.info(f"Fazenda excluída com sucesso: {nome} (ID: {id})")
 
         return jsonify({"mensagem": f"Fazenda {nome} excluída com sucesso"}), 200
+    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+        current_app.logger.error(
+            f"Fazenda não encontrada ao excluir fazenda {id}: {str(e)}"
+        )
+        return jsonify({"erro": "Fazenda não encontrada", "detalhes": str(e)}), 404
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
@@ -454,3 +465,4 @@ def listar_documentos_fazenda(id):
             ),
             500,
         )
+    
