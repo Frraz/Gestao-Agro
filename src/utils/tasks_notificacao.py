@@ -1,5 +1,7 @@
 # /src/utils/tasks_notificacao.py
 
+# /src/utils/tasks_notificacao.py
+
 # Tarefas agendadas para notificações
 import logging
 from datetime import datetime
@@ -174,16 +176,15 @@ def criar_tarefas_notificacao(celery):
     return celery_tasks
 
 
-# Funções auxiliares para compatibilidade
-def verificar_notificacoes_endividamento():
-    """Função auxiliar - executa diretamente o serviço"""
+# Funções auxiliares para execução direta (sem Celery)
+def processar_notificacoes_endividamento():
+    """Executa diretamente o serviço de notificações de endividamento"""
     from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
     service = NotificacaoEndividamentoService()
     return service.verificar_e_enviar_notificacoes()
 
-
-def verificar_notificacoes_documentos():
-    """Função auxiliar - executa diretamente o serviço"""
+def processar_notificacoes_documentos():
+    """Executa diretamente o serviço de notificações de documentos"""
     from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
     service = NotificacaoDocumentoService()
     return service.verificar_e_enviar_notificacoes()
