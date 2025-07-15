@@ -1,15 +1,18 @@
 // /src/static/js/script.js
 
+// pessoas_selecionadas.js
+// Funções auxiliares e helpers para interação de UI, busca e seleção de pessoas, máscaras, validações e UX
+
 $(document).ready(function() {
     // Inicialização de tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 
     // Inicialização de popovers
     var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    popoverTriggerList.map(function (popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl)
     });
 
@@ -23,7 +26,6 @@ $(document).ready(function() {
     // Máscara para CPF/CNPJ
     $('.cpf-cnpj-mask').on('input', function() {
         let value = $(this).val().replace(/\D/g, '');
-        
         if (value.length <= 11) {
             // CPF
             value = value.replace(/(\d{3})(\d)/, '$1.$2');
@@ -36,13 +38,13 @@ $(document).ready(function() {
             value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
             value = value.replace(/(\d{4})(\d)/, '$1-$2');
         }
-        
         $(this).val(value);
     });
 
     // Máscara para valores monetários
     $('.money-mask').on('input', function() {
         let value = $(this).val().replace(/\D/g, '');
+        if (value === "") { $(this).val(""); return; }
         value = (value / 100).toFixed(2) + '';
         value = value.replace(".", ",");
         value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
@@ -70,10 +72,8 @@ $(document).ready(function() {
     $('.btn-loading').on('click', function() {
         var $btn = $(this);
         var originalText = $btn.html();
-        
         $btn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Carregando...');
         $btn.prop('disabled', true);
-        
         // Simular carregamento (remover em produção)
         setTimeout(function() {
             $btn.html(originalText);
@@ -85,10 +85,8 @@ $(document).ready(function() {
     $('.auto-save').on('change', function() {
         var $form = $(this).closest('form');
         var formData = $form.serialize();
-        
         // Salvar no localStorage
         localStorage.setItem('form_' + $form.attr('id'), formData);
-        
         // Mostrar indicador de salvamento
         showToast('Dados salvos automaticamente', 'success');
     });
@@ -97,7 +95,6 @@ $(document).ready(function() {
     $('.auto-save').each(function() {
         var $form = $(this).closest('form');
         var savedData = localStorage.getItem('form_' + $form.attr('id'));
-        
         if (savedData) {
             // Restaurar dados do formulário
             var params = new URLSearchParams(savedData);
@@ -119,18 +116,14 @@ $(document).ready(function() {
                 </div>
             </div>
         `;
-        
         // Criar container de toasts se não existir
         if (!$('#toast-container').length) {
             $('body').append('<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>');
         }
-        
         var $toast = $(toastHtml);
         $('#toast-container').append($toast);
-        
         var toast = new bootstrap.Toast($toast[0]);
         toast.show();
-        
         // Remover toast após ser ocultado
         $toast.on('hidden.bs.toast', function() {
             $(this).remove();
@@ -160,7 +153,6 @@ $(document).ready(function() {
                 }
             });
         });
-
         document.querySelectorAll('img[data-src]').forEach(img => {
             imageObserver.observe(img);
         });
@@ -173,8 +165,6 @@ $(document).ready(function() {
             localStorage.setItem('theme', 'dark');
         }
     }
-
-    // Escutar mudanças no modo escuro do sistema
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
         if (!localStorage.getItem('theme')) {
             const newTheme = e.matches ? 'dark' : 'light';
@@ -189,7 +179,6 @@ $(document).ready(function() {
         if (e.key === 'Escape') {
             $('.modal.show').modal('hide');
         }
-        
         // Enter para submeter formulários quando focado em input
         if (e.key === 'Enter' && $(e.target).is('input:not([type="submit"])')) {
             var $form = $(e.target).closest('form');
@@ -204,6 +193,67 @@ $(document).ready(function() {
         $('body').addClass('loading');
     }).ajaxStop(function() {
         $('body').removeClass('loading');
+    });
+
+    // === BUSCA E SELEÇÃO DE PESSOAS ===
+
+    // Seleção robusta com Set
+    var pessoasSelecionadasIds = new Set();
+
+    // Inicializa com badges já renderizados
+    $('#pessoasSelecionadas [data-pessoa-id]').each(function() {
+        pessoasSelecionadasIds.add(String($(this).data('pessoa-id')));
+    });
+
+    // Enter no campo de busca faz buscar (e previne submit)
+    $('#buscaPessoa').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            window.buscarPessoas();
+        }
+    });
+
+    // Clique em selecionar pessoa
+    $(document).on('click', '.selecionar-pessoa', function() {
+        var id = String($(this).data('id'));
+        var nome = $(this).data('nome');
+        var cpfCnpj = $(this).data('cpf-cnpj');
+        if (!pessoasSelecionadasIds.has(id)) {
+            pessoasSelecionadasIds.add(id);
+            $('#pessoasSelecionadas').append(
+                `<div class="pessoa-selecionada badge bg-primary me-2 mb-2 p-2" data-pessoa-id="${id}">
+                    ${nome} (${cpfCnpj})
+                    <button type="button" class="btn-close btn-close-white ms-2 remover-pessoa" data-id="${id}"></button>
+                    <input type="hidden" name="pessoas_ids" value="${id}">
+                </div>`
+            );
+        }
+        $('#resultadosBusca').empty().hide();
+        $('#buscaPessoa').val('');
+    });
+
+    // Remover pessoa do Set ao remover badge
+    $(document).on('click', '.remover-pessoa', function() {
+        var id = String($(this).data('id'));
+        pessoasSelecionadasIds.delete(id);
+        $('#pessoasSelecionadas [data-pessoa-id="' + id + '"]').remove();
+    });
+
+    // Esconde resultados ao clicar fora
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#resultadosBusca, #buscaPessoa').length) {
+            $('#resultadosBusca').hide();
+        }
+    });
+
+    // Impede submit do form se o foco está no campo de busca
+    $('#formEndividamento').on('submit', function(event) {
+        if (document.activeElement.id === 'buscaPessoa') {
+            event.preventDefault();
+            window.buscarPessoas();
+            return false;
+        }
+        // ... resto da lógica de submit ...
     });
 });
 
@@ -234,68 +284,6 @@ window.debounce = function(func, wait, immediate) {
     };
 };
 
-// === BUSCA E SELEÇÃO DE PESSOAS ===
-
-// Enter no campo de busca faz buscar (e previne submit)
-$('#buscaPessoa').on('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        window.buscarPessoas();
-    }
-});
-
-// Seleção robusta com Set
-var pessoasSelecionadasIds = new Set();
-
-// Inicializa com badges já renderizados
-$(document).ready(function() {
-    $('#pessoasSelecionadas [data-pessoa-id]').each(function() {
-        pessoasSelecionadasIds.add(String($(this).data('pessoa-id')));
-    });
-});
-
-$(document).on('click', '.selecionar-pessoa', function() {
-    var id = String($(this).data('id'));
-    var nome = $(this).data('nome');
-    var cpfCnpj = $(this).data('cpf-cnpj');
-    if (!pessoasSelecionadasIds.has(id)) {
-        pessoasSelecionadasIds.add(id);
-        $('#pessoasSelecionadas').append(
-            `<div class="pessoa-selecionada badge bg-primary me-2 mb-2 p-2" data-pessoa-id="${id}">
-                ${nome} (${cpfCnpj})
-                <button type="button" class="btn-close btn-close-white ms-2 remover-pessoa" data-id="${id}"></button>
-                <input type="hidden" name="pessoas_ids" value="${id}">
-            </div>`
-        );
-    }
-    $('#resultadosBusca').empty().hide();
-    $('#buscaPessoa').val('');
-});
-
-// Remover pessoa do Set ao remover badge
-$(document).on('click', '.remover-pessoa', function() {
-    var id = String($(this).data('id'));
-    pessoasSelecionadasIds.delete(id);
-    $('#pessoasSelecionadas [data-pessoa-id="' + id + '"]').remove();
-});
-
-// Esconde resultados ao clicar fora
-$(document).on('click', function(e) {
-    if (!$(e.target).closest('#resultadosBusca, #buscaPessoa').length) {
-        $('#resultadosBusca').hide();
-    }
-});
-
-// Impede submit do form se o foco está no campo de busca
-$('#formEndividamento').on('submit', function(event) {
-    if (document.activeElement.id === 'buscaPessoa') {
-        event.preventDefault();
-        window.buscarPessoas();
-        return false;
-    }
-    // ... resto da lógica de submit ...
-});
-
 // Função global para buscar pessoas (Enter ou botão)
 window.buscarPessoas = function() {
     var termo = $('#buscaPessoa').val();
@@ -313,6 +301,7 @@ window.buscarPessoas = function() {
                 $resultados.append('<div class="list-group-item">Nenhuma pessoa encontrada.</div>').show();
             } else {
                 pessoas.forEach(function(pessoa) {
+                    var disabled = pessoasSelecionadasIds.has(String(pessoa.id)) ? "disabled" : "";
                     $resultados.append(
                         `<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
@@ -320,7 +309,7 @@ window.buscarPessoas = function() {
                                 <small class="text-muted">${pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj}</small>
                             </div>
                             <button type="button" class="btn btn-sm btn-primary selecionar-pessoa"
-                                data-id="${pessoa.id}" data-nome="${pessoa.nome.replace(/'/g, "\\'")}" data-cpf-cnpj="${(pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj).replace(/'/g, "\\'")}">
+                                data-id="${pessoa.id}" data-nome="${pessoa.nome.replace(/'/g, "\\'")}" data-cpf-cnpj="${(pessoa.cpf_cnpj_formatado || pessoa.cpf_cnpj).replace(/'/g, "\\'")}" ${disabled}>
                                 Selecionar
                             </button>
                         </div>`
@@ -328,5 +317,7 @@ window.buscarPessoas = function() {
                 });
                 $resultados.show();
             }
+        }).catch(function() {
+            $resultados.empty().append('<div class="list-group-item text-danger">Erro ao buscar pessoas.</div>').show();
         });
 };

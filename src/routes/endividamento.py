@@ -17,7 +17,50 @@ from src.utils.notificacao_endividamento_service import NotificacaoEndividamento
 from src.utils.validators import sanitize_input
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 
+# IMPORTS PARA ÁREAS VINCULADAS AO ENDIVIDAMENTO
+from src.utils.endividamento_area_utils import (
+    adicionar_areas_endividamento,
+    get_areas_vinculadas,
+    remover_area_vinculo,
+    validar_hectares_disponiveis
+)
+
 endividamento_bp = Blueprint("endividamento", __name__, url_prefix="/endividamentos")
+
+# --- CRUD ÁREAS VINCULADAS AO ENDIVIDAMENTO (API) ---
+
+@endividamento_bp.route("/<int:id>/areas", methods=["POST"])
+def add_areas_endividamento(id):
+    """
+    Vincula áreas a um endividamento.
+    Espera JSON: {"areas": [{"area_id":..., "tipo":..., "hectares_utilizados":...}, ...]}
+    """
+    data = request.get_json()
+    for area in data['areas']:
+        if area.get('hectares_utilizados'):
+            ok, msg = validar_hectares_disponiveis(area['area_id'], area['hectares_utilizados'])
+            if not ok:
+                return jsonify({'error': msg}), 400
+    adicionar_areas_endividamento(id, data['areas'])
+    return jsonify({"message": "Áreas vinculadas com sucesso."}), 201
+
+@endividamento_bp.route("/<int:id>/areas", methods=["GET"])
+def listar_areas_endividamento(id):
+    """
+    Lista áreas vinculadas a um endividamento.
+    """
+    areas = get_areas_vinculadas(id)
+    return jsonify(areas), 200
+
+@endividamento_bp.route("/<int:endividamento_id>/area/<int:area_id>", methods=["DELETE"])
+def desvincular_area(endividamento_id, area_id):
+    """
+    Desvincula uma área de um endividamento.
+    """
+    remover_area_vinculo(endividamento_id, area_id)
+    return jsonify({"message": "Área desvinculada com sucesso."}), 200
+
+# --- RESTANTE DAS ROTAS DO ENDIVIDAMENTO ---
 
 @endividamento_bp.route("/")
 def listar():
@@ -175,6 +218,7 @@ def novo():
 def visualizar(id):
     """Visualiza detalhes de um endividamento"""
     endividamento = Endividamento.query.get_or_404(id)
+
     # Obter configuração de notificação
     config = NotificacaoEndividamento.query.filter_by(endividamento_id=id, ativo=True).first()
     prazos = [30, 15, 7, 1]
@@ -183,6 +227,7 @@ def visualizar(id):
             prazos = json.loads(config.prazos)
         except Exception:
             pass
+
     # Já enviadas?
     from src.models.notificacao_endividamento import HistoricoNotificacao
     enviados = [
@@ -191,11 +236,16 @@ def visualizar(id):
     proximas_notificacoes = calcular_proximas_notificacoes_programadas(
         endividamento.data_vencimento_final, prazos, enviados
     )
+
+    # Áreas vinculadas via utilitário
+    areas_vinculadas = get_areas_vinculadas(endividamento.id)
+
     return render_template(
         "admin/endividamentos/visualizar.html",
         endividamento=endividamento,
         date=date,
         proximas_notificacoes=proximas_notificacoes,
+        areas_vinculadas=areas_vinculadas,
     )
 
 @endividamento_bp.route("/<int:id>/editar", methods=["GET", "POST"])

@@ -14,7 +14,6 @@ from typing import Optional
 
 from src.models.db import db
 
-
 class NotificacaoEndividamento(db.Model):  # type: ignore
     """
     Modelo para notificações de endividamento.

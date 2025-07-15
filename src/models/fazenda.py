@@ -3,8 +3,8 @@
 """
 Modelo para cadastro e gerenciamento de fazendas/áreas associadas a pessoas.
 
-Inclui enum para tipo de posse, campos de auditoria, relacionamentos com pessoas e documentos,
-e propriedades utilitárias para cálculo de áreas e controle de documentação.
+Inclui enum para tipo de posse, campos de auditoria, relacionamentos com pessoas, documentos,
+áreas e vínculos de endividamento, além de propriedades utilitárias para cálculo de áreas e controle de documentação.
 """
 
 import datetime
@@ -18,15 +18,12 @@ from src.models.db import db
 
 from .pessoa import pessoa_fazenda
 
-
 class TipoPosse(enum.Enum):
     """Enumeração dos tipos de posse da fazenda."""
-
     PROPRIA = "Própria"
     ARRENDADA = "Arrendada"
     COMODATO = "Comodato"
     POSSE = "Posse"
-
 
 class Fazenda(db.Model):  # type: ignore
     """
@@ -47,6 +44,8 @@ class Fazenda(db.Model):  # type: ignore
         data_atualizacao (datetime.date): Data de atualização.
         pessoas (List[Pessoa]): Pessoas associadas.
         documentos (List[Documento]): Documentos associados.
+        endividamentos_vinculados (List[EndividamentoFazenda]): Vínculos de endividamento (por fazenda).
+        areas (List[Area]): Áreas pertencentes à fazenda.
     """
 
     __tablename__ = "fazenda"
@@ -80,6 +79,15 @@ class Fazenda(db.Model):  # type: ignore
         back_populates="fazenda",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+    areas = relationship(
+        "Area",
+        back_populates="fazenda",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+    endividamentos_vinculados = relationship(
+        "EndividamentoFazenda", back_populates="fazenda", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -127,32 +135,19 @@ class Fazenda(db.Model):  # type: ignore
     @property
     def area_usada_credito(self) -> float:
         """Calcula a área total utilizada em operações de crédito."""
-        from src.models.endividamento import EndividamentoFazenda
-        
+        # Soma dos hectares de todos vínculos do tipo objeto_credito nesta fazenda
         total_usado = 0.0
-        vinculos = EndividamentoFazenda.query.filter_by(
-            fazenda_id=self.id, tipo='objeto_credito'
-        ).all()
-        
-        for vinculo in vinculos:
-            if vinculo.hectares:
+        for vinculo in self.endividamentos_vinculados:
+            if vinculo.tipo == "objeto_credito" and vinculo.hectares:
                 total_usado += float(vinculo.hectares)
-        
         return total_usado
-    
+
     @property 
     def area_disponivel_credito(self) -> float:
         """Calcula a área disponível para novas operações de crédito."""
         return self.tamanho_disponivel - self.area_usada_credito
-    
-    @property
-    def endividamentos_vinculados(self):
-        """Retorna os endividamentos vinculados a esta fazenda."""
-        from src.models.endividamento import EndividamentoFazenda
-        
-        return EndividamentoFazenda.query.filter_by(fazenda_id=self.id).all()
-    
+
     @property
     def total_endividamentos(self) -> int:
-        """Retorna o número total de endividamentos vinculados."""
+        """Retorna o número total de endividamentos vinculados (por fazenda)."""
         return len(self.endividamentos_vinculados)

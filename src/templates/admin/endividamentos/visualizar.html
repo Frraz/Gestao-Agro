@@ -97,6 +97,37 @@
                         </div>
                     </div>
                     
+                    <!-- Áreas Vinculadas -->
+                    <div class="mb-4">
+                        <h5>Áreas Vinculadas</h5>
+                        {% if areas_vinculadas %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Área</th>
+                                            <th>Tipo</th>
+                                            <th>Hectares Utilizados</th>
+                                            <th>Descrição</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for area in areas_vinculadas %}
+                                        <tr>
+                                            <td>{{ area.area_nome or '-' }}</td>
+                                            <td>{{ area.tipo or '-' }}</td>
+                                            <td>{{ area.hectares_utilizados if area.hectares_utilizados is not none else '-' }}</td>
+                                            <td>{{ area.descricao or '-' }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">Nenhuma área vinculada.</p>
+                        {% endif %}
+                    </div>
+
                     <!-- Próximas Notificações Programadas -->
                     <div class="mb-4">
                         <h5>Próximas Notificações Programadas</h5>
@@ -180,7 +211,6 @@
                                                     -
                                                 {% endif %}
                                             </td>
-                                            <td>{{ vinculo.hectares if vinculo.hectares else '-' }}</td>
                                             <td>{{ vinculo.descricao if vinculo.descricao else '-' }}</td>
                                         </tr>
                                         {% endfor %}

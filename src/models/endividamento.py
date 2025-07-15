@@ -1,11 +1,12 @@
 # /src/models/endividamento.py
 
 """
-Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda e parcelas.
+Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda, vínculo com área e parcelas.
 
 Inclui:
-- Endividamento: Operação financeira atrelada a pessoas e fazendas, com parcelas e notificações.
-- EndividamentoFazenda: Associação entre endividamento e fazenda.
+- Endividamento: Operação financeira atrelada a pessoas, fazendas e áreas, com parcelas e notificações.
+- EndividamentoFazenda: Associação entre endividamento e fazenda (opcional, caso use toda a fazenda).
+- EndividamentoArea: Associação entre endividamento e áreas específicas da fazenda.
 - Parcela: Detalhes de cada parcela do endividamento.
 """
 
@@ -14,35 +15,31 @@ from typing import Optional
 
 from src.models.db import db
 
-
-class Endividamento(db.Model):  # type: ignore
-    """
-    Modelo para operações de endividamento.
-    """
-
+class Endividamento(db.Model):
     __tablename__ = "endividamento"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    banco: str = db.Column(db.String(255), nullable=False)
-    numero_proposta: str = db.Column(db.String(255), nullable=False)
-    data_emissao: date = db.Column(db.Date, nullable=False)
-    data_vencimento_final: date = db.Column(db.Date, nullable=False)
-    taxa_juros: float = db.Column(db.Numeric(10, 4), nullable=False)
-    tipo_taxa_juros: str = db.Column(db.String(10), nullable=False)  # 'ano' ou 'mes'
-    prazo_carencia: Optional[int] = db.Column(db.Integer, nullable=True)  # em meses
-    valor_operacao: Optional[float] = db.Column(
-        db.Numeric(15, 2), nullable=True
-    )  # valor total da operação
-    created_at: datetime = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at: datetime = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    id = db.Column(db.Integer, primary_key=True)
+    banco = db.Column(db.String(255), nullable=False)
+    numero_proposta = db.Column(db.String(255), nullable=False)
+    data_emissao = db.Column(db.Date, nullable=False)
+    data_vencimento_final = db.Column(db.Date, nullable=False)
+    taxa_juros = db.Column(db.Numeric(10, 4), nullable=False)
+    tipo_taxa_juros = db.Column(db.String(10), nullable=False)  # 'ano' ou 'mes'
+    prazo_carencia = db.Column(db.Integer, nullable=True)  # em meses
+    valor_operacao = db.Column(db.Numeric(15, 2), nullable=True)  # valor total da operação
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     pessoas = db.relationship(
         "Pessoa", secondary="endividamento_pessoa", back_populates="endividamentos"
     )
     fazenda_vinculos = db.relationship(
         "EndividamentoFazenda",
+        back_populates="endividamento",
+        cascade="all, delete-orphan",
+    )
+    area_vinculos = db.relationship(
+        "EndividamentoArea",
         back_populates="endividamento",
         cascade="all, delete-orphan",
     )
@@ -98,25 +95,21 @@ endividamento_pessoa = db.Table(
 )
 
 
-class EndividamentoFazenda(db.Model):  # type: ignore
-    """
-    Associação entre endividamento e fazenda.
-    """
-
+class EndividamentoFazenda(db.Model):
     __tablename__ = "endividamento_fazenda"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    endividamento_id: int = db.Column(
+    id = db.Column(db.Integer, primary_key=True)
+    endividamento_id = db.Column(
         db.Integer, db.ForeignKey("endividamento.id"), nullable=False
     )
-    fazenda_id: Optional[int] = db.Column(
+    fazenda_id = db.Column(
         db.Integer, db.ForeignKey("fazenda.id"), nullable=True
     )
-    hectares: Optional[float] = db.Column(db.Numeric(10, 2), nullable=True)
-    tipo: str = db.Column(
+    hectares = db.Column(db.Numeric(10, 2), nullable=True)
+    tipo = db.Column(
         db.String(50), nullable=False
     )  # 'objeto_credito' ou 'garantia'
-    descricao: Optional[str] = db.Column(db.Text, nullable=True)
+    descricao = db.Column(db.Text, nullable=True)
 
     endividamento = db.relationship("Endividamento", back_populates="fazenda_vinculos")
     fazenda = db.relationship("Fazenda")
@@ -136,23 +129,19 @@ class EndividamentoFazenda(db.Model):  # type: ignore
         }
 
 
-class Parcela(db.Model):  # type: ignore
-    """
-    Modelo para parcelas de endividamento.
-    """
-
+class Parcela(db.Model):
     __tablename__ = "parcela"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    endividamento_id: int = db.Column(
+    id = db.Column(db.Integer, primary_key=True)
+    endividamento_id = db.Column(
         db.Integer, db.ForeignKey("endividamento.id"), nullable=False
     )
-    data_vencimento: date = db.Column(db.Date, nullable=False)
-    valor: float = db.Column(db.Numeric(10, 2), nullable=False)
-    pago: bool = db.Column(db.Boolean, default=False)
-    data_pagamento: Optional[date] = db.Column(db.Date, nullable=True)
-    valor_pago: Optional[float] = db.Column(db.Numeric(10, 2), nullable=True)
-    observacoes: Optional[str] = db.Column(db.Text, nullable=True)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+    pago = db.Column(db.Boolean, default=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
+    valor_pago = db.Column(db.Numeric(10, 2), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
 
     endividamento = db.relationship("Endividamento", back_populates="parcelas")
 
