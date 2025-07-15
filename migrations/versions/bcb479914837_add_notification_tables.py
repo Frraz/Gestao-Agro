@@ -101,9 +101,10 @@ def upgrade():
     if index_exists(conn, 'parcela', 'idx_parcela_data_vencimento'):
         with op.batch_alter_table('parcela', schema=None) as batch_op:
             batch_op.drop_index('idx_parcela_data_vencimento')
-    if index_exists(conn, 'parcela', 'idx_parcela_endividamento_id'):
-        with op.batch_alter_table('parcela', schema=None) as batch_op:
-            batch_op.drop_index('idx_parcela_endividamento_id')
+    # NÃO remova o índice idx_parcela_endividamento_id, pois é usado numa foreign key!
+    # if index_exists(conn, 'parcela', 'idx_parcela_endividamento_id'):
+    #     with op.batch_alter_table('parcela', schema=None) as batch_op:
+    #         batch_op.drop_index('idx_parcela_endividamento_id')
     if index_exists(conn, 'parcela', 'idx_parcela_pago'):
         with op.batch_alter_table('parcela', schema=None) as batch_op:
             batch_op.drop_index('idx_parcela_pago')
