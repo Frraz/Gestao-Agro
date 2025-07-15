@@ -1,3 +1,5 @@
+# /migrations/versions/a8d8866bd608_remove_tipo_entidade_from_documento_and_.py
+
 """Remove tipo_entidade from documento and allow fazenda_id/pessoa_id nullable
 
 Revision ID: a8d8866bd608
