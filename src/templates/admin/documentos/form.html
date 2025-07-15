@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/documentos/form.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Cadastro de Documento - Sistema de Gestão de Fazendas{% endblock %}
@@ -66,50 +68,35 @@
                     </div>
                 </div>
                 
+                <!-- INÍCIO DO NOVO BLOCO: Associação flexível -->
                 <div class="row mb-3">
-                    <div class="col-md-12">
-                        <label for="tipo_entidade" class="form-label">Relacionar documento a: *</label>
-                        <select class="form-select" id="tipo_entidade" name="tipo_entidade" required>
-                            <option value="FAZENDA" {{ 'selected' if documento is defined and documento.tipo_entidade.value == 'Fazenda/Área' else '' }}>Fazenda/Área</option>
-                            <option value="PESSOA" {{ 'selected' if documento is defined and documento.tipo_entidade.value == 'Pessoa' else '' }}>Pessoa</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="row mb-3" id="fazenda_container">
-                    <div class="col-md-12">
-                        <label for="fazenda_id" class="form-label">Fazenda/Área *</label>
+                    <div class="col-md-6">
+                        <label for="fazenda_id" class="form-label">Fazenda/Área</label>
                         <select class="form-select" id="fazenda_id" name="fazenda_id">
-                            <option value="" selected disabled>Selecione...</option>
+                            <option value="">Selecione...</option>
                             {% for fazenda in fazendas %}
                                 <option value="{{ fazenda.id }}" {{ 'selected' if documento is defined and documento.fazenda_id == fazenda.id else '' }}>
-                                    {{ fazenda.nome }} ({{ fazenda.matricula }})
+                                    {{ fazenda.nome }} (Matrícula: {{ fazenda.matricula }})
                                 </option>
                             {% endfor %}
                         </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione a fazenda/área.
-                        </div>
+                        <small class="form-text text-muted">Opcional. Relacione a uma fazenda/área, se desejar.</small>
                     </div>
-                </div>
-                
-                <div class="row mb-3" id="pessoa_container" style="display: none;">
-                    <div class="col-md-12">
-                        <label for="pessoa_id" class="form-label">Pessoa *</label>
+                    <div class="col-md-6">
+                        <label for="pessoa_id" class="form-label">Pessoa</label>
                         <select class="form-select" id="pessoa_id" name="pessoa_id">
-                            <option value="" selected disabled>Selecione...</option>
+                            <option value="">Selecione...</option>
                             {% for pessoa in pessoas %}
                                 <option value="{{ pessoa.id }}" {{ 'selected' if documento is defined and documento.pessoa_id == pessoa.id else '' }}>
                                     {{ pessoa.nome }} ({{ pessoa.cpf_cnpj }})
                                 </option>
                             {% endfor %}
                         </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione a pessoa.
-                        </div>
+                        <small class="form-text text-muted">Opcional. Relacione a uma pessoa, se desejar.</small>
                     </div>
                 </div>
-                
+                <!-- FIM DO NOVO BLOCO -->
+
                 <div class="row mb-3">
                     <div class="col-md-12">
                         <label for="emails_notificacao" class="form-label">Emails para Notificação</label>
@@ -189,31 +176,12 @@
             }
         }
         
-        // Alternar entre fazenda e pessoa
-        function toggleEntidadeRelacionada() {
-            const tipoEntidade = $('#tipo_entidade').val();
-            
-            if (tipoEntidade === 'FAZENDA') {
-                $('#fazenda_container').show();
-                $('#pessoa_container').hide();
-                $('#fazenda_id').attr('required', true);
-                $('#pessoa_id').removeAttr('required');
-            } else {
-                $('#fazenda_container').hide();
-                $('#pessoa_container').show();
-                $('#fazenda_id').removeAttr('required');
-                $('#pessoa_id').attr('required', true);
-            }
-        }
-        
-        // Verificar ao carregar a página
+        // Inicialização ao carregar a página
         toggleTipoPersonalizado();
-        toggleEntidadeRelacionada();
-        
+
         // Verificar ao mudar o tipo
         $('#tipo').change(toggleTipoPersonalizado);
-        $('#tipo_entidade').change(toggleEntidadeRelacionada);
-        
+
         // Botão de teste de email
         $('#btn_teste_email').click(function() {
             const emails = $('#emails_notificacao').val();

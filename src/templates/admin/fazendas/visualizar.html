@@ -2,7 +2,7 @@
 
 {% extends 'layouts/base.html' %}
 
-{% block title %}Detalhes da Fazenda - {{ fazenda.nome }}{% endblock %}
+{% block title %}Detalhes da Fazenda - {{ fazenda.nome }} (Matrícula: {{ fazenda.matricula }}){% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -10,7 +10,10 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">Detalhes da Fazenda</h3>
+                    <h3 class="card-title">
+                        Detalhes da Fazenda
+                        <small class="text-muted ms-2">({{ fazenda.nome }} — Matrícula: {{ fazenda.matricula }})</small>
+                    </h3>
                     <div class="btn-group">
                         <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-warning">
                             <i class="fas fa-edit"></i> Editar
@@ -32,7 +35,7 @@
                             <table class="table table-borderless">
                                 <tr>
                                     <td><strong>Nome:</strong></td>
-                                    <td>{{ fazenda.nome }}</td>
+                                    <td>{{ fazenda.nome }} <small class="text-muted">(Matrícula: {{ fazenda.matricula }})</small></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Matrícula:</strong></td>
@@ -209,3 +212,4 @@
     </div>
 </div>
 {% endblock %}
+

@@ -5,20 +5,14 @@ def test_criar_documento(client, pessoa_obj):
         "nome": "Documento Teste",
         "tipo": "Certidões",
         "data_emissao": "2025-06-20",
-        "tipo_entidade": "PESSOA",
-        "pessoa_id": pessoa_obj.id,
+        "pessoa_id": pessoa_obj.id,  # Só mantém pessoa_id
+        # Não envie mais tipo_entidade!
     }
     response = client.post("/api/documentos/", json=payload)
     assert response.status_code == 201, f"Status inesperado: {response.status_code} - {response.data}"
     data = response.get_json()
     for field in payload:
-        if field == "tipo_entidade":
-            # Aceita valores como "Pessoa" ou "PESSOA" (caso padronizado no Enum.name)
-            assert data[field].upper() == payload[field].upper(), (
-                f'Divergência no campo tipo_entidade: esperado {payload[field]}, recebido {data[field]}'
-            )
-        else:
-            assert data[field] == payload[field], f'Divergência no campo {field}: esperado {payload[field]}, recebido {data[field]}'
+        assert data[field] == payload[field], f'Divergência no campo {field}: esperado {payload[field]}, recebido {data[field]}'
 
 def test_criar_documento_faltando_campo_obrigatorio(client, pessoa_obj):
     payload = {

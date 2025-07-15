@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, jsonify, request, render_template
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from src.models.db import db
-from src.models.documento import Documento, TipoDocumento, TipoEntidade
+from src.models.documento import Documento, TipoDocumento
 from src.models.fazenda import Fazenda
 from src.models.pessoa import Pessoa
 from src.utils.email_service import enviar_email_teste
@@ -32,13 +32,10 @@ def listar_documentos():
     try:
         documentos = Documento.query.all()
         resultado = []
-
         for documento in documentos:
-            entidade_nome = None
-            if documento.tipo_entidade == TipoEntidade.FAZENDA and documento.fazenda:
-                entidade_nome = documento.fazenda.nome
-            elif documento.tipo_entidade == TipoEntidade.PESSOA and documento.pessoa:
-                entidade_nome = documento.pessoa.nome
+            fazenda_nome = documento.fazenda.nome if documento.fazenda else None
+            fazenda_matricula = documento.fazenda.matricula if documento.fazenda else None
+            pessoa_nome = documento.pessoa.nome if documento.pessoa else None
 
             resultado.append(
                 {
@@ -52,10 +49,11 @@ def listar_documentos():
                         if documento.data_vencimento
                         else None
                     ),
-                    "tipo_entidade": documento.tipo_entidade.value,
                     "fazenda_id": documento.fazenda_id,
+                    "fazenda_nome": fazenda_nome,
+                    "fazenda_matricula": fazenda_matricula,
                     "pessoa_id": documento.pessoa_id,
-                    "entidade_nome": entidade_nome,
+                    "pessoa_nome": pessoa_nome,
                     "emails_notificacao": documento.emails_notificacao,
                     "prazos_notificacao": documento.prazos_notificacao,
                     "esta_vencido": documento.esta_vencido,
@@ -73,14 +71,12 @@ def obter_documento(id):
     try:
         documento = Documento.query.get_or_404(id)
 
-        entidade_nome = None
-        if documento.tipo_entidade == TipoEntidade.FAZENDA and documento.fazenda:
-            entidade_nome = documento.fazenda.nome
-        elif documento.tipo_entidade == TipoEntidade.PESSOA and documento.pessoa:
-            entidade_nome = documento.pessoa.nome
+        fazenda_nome = documento.fazenda.nome if documento.fazenda else None
+        fazenda_matricula = documento.fazenda.matricula if documento.fazenda else None
+        pessoa_nome = documento.pessoa.nome if documento.pessoa else None
 
         prazos = documento.prazos_notificacao if documento.prazos_notificacao else [30, 15, 7, 1]
-        prazos = [int(p) for p in prazos]  # <-- AJUSTE para sempre trabalhar com inteiros
+        prazos = [int(p) for p in prazos]
         enviados = []  # Popule com histórico real se desejar
         proximas_notificacoes = calcular_proximas_notificacoes_programadas(
             documento.data_vencimento, prazos, enviados
@@ -98,10 +94,11 @@ def obter_documento(id):
                     if documento.data_vencimento
                     else None
                 ),
-                "tipo_entidade": documento.tipo_entidade.value,
                 "fazenda_id": documento.fazenda_id,
+                "fazenda_nome": fazenda_nome,
+                "fazenda_matricula": fazenda_matricula,
                 "pessoa_id": documento.pessoa_id,
-                "entidade_nome": entidade_nome,
+                "pessoa_nome": pessoa_nome,
                 "emails_notificacao": documento.emails_notificacao,
                 "prazos_notificacao": documento.prazos_notificacao,
                 "esta_vencido": documento.esta_vencido,
@@ -121,37 +118,10 @@ def criar_documento():
     """Cria um novo documento."""
     try:
         dados = request.form if request.form else request.json
-        campos_obrigatorios = ["nome", "tipo", "data_emissao", "tipo_entidade"]
+        campos_obrigatorios = ["nome", "tipo", "data_emissao"]
         for campo in campos_obrigatorios:
             if campo not in dados:
                 return jsonify({"erro": f"Campo {campo} é obrigatório"}), 400
-
-        tipo_entidade = dados.get("tipo_entidade")
-        if tipo_entidade not in ["FAZENDA", "PESSOA"]:
-            return (
-                jsonify({"erro": "Tipo de entidade inválido. Use FAZENDA ou PESSOA"}),
-                400,
-            )
-
-        entidade_id = None
-        if tipo_entidade == "FAZENDA":
-            if not dados.get("fazenda_id"):
-                return (
-                    jsonify({"erro": "ID da fazenda é obrigatório quando tipo_entidade é FAZENDA"}), 400
-                )
-            entidade_id = int(dados.get("fazenda_id"))
-            entidade = Fazenda.query.get(entidade_id)
-            if not entidade:
-                return jsonify({"erro": "Fazenda não encontrada"}), 404
-        else:
-            if not dados.get("pessoa_id"):
-                return (
-                    jsonify({"erro": "ID da pessoa é obrigatório quando tipo_entidade é PESSOA"}), 400
-                )
-            entidade_id = int(dados.get("pessoa_id"))
-            entidade = Pessoa.query.get(entidade_id)
-            if not entidade:
-                return jsonify({"erro": "Pessoa não encontrada"}), 404
 
         try:
             tipo_documento = TipoDocumento(dados.get("tipo"))
@@ -172,22 +142,42 @@ def criar_documento():
                     jsonify({"erro": "Data de vencimento inválida. Use o formato YYYY-MM-DD"}), 400
                 )
 
+        fazenda_id = int(dados.get("fazenda_id")) if dados.get("fazenda_id") else None
+        pessoa_id = int(dados.get("pessoa_id")) if dados.get("pessoa_id") else None
+
+        # Validação opcional: se IDs forem passados, verifique existência
+        if fazenda_id:
+            fazenda = Fazenda.query.get(fazenda_id)
+            if not fazenda:
+                return jsonify({"erro": "Fazenda não encontrada"}), 404
+        else:
+            fazenda = None
+        if pessoa_id:
+            pessoa = Pessoa.query.get(pessoa_id)
+            if not pessoa:
+                return jsonify({"erro": "Pessoa não encontrada"}), 404
+        else:
+            pessoa = None
+
         prazos_notificacao = []
         prazo_notificacao = dados.get("prazo_notificacao", [])
         if prazo_notificacao:
-            for prazo in dados.getlist("prazo_notificacao[]"):
+            if hasattr(dados, "getlist"):
+                for prazo in dados.getlist("prazo_notificacao[]"):
+                    try:
+                        prazos_notificacao.append(int(prazo))
+                    except Exception:
+                        return jsonify({"erro": "Prazo de notificação inválido"}), 400
+            elif isinstance(prazo_notificacao, list):
                 try:
-                    prazos_notificacao.append(int(prazo))
+                    prazos_notificacao = [int(p) for p in prazo_notificacao]
                 except Exception:
                     return jsonify({"erro": "Prazo de notificação inválido"}), 400
-        elif dados.get("prazo_notificacao"):
-            try:
-                if isinstance(dados.get("prazo_notificacao"), list):
-                    prazos_notificacao = [int(p) for p in dados.get("prazo_notificacao")]
-                else:
-                    prazos_notificacao = [int(dados.get("prazo_notificacao"))]
-            except Exception:
-                return jsonify({"erro": "Prazo de notificação inválido"}), 400
+            else:
+                try:
+                    prazos_notificacao = [int(prazo_notificacao)]
+                except Exception:
+                    return jsonify({"erro": "Prazo de notificação inválido"}), 400
 
         novo_documento = Documento(
             nome=dados.get("nome"),
@@ -199,9 +189,8 @@ def criar_documento():
             ),
             data_emissao=data_emissao,
             data_vencimento=data_vencimento,
-            tipo_entidade=TipoEntidade.FAZENDA if tipo_entidade == "FAZENDA" else TipoEntidade.PESSOA,
-            fazenda_id=entidade_id if tipo_entidade == "FAZENDA" else None,
-            pessoa_id=entidade_id if tipo_entidade == "PESSOA" else None,
+            fazenda_id=fazenda_id,
+            pessoa_id=pessoa_id
         )
 
         novo_documento.emails_notificacao = dados.get("emails_notificacao", "")
@@ -209,6 +198,10 @@ def criar_documento():
 
         db.session.add(novo_documento)
         db.session.commit()
+
+        fazenda_nome = fazenda.nome if fazenda else None
+        fazenda_matricula = fazenda.matricula if fazenda else None
+        pessoa_nome = pessoa.nome if pessoa else None
 
         return (
             jsonify(
@@ -222,9 +215,11 @@ def criar_documento():
                         if novo_documento.data_vencimento
                         else None
                     ),
-                    "tipo_entidade": novo_documento.tipo_entidade.value,
                     "fazenda_id": novo_documento.fazenda_id,
+                    "fazenda_nome": fazenda_nome,
+                    "fazenda_matricula": fazenda_matricula,
                     "pessoa_id": novo_documento.pessoa_id,
+                    "pessoa_nome": pessoa_nome,
                     "emails_notificacao": novo_documento.emails_notificacao,
                     "prazos_notificacao": novo_documento.prazos_notificacao,
                 }
@@ -282,30 +277,26 @@ def atualizar_documento(id):
             else:
                 documento.data_vencimento = None
 
-        if dados.get("tipo_entidade"):
-            tipo_entidade = dados.get("tipo_entidade")
-            if tipo_entidade not in ["FAZENDA", "PESSOA"]:
-                return jsonify({"erro": "Tipo de entidade inválido. Use FAZENDA ou PESSOA"}), 400
-            documento.tipo_entidade = TipoEntidade.FAZENDA if tipo_entidade == "FAZENDA" else TipoEntidade.PESSOA
-
-            if tipo_entidade == "FAZENDA":
-                if not dados.get("fazenda_id"):
-                    return jsonify({"erro": "ID da fazenda é obrigatório quando tipo_entidade é FAZENDA"}), 400
-                fazenda_id = int(dados.get("fazenda_id"))
+        # Atualiza os relacionamentos
+        if "fazenda_id" in dados:
+            fazenda_id = int(dados.get("fazenda_id")) if dados.get("fazenda_id") else None
+            if fazenda_id:
                 fazenda = Fazenda.query.get(fazenda_id)
                 if not fazenda:
                     return jsonify({"erro": "Fazenda não encontrada"}), 404
                 documento.fazenda_id = fazenda_id
-                documento.pessoa_id = None
             else:
-                if not dados.get("pessoa_id"):
-                    return jsonify({"erro": "ID da pessoa é obrigatório quando tipo_entidade é PESSOA"}), 400
-                pessoa_id = int(dados.get("pessoa_id"))
+                documento.fazenda_id = None
+
+        if "pessoa_id" in dados:
+            pessoa_id = int(dados.get("pessoa_id")) if dados.get("pessoa_id") else None
+            if pessoa_id:
                 pessoa = Pessoa.query.get(pessoa_id)
                 if not pessoa:
                     return jsonify({"erro": "Pessoa não encontrada"}), 404
                 documento.pessoa_id = pessoa_id
-                documento.fazenda_id = None
+            else:
+                documento.pessoa_id = None
 
         if "emails_notificacao" in dados:
             documento.emails_notificacao = dados.get("emails_notificacao", "")
@@ -313,30 +304,29 @@ def atualizar_documento(id):
         prazo_notificacao = dados.get("prazo_notificacao", [])
         if prazo_notificacao:
             prazos_notificacao = []
-            for prazo in dados.getlist("prazo_notificacao[]"):
+            if hasattr(dados, "getlist"):
+                for prazo in dados.getlist("prazo_notificacao[]"):
+                    try:
+                        prazos_notificacao.append(int(prazo))
+                    except Exception:
+                        return jsonify({"erro": "Prazo de notificação inválido"}), 400
+                documento.prazos_notificacao = prazos_notificacao
+            elif isinstance(prazo_notificacao, list):
                 try:
-                    prazos_notificacao.append(int(prazo))
+                    documento.prazos_notificacao = [int(p) for p in prazo_notificacao]
                 except Exception:
                     return jsonify({"erro": "Prazo de notificação inválido"}), 400
-            documento.prazos_notificacao = prazos_notificacao
-        elif dados.get("prazo_notificacao"):
-            try:
-                if isinstance(dados.get("prazo_notificacao"), list):
-                    documento.prazos_notificacao = [
-                        int(p) for p in dados.get("prazo_notificacao")
-                    ]
-                else:
-                    documento.prazos_notificacao = [int(dados.get("prazo_notificacao"))]
-            except Exception:
-                return jsonify({"erro": "Prazo de notificação inválido"}), 400
+            else:
+                try:
+                    documento.prazos_notificacao = [int(prazo_notificacao)]
+                except Exception:
+                    return jsonify({"erro": "Prazo de notificação inválido"}), 400
 
         db.session.commit()
 
-        entidade_nome = None
-        if documento.tipo_entidade == TipoEntidade.FAZENDA and documento.fazenda:
-            entidade_nome = documento.fazenda.nome
-        elif documento.tipo_entidade == TipoEntidade.PESSOA and documento.pessoa:
-            entidade_nome = documento.pessoa.nome
+        fazenda_nome = documento.fazenda.nome if documento.fazenda else None
+        fazenda_matricula = documento.fazenda.matricula if documento.fazenda else None
+        pessoa_nome = documento.pessoa.nome if documento.pessoa else None
 
         return jsonify(
             {
@@ -350,10 +340,11 @@ def atualizar_documento(id):
                     if documento.data_vencimento
                     else None
                 ),
-                "tipo_entidade": documento.tipo_entidade.value,
                 "fazenda_id": documento.fazenda_id,
+                "fazenda_nome": fazenda_nome,
+                "fazenda_matricula": fazenda_matricula,
                 "pessoa_id": documento.pessoa_id,
-                "entidade_nome": entidade_nome,
+                "pessoa_nome": pessoa_nome,
                 "emails_notificacao": documento.emails_notificacao,
                 "prazos_notificacao": documento.prazos_notificacao,
             }
@@ -408,11 +399,9 @@ def listar_documentos_vencidos():
         proximos_vencimento = []
 
         for documento in documentos:
-            entidade_nome = None
-            if documento.tipo_entidade == TipoEntidade.FAZENDA and documento.fazenda:
-                entidade_nome = documento.fazenda.nome
-            elif documento.tipo_entidade == TipoEntidade.PESSOA and documento.pessoa:
-                entidade_nome = documento.pessoa.nome
+            fazenda_nome = documento.fazenda.nome if documento.fazenda else None
+            fazenda_matricula = documento.fazenda.matricula if documento.fazenda else None
+            pessoa_nome = documento.pessoa.nome if documento.pessoa else None
 
             if documento.esta_vencido:
                 vencidos.append(
@@ -421,16 +410,17 @@ def listar_documentos_vencidos():
                         "nome": documento.nome,
                         "tipo": documento.tipo.value,
                         "data_vencimento": documento.data_vencimento.isoformat(),
-                        "tipo_entidade": documento.tipo_entidade.value,
                         "fazenda_id": documento.fazenda_id,
+                        "fazenda_nome": fazenda_nome,
+                        "fazenda_matricula": fazenda_matricula,
                         "pessoa_id": documento.pessoa_id,
-                        "entidade_nome": entidade_nome,
+                        "pessoa_nome": pessoa_nome,
                         "emails_notificacao": documento.emails_notificacao,
                     }
                 )
             elif documento.precisa_notificar:
                 prazos = documento.prazos_notificacao if documento.prazos_notificacao else [30, 15, 7, 1]
-                prazos = [int(p) for p in prazos]  # <-- AJUSTE para garantir inteiros
+                prazos = [int(p) for p in prazos]
                 enviados = []  # Implemente se tiver histórico
                 proximas_notificacoes = calcular_proximas_notificacoes_programadas(
                     documento.data_vencimento, prazos, enviados
@@ -442,10 +432,11 @@ def listar_documentos_vencidos():
                         "tipo": documento.tipo.value,
                         "data_vencimento": documento.data_vencimento.isoformat(),
                         "dias_restantes": documento.proximo_vencimento,
-                        "tipo_entidade": documento.tipo_entidade.value,
                         "fazenda_id": documento.fazenda_id,
+                        "fazenda_nome": fazenda_nome,
+                        "fazenda_matricula": fazenda_matricula,
                         "pessoa_id": documento.pessoa_id,
-                        "entidade_nome": entidade_nome,
+                        "pessoa_nome": pessoa_nome,
                         "emails_notificacao": documento.emails_notificacao,
                         "prazos_notificacao": documento.prazos_notificacao,
                         "proximas_notificacoes": proximas_notificacoes,
@@ -498,7 +489,7 @@ def vencidos():
             documentos_vencidos.append(doc)
         elif getattr(doc, "precisa_notificar", False):
             prazos = doc.prazos_notificacao if doc.prazos_notificacao else [30, 15, 7, 1]
-            prazos = [int(p) for p in prazos]  # <-- AJUSTE para garantir inteiros
+            prazos = [int(p) for p in prazos]
             enviados = []  # Implemente histórico se desejar
             doc.proximas_notificacoes = calcular_proximas_notificacoes_programadas(
                 doc.data_vencimento, prazos, enviados

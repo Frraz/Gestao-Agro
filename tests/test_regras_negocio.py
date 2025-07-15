@@ -1,3 +1,5 @@
+# /tests/test_regras_negocio.py
+
 import pytest
 import datetime
 from decimal import Decimal
@@ -5,7 +7,7 @@ from src.main import create_app
 from src.models.db import db
 from src.models.pessoa import Pessoa
 from src.models.fazenda import Fazenda, TipoPosse
-from src.models.documento import Documento, TipoDocumento, TipoEntidade
+from src.models.documento import Documento, TipoDocumento
 from src.models.endividamento import Endividamento
 
 @pytest.fixture
@@ -61,7 +63,6 @@ def test_documento_propriedades(session):
         tipo_personalizado=None,
         data_emissao=hoje - datetime.timedelta(days=10),
         data_vencimento=hoje,
-        tipo_entidade=TipoEntidade.FAZENDA,
         fazenda=fazenda
     )
     session.add(doc)
@@ -93,20 +94,18 @@ def test_documento_propriedades(session):
     doc.emails_notificacao = "c@c.com, d@d.com"
     assert doc.emails_notificacao == ["c@c.com", "d@d.com"]
 
-    # Testa nome_entidade
+    # Testa nomes_entidades (corrigido para string, não lista)
     doc.data_vencimento = hoje  # volta para não vencido
-    doc.tipo_entidade = TipoEntidade.FAZENDA
     doc.fazenda = fazenda
     doc.pessoa = None
     session.commit()
-    assert doc.nome_entidade == "Fazenda Teste"
+    assert doc.nomes_entidades == "Fazenda Teste"
 
     # Troca para pessoa
-    doc.tipo_entidade = TipoEntidade.PESSOA
     doc.fazenda = None
     doc.pessoa = pessoa
     session.commit()
-    assert doc.nome_entidade == "Pessoa Teste"
+    assert doc.nomes_entidades == "Pessoa Teste"
 
 def test_endividamento_to_dict(session):
     endiv = Endividamento(

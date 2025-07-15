@@ -21,7 +21,7 @@
                 <option value="">Todas</option>
                 {% for fazenda in fazendas %}
                     <option value="{{ fazenda.id }}" {% if fazenda_id == fazenda.id %}selected{% endif %}>
-                        {{ fazenda.nome }}
+                        {{ fazenda.nome }} (Matrícula: {{ fazenda.matricula }})
                     </option>
                 {% endfor %}
             </select>
@@ -72,7 +72,13 @@
                                     <td>{{ documento.nome }}</td>
                                     <td>{{ documento.tipo.value }}</td>
                                     <td>
-                                        {{ documento.fazenda.nome if documento.fazenda else (documento.pessoa.nome if documento.pessoa else '-') }}
+                                        {% if documento.fazenda %}
+                                            {{ documento.fazenda.nome }} (Matrícula: {{ documento.fazenda.matricula }})
+                                        {% elif documento.pessoa %}
+                                            {{ documento.pessoa.nome }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
                                     </td>
                                     <td>{{ documento.data_emissao.strftime('%d/%m/%Y') }}</td>
                                     <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') if documento.data_vencimento else '-' }}</td>

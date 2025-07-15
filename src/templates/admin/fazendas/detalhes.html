@@ -1,10 +1,12 @@
+<!-- /src/templates/admin/fazendas/detahes.html -->
+
 {% extends "layouts/base.html" %}
 {% block title %}{{ fazenda.nome }} — Detalhes{% endblock %}
 {% block content %}
 <div class="container">
   <div class="row">
     <div class="col-12">
-      <h2 class="mt-3">{{ fazenda.nome }}</h2>
+      <h2 class="mt-3">{{ fazenda.nome }} <small class="text-muted">(Matrícula: {{ fazenda.matricula }})</small></h2>
       <p><strong>Matrícula:</strong> {{ fazenda.matricula }}</p>
       <p><strong>Município/UF:</strong> {{ fazenda.municipio }} / {{ fazenda.estado }}</p>
       <p><strong>Área consolidada:</strong> {{ fazenda.tamanho_total }} ha</p>

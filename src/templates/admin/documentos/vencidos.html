@@ -45,7 +45,7 @@
                                     </td>
                                     <td>
                                         {% if documento.fazenda is defined and documento.fazenda %}
-                                            {{ documento.fazenda.nome }}
+                                            {{ documento.fazenda.nome }} (Matrícula: {{ documento.fazenda.matricula }})
                                         {% elif documento.entidade_nome is defined and documento.entidade_nome %}
                                             {{ documento.entidade_nome }}
                                         {% else %}
@@ -113,7 +113,7 @@
                                     </td>
                                     <td>
                                         {% if documento.fazenda is defined and documento.fazenda %}
-                                            {{ documento.fazenda.nome }}
+                                            {{ documento.fazenda.nome }} (Matrícula: {{ documento.fazenda.matricula }})
                                         {% elif documento.entidade_nome is defined and documento.entidade_nome %}
                                             {{ documento.entidade_nome }}
                                         {% else %}

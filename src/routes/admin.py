@@ -12,7 +12,7 @@ from flask_login import login_required
 
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 from src.models.db import db
-from src.models.documento import Documento, TipoDocumento, TipoEntidade
+from src.models.documento import Documento, TipoDocumento
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.pessoa import Pessoa
 from src.utils.auditoria import registrar_auditoria
@@ -664,11 +664,8 @@ def novo_documento():
         data_emissao = request.form.get("data_emissao")
         data_vencimento = request.form.get("data_vencimento")
         emails_notificacao = request.form.get("emails_notificacao")
-        tipo_entidade = request.form.get("tipo_entidade")
-        fazenda_id = (
-            request.form.get("fazenda_id") if tipo_entidade == "FAZENDA" else None
-        )
-        pessoa_id = request.form.get("pessoa_id") if tipo_entidade == "PESSOA" else None
+        fazenda_id = request.form.get("fazenda_id") or None
+        pessoa_id = request.form.get("pessoa_id") or None
 
         prazos_notificacao = request.form.getlist("prazo_notificacao[]")
         prazos_notificacao = [int(p) for p in prazos_notificacao if p.isdigit()]
@@ -682,16 +679,8 @@ def novo_documento():
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
-        if tipo_entidade == "FAZENDA" and not fazenda_id:
-            flash("Selecione uma fazenda/área para relacionar o documento.", "danger")
-            return render_template(
-                "admin/documentos/form.html",
-                tipos_documento=tipos_documento,
-                fazendas=fazendas,
-                pessoas=pessoas,
-            )
-        if tipo_entidade == "PESSOA" and not pessoa_id:
-            flash("Selecione uma pessoa para relacionar o documento.", "danger")
+        if not fazenda_id and not pessoa_id:
+            flash("Selecione uma fazenda/área e/ou uma pessoa para relacionar o documento.", "danger")
             return render_template(
                 "admin/documentos/form.html",
                 tipos_documento=tipos_documento,
@@ -733,11 +722,6 @@ def novo_documento():
             tipo_personalizado=tipo_personalizado if tipo == "Outros" else None,
             data_emissao=data_emissao,
             data_vencimento=data_vencimento,
-            tipo_entidade=(
-                TipoEntidade.FAZENDA
-                if tipo_entidade == "FAZENDA"
-                else TipoEntidade.PESSOA
-            ),
             fazenda_id=int(fazenda_id) if fazenda_id else None,
             pessoa_id=int(pessoa_id) if pessoa_id else None,
         )
@@ -760,7 +744,6 @@ def novo_documento():
                     if novo_documento.data_vencimento
                     else None
                 ),
-                "tipo_entidade": novo_documento.tipo_entidade.value,
                 "fazenda_id": novo_documento.fazenda_id,
                 "pessoa_id": novo_documento.pessoa_id,
                 "emails_notificacao": novo_documento.emails_notificacao,
@@ -793,11 +776,8 @@ def editar_documento(id):
         data_emissao = request.form.get("data_emissao")
         data_vencimento = request.form.get("data_vencimento")
         emails_notificacao = request.form.get("emails_notificacao")
-        tipo_entidade = request.form.get("tipo_entidade")
-        fazenda_id = (
-            request.form.get("fazenda_id") if tipo_entidade == "FAZENDA" else None
-        )
-        pessoa_id = request.form.get("pessoa_id") if tipo_entidade == "PESSOA" else None
+        fazenda_id = request.form.get("fazenda_id") or None
+        pessoa_id = request.form.get("pessoa_id") or None
 
         # Obter múltiplos prazos de notificação
         prazos_notificacao = request.form.getlist("prazo_notificacao[]")
@@ -817,17 +797,8 @@ def editar_documento(id):
                 pessoas=pessoas,
             )
 
-        if tipo_entidade == "FAZENDA" and not fazenda_id:
-            flash("Selecione uma fazenda/área para relacionar o documento.", "danger")
-            return render_template(
-                "admin/documentos/form.html",
-                documento=documento,
-                tipos_documento=TipoDocumento,
-                fazendas=fazendas,
-                pessoas=pessoas,
-            )
-        elif tipo_entidade == "PESSOA" and not pessoa_id:
-            flash("Selecione uma pessoa para relacionar o documento.", "danger")
+        if not fazenda_id and not pessoa_id:
+            flash("Selecione uma fazenda/área e/ou uma pessoa para relacionar o documento.", "danger")
             return render_template(
                 "admin/documentos/form.html",
                 documento=documento,
@@ -877,9 +848,6 @@ def editar_documento(id):
             "data_vencimento": (
                 str(documento.data_vencimento) if documento.data_vencimento else None
             ),
-            "tipo_entidade": (
-                documento.tipo_entidade.value if documento.tipo_entidade else None
-            ),
             "fazenda_id": documento.fazenda_id,
             "pessoa_id": documento.pessoa_id,
             "emails_notificacao": documento.emails_notificacao,
@@ -891,16 +859,9 @@ def editar_documento(id):
         documento.tipo_personalizado = tipo_personalizado if tipo == "Outros" else None
         documento.data_emissao = data_emissao
         documento.data_vencimento = data_vencimento
-        documento.tipo_entidade = (
-            TipoEntidade.FAZENDA if tipo_entidade == "FAZENDA" else TipoEntidade.PESSOA
-        )
 
-        if tipo_entidade == "FAZENDA":
-            documento.fazenda_id = int(fazenda_id)
-            documento.pessoa_id = None
-        else:
-            documento.fazenda_id = None
-            documento.pessoa_id = int(pessoa_id)
+        documento.fazenda_id = int(fazenda_id) if fazenda_id else None
+        documento.pessoa_id = int(pessoa_id) if pessoa_id else None
 
         documento.emails_notificacao = emails_notificacao
         documento.prazos_notificacao = prazos_notificacao
@@ -921,9 +882,6 @@ def editar_documento(id):
                     str(documento.data_vencimento)
                     if documento.data_vencimento
                     else None
-                ),
-                "tipo_entidade": (
-                    documento.tipo_entidade.value if documento.tipo_entidade else None
                 ),
                 "fazenda_id": documento.fazenda_id,
                 "pessoa_id": documento.pessoa_id,
@@ -958,9 +916,6 @@ def excluir_documento(id):
         "data_emissao": str(documento.data_emissao),
         "data_vencimento": (
             str(documento.data_vencimento) if documento.data_vencimento else None
-        ),
-        "tipo_entidade": (
-            documento.tipo_entidade.value if documento.tipo_entidade else None
         ),
         "fazenda_id": documento.fazenda_id,
         "pessoa_id": documento.pessoa_id,

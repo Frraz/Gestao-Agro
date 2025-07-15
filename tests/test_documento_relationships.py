@@ -1,10 +1,12 @@
+# /tests/test_documento_relationships.py
+
 import pytest
 import datetime
 from src.main import create_app
 from src.models.db import db
 from src.models.pessoa import Pessoa
 from src.models.fazenda import Fazenda, TipoPosse
-from src.models.documento import Documento, TipoDocumento, TipoEntidade
+from src.models.documento import Documento, TipoDocumento
 
 @pytest.fixture
 def app():
@@ -51,8 +53,7 @@ def documento_para_pessoa(pessoa):
         tipo_personalizado=None,
         data_emissao=datetime.date(2024,1,1),
         data_vencimento=datetime.date(2025,1,1),
-        tipo_entidade=TipoEntidade.PESSOA,
-        pessoa=pessoa
+        pessoa=pessoa   # Removido tipo_entidade
     )
 
 def documento_para_fazenda(fazenda):
@@ -62,8 +63,7 @@ def documento_para_fazenda(fazenda):
         tipo_personalizado=None,
         data_emissao=datetime.date(2024,1,1),
         data_vencimento=datetime.date(2025,1,1),
-        tipo_entidade=TipoEntidade.FAZENDA,
-        fazenda=fazenda
+        fazenda=fazenda  # Removido tipo_entidade
     )
 
 def test_documento_associado_a_pessoa(session):

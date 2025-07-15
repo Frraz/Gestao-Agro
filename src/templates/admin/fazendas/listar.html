@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/fazendas/listar.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Fazendas - Sistema de Gestão de Fazendas{% endblock %}
@@ -25,8 +27,7 @@
                     <table class="table table-bordered table-hover" width="100%" cellspacing="0">
                         <thead>
                             <tr>
-                                <th>Nome</th>
-                                <th>Matrícula</th>
+                                <th>Nome (Matrícula)</th>
                                 <th>Tamanho Total (ha)</th>
                                 <th>Área Consolidada (ha)</th>
                                 <th>Tamanho Disponível (ha)</th>
@@ -40,8 +41,10 @@
                         <tbody>
                             {% for fazenda in fazendas %}
                                 <tr>
-                                    <td>{{ fazenda.nome }}</td>
-                                    <td>{{ fazenda.matricula }}</td>
+                                    <td>
+                                        {{ fazenda.nome }}<br>
+                                        <small class="text-muted">(Matrícula: {{ fazenda.matricula }})</small>
+                                    </td>
                                     <td>{{ fazenda.tamanho_total }}</td>
                                     <td>{{ fazenda.area_consolidada }}</td>
                                     <td>{{ fazenda.tamanho_disponivel }}</td>
