@@ -1,8 +1,12 @@
 # /src/utils/notificacao_documentos_service.py
 
+# Serviço de Notificações para Documentos
 import datetime
 import logging
+import json
+from collections import defaultdict
 
+from src.models.db import db
 from src.models.documento import Documento
 from src.utils.email_service import email_service, formatar_email_notificacao
 
@@ -13,9 +17,13 @@ class NotificacaoDocumentoService:
     """
     Serviço para gerenciar notificações automáticas de vencimento de documentos.
     """
+    
+    # Prazos padrão de notificação em dias
+    PRAZOS_PADRAO = [90, 60, 30, 15, 7, 3, 1]
 
     def __init__(self):
         self.email_service = email_service
+        self._notificacoes_enviadas_hoje = defaultdict(set)
 
     def verificar_e_enviar_notificacoes(self):
         """
@@ -25,73 +33,171 @@ class NotificacaoDocumentoService:
         hoje = datetime.date.today()
         total_enviadas = 0
 
-        # Buscar todos os documentos com data de vencimento e prazos de notificação configurados
-        documentos = Documento.query.filter(Documento.data_vencimento.isnot(None)).all()
+        try:
+            # Buscar todos os documentos com data de vencimento
+            documentos = Documento.query.filter(
+                Documento.data_vencimento.isnot(None),
+                Documento.data_vencimento >= hoje  # Apenas documentos ainda não vencidos
+            ).all()
 
-        for documento in documentos:
-            # Garante que o documento possui prazos para notificação
-            if (
-                not hasattr(documento, "prazos_notificacao")
-                or not documento.prazos_notificacao
-            ):
-                continue
+            logger.info(f"Verificando {len(documentos)} documentos para notificações")
 
-            # Calcula dias restantes para o vencimento
-            dias_restantes = (documento.data_vencimento - hoje).days
-
-            # Para cada prazo de notificação configurado, verifica se deve enviar
-            for prazo in documento.prazos_notificacao:
-                if dias_restantes == prazo:
-                    try:
-                        # Determina destinatários
-                        destinatarios = []
-                        responsavel_nome = None
-                        responsavel = getattr(documento, "responsavel", None)
-                        if responsavel and getattr(responsavel, "email", None):
-                            destinatarios.append(responsavel.email)
-                            responsavel_nome = (
-                                getattr(responsavel, "nome", None) or responsavel.email
-                            )
-                        elif (
-                            hasattr(documento, "emails_notificacao")
-                            and documento.emails_notificacao
-                        ):
-                            # Campo alternativo (exemplo: lista de e-mails)
-                            destinatarios = documento.emails_notificacao
-
-                        if not destinatarios:
-                            logger.warning(
-                                f"Documento {documento.id} sem destinatário para notificação"
-                            )
-                            continue
-
-                        # Monta e envia notificação
-                        assunto, corpo_html = formatar_email_notificacao(
-                            documento,
-                            dias_restantes,
-                            responsavel=responsavel_nome,
-                            link_documento=getattr(
-                                documento, "link_visualizacao", None
-                            ),
-                        )
-                        enviado = self.email_service.send_email(
-                            destinatarios, assunto, corpo_html, html=True
-                        )
-                        if enviado:
-                            logger.info(
-                                f"Notificação de vencimento enviada para documento {documento.id}: {destinatarios}"
-                            )
+            for documento in documentos:
+                # Calcula dias restantes para o vencimento
+                dias_restantes = (documento.data_vencimento - hoje).days
+                
+                # Determina os prazos de notificação para este documento
+                prazos = self._obter_prazos_notificacao(documento)
+                
+                # Verifica se deve enviar notificação hoje
+                if dias_restantes in prazos:
+                    # Evita enviar múltiplas notificações para o mesmo documento no mesmo dia
+                    chave_notificacao = f"{documento.id}_{dias_restantes}"
+                    if chave_notificacao not in self._notificacoes_enviadas_hoje[hoje]:
+                        if self._enviar_notificacao_documento(documento, dias_restantes):
+                            self._notificacoes_enviadas_hoje[hoje].add(chave_notificacao)
                             total_enviadas += 1
-                        else:
-                            logger.error(
-                                f"Falha ao enviar notificação de documento {documento.id} para {destinatarios}"
-                            )
 
-                    except Exception as e:
-                        logger.error(
-                            f"Erro ao enviar notificação de documento {documento.id}: {e}"
-                        )
-        return total_enviadas
+            logger.info(f"Total de notificações de documentos enviadas: {total_enviadas}")
+            return total_enviadas
+
+        except Exception as e:
+            logger.error(f"Erro ao processar notificações de documentos: {str(e)}", exc_info=True)
+            return 0
+
+    def _obter_prazos_notificacao(self, documento):
+        """Obtém os prazos de notificação para um documento"""
+        # Primeiro tenta obter prazos específicos do documento
+        if hasattr(documento, 'prazos_notificacao') and documento.prazos_notificacao:
+            if isinstance(documento.prazos_notificacao, str):
+                try:
+                    return json.loads(documento.prazos_notificacao)
+                except:
+                    pass
+            elif isinstance(documento.prazos_notificacao, list):
+                return documento.prazos_notificacao
+        
+        # Se não houver prazos específicos, usa os padrões baseados no tipo
+        if hasattr(documento, 'tipo') and documento.tipo:
+            tipo_value = documento.tipo.value if hasattr(documento.tipo, 'value') else str(documento.tipo)
+            
+            # Prazos específicos por tipo de documento
+            if 'licença' in tipo_value.lower() or 'ambiental' in tipo_value.lower():
+                return [180, 120, 90, 60, 30, 15, 7]  # Licenças precisam mais antecedência
+            elif 'contrato' in tipo_value.lower():
+                return [90, 60, 30, 15, 7]
+            elif 'certidão' in tipo_value.lower():
+                return [60, 30, 15, 7, 3]
+        
+        # Retorna prazos padrão
+        return self.PRAZOS_PADRAO
+
+    def _enviar_notificacao_documento(self, documento, dias_restantes):
+        """Envia notificação para um documento específico"""
+        try:
+            # Determina destinatários
+            destinatarios = self._obter_destinatarios(documento)
+            
+            if not destinatarios:
+                logger.warning(f"Documento {documento.id} sem destinatário para notificação")
+                return False
+
+            # Obtém nome do responsável
+            responsavel_nome = self._obter_nome_responsavel(documento)
+            
+            # Link para visualização do documento
+            link_documento = getattr(documento, 'link_visualizacao', None) or f"/documento/{documento.id}"
+
+            # Monta e envia notificação
+            assunto, corpo_html = formatar_email_notificacao(
+                documento,
+                dias_restantes,
+                responsavel=responsavel_nome,
+                link_documento=link_documento,
+            )
+            
+            enviado = self.email_service.send_email(
+                destinatarios, assunto, corpo_html, html=True
+            )
+            
+            if enviado:
+                logger.info(
+                    f"Notificação enviada - Documento: {documento.id} ({documento.nome}), "
+                    f"Dias restantes: {dias_restantes}, Destinatários: {destinatarios}"
+                )
+                
+                # Registrar o envio (se houver modelo de histórico)
+                self._registrar_envio(documento, destinatarios, dias_restantes)
+            else:
+                logger.error(
+                    f"Falha ao enviar notificação - Documento: {documento.id}, "
+                    f"Destinatários: {destinatarios}"
+                )
+
+            return enviado
+
+        except Exception as e:
+            logger.error(
+                f"Erro ao enviar notificação para documento {documento.id}: {str(e)}",
+                exc_info=True
+            )
+            return False
+
+    def _obter_destinatarios(self, documento):
+        """Obtém lista de e-mails para notificação"""
+        destinatarios = []
+        
+        # Tenta obter do responsável
+        responsavel = getattr(documento, "responsavel", None)
+        if responsavel and getattr(responsavel, "email", None):
+            destinatarios.append(responsavel.email)
+        
+        # Tenta obter de emails_notificacao
+        if hasattr(documento, "emails_notificacao") and documento.emails_notificacao:
+            if isinstance(documento.emails_notificacao, str):
+                try:
+                    emails = json.loads(documento.emails_notificacao)
+                    if isinstance(emails, list):
+                        destinatarios.extend(emails)
+                except:
+                    # Se não for JSON, tenta split por vírgula
+                    destinatarios.extend([e.strip() for e in documento.emails_notificacao.split(',')])
+            elif isinstance(documento.emails_notificacao, list):
+                destinatarios.extend(documento.emails_notificacao)
+        
+        # Remove duplicatas e emails vazios
+        destinatarios = list(set(e for e in destinatarios if e and '@' in e))
+        
+        return destinatarios
+
+    def _obter_nome_responsavel(self, documento):
+        """Obtém o nome do responsável pelo documento"""
+        responsavel = getattr(documento, "responsavel", None)
+        if responsavel:
+            return getattr(responsavel, "nome", None) or getattr(responsavel, "email", "Responsável")
+        return "Responsável"
+
+    def _registrar_envio(self, documento, destinatarios, dias_restantes):
+        """Registra o envio da notificação (implementar se necessário)"""
+        # TODO: Implementar modelo de histórico de notificações para documentos
+        # similar ao HistoricoNotificacao de endividamentos
+        pass
+
+    def configurar_prazos_documento(self, documento_id, prazos):
+        """Configura prazos customizados para um documento"""
+        try:
+            documento = Documento.query.get(documento_id)
+            if documento:
+                # Salvar como JSON se o campo existir
+                if hasattr(documento, 'prazos_notificacao'):
+                    documento.prazos_notificacao = json.dumps(prazos)
+                    db.session.commit()
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"Erro ao configurar prazos do documento {documento_id}: {str(e)}")
+            db.session.rollback()
+            return False
 
 
 # Instância pronta para uso em tasks agendadas

@@ -10,6 +10,8 @@ Exemplo de uso:
 """
 
 import os
+from datetime import timedelta
+from celery.schedules import crontab
 
 CELERY_TIMEZONE = "America/Sao_Paulo"
 
@@ -84,32 +86,126 @@ class Config:
     )
     MAX_CONTENT_LENGTH = parse_int_env("MAX_CONTENT_LENGTH", 16 * 1024 * 1024)
 
-    # Celery (tarefas assíncronas, se usar)
+    # ========== CONFIGURAÇÕES DO CELERY (CRÍTICO PARA NOTIFICAÇÕES) ==========
+    
+    # URLs do Celery
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
-
-    # Outras configs centralizadas (exemplo, adicione o que precisar)
-    # LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    # CACHE_TIMEOUT = int(os.getenv("CACHE_TIMEOUT", 300))
+    
+    # Configurações essenciais do Celery
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = CELERY_TIMEZONE
+    CELERY_ENABLE_UTC = True
+    
+    # Configuração de expiração de resultados
+    CELERY_RESULT_EXPIRES = 3600  # 1 hora
+    
+    # Configuração de retry
+    CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutos
+    CELERY_TASK_TIME_LIMIT = 600  # 10 minutos
+    CELERY_TASK_MAX_RETRIES = 3
+    CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 1 minuto
+    
+    # ========== AGENDAMENTO DE TAREFAS (CELERY BEAT) ==========
+    CELERY_BEAT_SCHEDULE = {
+        # Verifica notificações a cada 5 minutos
+        'verificar-notificacoes-periodicamente': {
+            'task': 'tasks.processar_todas_notificacoes',
+            'schedule': timedelta(minutes=5),
+            'options': {
+                'expires': 300,  # Expira em 5 minutos se não executar
+            }
+        },
+        
+        # Verificação diária às 8h da manhã (horário de Brasília)
+        'verificacao-matinal-notificacoes': {
+            'task': 'tasks.processar_todas_notificacoes',
+            'schedule': crontab(hour=8, minute=0),
+            'options': {
+                'expires': 3600,  # Expira em 1 hora se não executar
+            }
+        },
+        
+        # Verificação adicional às 14h
+        'verificacao-vespertina-notificacoes': {
+            'task': 'tasks.processar_todas_notificacoes',
+            'schedule': crontab(hour=14, minute=0),
+            'options': {
+                'expires': 3600,
+            }
+        },
+        
+        # Limpeza de notificações antigas (diariamente às 2h da manhã)
+        'limpar-notificacoes-antigas': {
+            'task': 'tasks.limpar_notificacoes_antigas',
+            'schedule': crontab(hour=2, minute=0),
+            'options': {
+                'expires': 3600,
+            }
+        },
+    }
+    
+    # ========== CONFIGURAÇÕES DE NOTIFICAÇÃO ==========
+    NOTIFICATION_CHECK_INTERVAL = int(os.getenv("NOTIFICATION_CHECK_INTERVAL", 300))  # 5 minutos
+    NOTIFICATION_DAYS_BEFORE = int(os.getenv("NOTIFICATION_DAYS_BEFORE", 30))  # Avisar 30 dias antes
+    NOTIFICATION_EMAIL_ENABLED = str_to_bool(os.getenv("NOTIFICATION_EMAIL_ENABLED", "true"))
+    
+    # ========== LOGGING ==========
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_TO_STDOUT = str_to_bool(os.getenv("LOG_TO_STDOUT", "false"))
+    
+    # ========== CACHE ==========
+    CACHE_TYPE = os.getenv("CACHE_TYPE", "simple")
+    CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", 300))
 
 
 class DevelopmentConfig(Config):
     """Configurações para ambiente de desenvolvimento."""
-
     DEBUG = True
+    
+    # Em desenvolvimento, verificar notificações mais frequentemente
+    CELERY_BEAT_SCHEDULE = {
+        **Config.CELERY_BEAT_SCHEDULE,
+        'verificar-notificacoes-dev': {
+            'task': 'tasks.processar_todas_notificacoes',
+            'schedule': timedelta(minutes=1),  # A cada minuto em dev
+        },
+    }
 
 
 class TestingConfig(Config):
     """Configurações para ambiente de testes."""
-
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    CELERY_TASK_ALWAYS_EAGER = True  # Executa tarefas sincronamente em testes
+    CELERY_TASK_EAGER_PROPAGATES = True
 
 
 class ProductionConfig(Config):
     """Configurações para produção."""
-
     DEBUG = False
+    
+    # Em produção, garantir que logs sejam mais detalhados
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
+    
+    # Forçar HTTPS em produção
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Configurações específicas do Railway
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        # Railway fornece PORT automaticamente
+        PORT = int(os.getenv("PORT", 5000))
+        
+        # Ajustar Redis URL se fornecido pelo Railway
+        if os.getenv("REDIS_URL"):
+            REDIS_URL = os.getenv("REDIS_URL")
+            CELERY_BROKER_URL = REDIS_URL
+            CELERY_RESULT_BACKEND = REDIS_URL
 
 
 config_by_name = dict(
