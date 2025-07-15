@@ -21,12 +21,13 @@ COPY . .
 # Criar diretórios necessários (logs, uploads)
 RUN mkdir -p logs uploads/documentos
 
-# Expor porta padrão do Flask
+# Expor porta padrão para o Railway (usa variável de ambiente PORT)
 EXPOSE 5000
 
-# Definir variáveis de ambiente
+# Definir variáveis de ambiente padrão
 ENV FLASK_APP=src/main.py
 ENV FLASK_RUN_HOST=0.0.0.0
+ENV PYTHONUNBUFFERED=1
 
-# Executar migrations automaticamente e iniciar aplicação com Gunicorn
+# Comando de entrada: executa migrations e inicia Gunicorn
 CMD flask db upgrade && gunicorn src.main:app --bind 0.0.0.0:${PORT:-5000}
