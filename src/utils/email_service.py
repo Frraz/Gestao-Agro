@@ -134,18 +134,22 @@ def formatar_email_notificacao(
         classe_alerta = "info"
         nivel_urgencia = "AVISO"
 
-    # Informações da entidade relacionada
-    tipo_entidade = (
-        "Fazenda/Área" if documento.tipo_entidade.value == "Fazenda/Área" else "Pessoa"
-    )
-    nome_entidade = documento.nome_entidade
+    # Informações da entidade relacionada - torna robusto para ausência de tipo_entidade
+    tipo_entidade = "Pessoa"
+    if hasattr(documento, "tipo_entidade") and getattr(documento, "tipo_entidade", None):
+        tipo_entidade_val = getattr(documento.tipo_entidade, "value", documento.tipo_entidade)
+        if tipo_entidade_val == "Fazenda/Área":
+            tipo_entidade = "Fazenda/Área"
+        else:
+            tipo_entidade = str(tipo_entidade_val)
+    nome_entidade = getattr(documento, "nome_entidade", "")
 
     contexto = {
         "responsavel": responsavel,
-        "nome_documento": documento.nome,
-        "tipo_documento": documento.tipo.value,
-        "data_emissao": documento.data_emissao.strftime("%d/%m/%Y"),
-        "data_vencimento": documento.data_vencimento.strftime("%d/%m/%Y"),
+        "nome_documento": getattr(documento, "nome", ""),
+        "tipo_documento": getattr(getattr(documento, "tipo", None), "value", getattr(documento, "tipo", "")),
+        "data_emissao": documento.data_emissao.strftime("%d/%m/%Y") if getattr(documento, "data_emissao", None) else "",
+        "data_vencimento": documento.data_vencimento.strftime("%d/%m/%Y") if getattr(documento, "data_vencimento", None) else "",
         "tipo_entidade": tipo_entidade,
         "nome_entidade": nome_entidade,
         "dias_restantes": dias_restantes,
@@ -165,7 +169,7 @@ def formatar_email_notificacao(
             )
 
     assunto = (
-        f"{nivel_urgencia}: Documento '{documento.nome}' vence em {dias_restantes} dias"
+        f"{nivel_urgencia}: Documento '{contexto['nome_documento']}' vence em {dias_restantes} dias"
     )
     return assunto, corpo_html
 
@@ -192,7 +196,7 @@ def verificar_documentos_vencendo():
         dias_restantes = (documento.data_vencimento - hoje).days
 
         # Verificar se o documento está dentro de algum prazo de notificação
-        for prazo in documento.prazos_notificacao:
+        for prazo in getattr(documento, "prazos_notificacao", []):
             if dias_restantes == prazo:
                 if prazo not in documentos_por_prazo:
                     documentos_por_prazo[prazo] = []

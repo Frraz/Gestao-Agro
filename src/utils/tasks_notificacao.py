@@ -1,7 +1,5 @@
 # /src/utils/tasks_notificacao.py
 
-# /src/utils/tasks_notificacao.py
-
 # Tarefas agendadas para notificações
 import logging
 from datetime import datetime
