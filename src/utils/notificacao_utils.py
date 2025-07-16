@@ -1,6 +1,6 @@
 # /src/utils/notificacao_utils.py
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 def calcular_proximas_notificacoes_programadas(data_vencimento, prazos, enviados=None):
     """
@@ -15,7 +15,7 @@ def calcular_proximas_notificacoes_programadas(data_vencimento, prazos, enviados
     if isinstance(data_vencimento, datetime):
         venc = data_vencimento
     else:
-        venc = datetime.combine(data_vencimento, datetime.min.time())
+        venc = datetime.combine(data_vencimento, time(8, 0))  # Corrigido para 08:00
     futuras = []
     for prazo in prazos:
         if prazo in enviados:
