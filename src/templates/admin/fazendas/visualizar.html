@@ -42,14 +42,6 @@
                                     <td>{{ fazenda.matricula }}</td>
                                 </tr>
                                 <tr>
-                                    <td><strong>Tipo de Posse:</strong></td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if fazenda.tipo_posse.value == 'Própria' else 'info' }}">
-                                            {{ fazenda.tipo_posse.value }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
                                     <td><strong>Localização:</strong></td>
                                     <td>{{ fazenda.municipio }}/{{ fazenda.estado }}</td>
                                 </tr>
@@ -100,30 +92,44 @@
                     <!-- Pessoas Associadas -->
                     <div class="mb-4">
                         <h5>Pessoas Associadas</h5>
-                        {% if fazenda.pessoas %}
-                            <div class="row">
-                                {% for pessoa in fazenda.pessoas %}
-                                <div class="col-md-6 mb-2">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h6 class="card-title">{{ pessoa.nome }}</h6>
-                                            <p class="card-text">
-                                                <small class="text-muted">{{ pessoa.formatar_cpf_cnpj() }}</small>
-                                            </p>
-                                            {% if pessoa.email %}
-                                            <p class="card-text">
-                                                <i class="fas fa-envelope"></i> {{ pessoa.email }}
-                                            </p>
-                                            {% endif %}
-                                            {% if pessoa.telefone %}
-                                            <p class="card-text">
-                                                <i class="fas fa-phone"></i> {{ pessoa.telefone }}
-                                            </p>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
+                        {% if fazenda.pessoas_fazenda and fazenda.pessoas_fazenda|length > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Tipo de Posse</th>
+                                            <th>CPF/CNPJ</th>
+                                            <th>Email</th>
+                                            <th>Telefone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pf in fazenda.pessoas_fazenda %}
+                                        <tr>
+                                            <td>{{ pf.pessoa.nome }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if pf.tipo_posse.value == 'PROPRIETARIO' else 'info' }}">
+                                                    {{ pf.tipo_posse.value|capitalize }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if pf.pessoa.formatar_cpf_cnpj is defined %}
+                                                    {{ pf.pessoa.formatar_cpf_cnpj() }}
+                                                {% else %}
+                                                    {{ pf.pessoa.cpf_cnpj }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {{ pf.pessoa.email if pf.pessoa.email else '-' }}
+                                            </td>
+                                            <td>
+                                                {{ pf.pessoa.telefone if pf.pessoa.telefone else '-' }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
                         {% else %}
                             <p class="text-muted">Nenhuma pessoa associada a esta fazenda.</p>
@@ -212,4 +218,3 @@
     </div>
 </div>
 {% endblock %}
-

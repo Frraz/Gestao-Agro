@@ -7,13 +7,11 @@ Inclui username, email (ambos únicos), senha segura (hash) e integração com F
 """
 
 from datetime import datetime
-from typing import Optional
-
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.models.db import db
 
-class Usuario(db.Model):  # type: ignore
+class Usuario(db.Model):
     """
     Modelo para usuários autenticáveis do sistema.
 
@@ -28,14 +26,14 @@ class Usuario(db.Model):  # type: ignore
 
     __tablename__ = "usuario"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    nome: str = db.Column(db.String(100), nullable=False)
-    username: Optional[str] = db.Column(
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    username = db.Column(
         db.String(80), unique=True, nullable=True
-    )  # Deixe nullable=True se opcional
-    email: str = db.Column(db.String(120), unique=True, nullable=False)
-    senha_hash: str = db.Column(db.String(512), nullable=False)
-    criado_em: datetime = db.Column(db.DateTime, default=datetime.utcnow)
+    )  # nullable=True se login só por email
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    senha_hash = db.Column(db.String(512), nullable=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def set_password(self, senha: str) -> None:
         """Define a senha do usuário (armazenando o hash)."""
@@ -47,17 +45,17 @@ class Usuario(db.Model):  # type: ignore
 
     @property
     def is_authenticated(self) -> bool:
-        """Indica se o usuário está autenticado (integração com Flask-Login)."""
+        """Indica se o usuário está autenticado (Flask-Login)."""
         return True
 
     @property
     def is_active(self) -> bool:
-        """Indica se o usuário está ativo (integração com Flask-Login)."""
+        """Indica se o usuário está ativo (Flask-Login)."""
         return True
 
     @property
     def is_anonymous(self) -> bool:
-        """Indica se o usuário é anônimo (integração com Flask-Login)."""
+        """Indica se o usuário é anônimo (Flask-Login)."""
         return False
 
     def get_id(self) -> str:
@@ -68,10 +66,10 @@ class Usuario(db.Model):  # type: ignore
         return f"<Usuario {self.username or self.email}>"
 
     def to_dict(self) -> dict:
+        """Retorna dicionário serializável (exceto senha)."""
         return {
             "id": self.id,
             "nome": self.nome,
             "username": self.username,
             "email": self.email,
         }
-    

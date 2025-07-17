@@ -1,5 +1,3 @@
-# /src/routes/pessoa.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
@@ -7,6 +5,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from src.models.db import db
 from src.models.pessoa import Pessoa
+from src.models.pessoa_fazenda import PessoaFazenda, TipoPosse
 from src.utils.performance import clear_related_cache
 
 pessoa_bp = Blueprint("pessoa", __name__, url_prefix="/api/pessoas")
@@ -20,7 +19,9 @@ def listar_pessoas():
         resultado = []
 
         for pessoa in pessoas:
+
             fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas_associadas_associadas]
+
             resultado.append(
                 {
                     "id": pessoa.id,
@@ -35,7 +36,7 @@ def listar_pessoas():
 
         return jsonify(resultado)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar pessoas: {str(e)}")
+        current_app.logger.error(f"Erro ao listar pessoas: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao listar pessoas", "detalhes": str(e)}), 500
 
 
@@ -44,6 +45,7 @@ def obter_pessoa(id):
     """Obtém detalhes de uma pessoa específica."""
     try:
         pessoa = Pessoa.query.get_or_404(id)
+
         fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas_associadas]
 
         return jsonify(
@@ -58,7 +60,7 @@ def obter_pessoa(id):
             }
         )
     except Exception as e:
-        current_app.logger.error(f"Erro ao obter pessoa {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao obter pessoa {id}: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": f"Erro ao obter pessoa {id}", "detalhes": str(e)}), 500
 
 
@@ -102,6 +104,23 @@ def criar_pessoa():
         )
 
         db.session.add(nova_pessoa)
+        db.session.flush()  # Para pegar o ID antes de criar vínculos
+
+        # Criar vínculos de fazenda se enviados
+        fazendas = dados.get("fazendas", [])
+        for vinc in fazendas:
+            fazenda_id = vinc.get("fazenda_id") or vinc.get("id")
+            tipo_posse = vinc.get("tipo_posse")
+            data_fim = vinc.get("data_fim")
+            if fazenda_id and tipo_posse:
+                pf = PessoaFazenda(
+                    pessoa_id=nova_pessoa.id,
+                    fazenda_id=fazenda_id,
+                    tipo_posse=TipoPosse(tipo_posse),
+                    data_fim=data_fim,
+                )
+                db.session.add(pf)
+
         db.session.commit()
         
         # Invalidar cache de busca de pessoas
@@ -126,7 +145,7 @@ def criar_pessoa():
         )
     except IntegrityError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de integridade ao criar pessoa: {str(e)}")
+        current_app.logger.error(f"Erro de integridade ao criar pessoa: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {"erro": "Erro de integridade no banco de dados", "detalhes": str(e)}
@@ -135,7 +154,7 @@ def criar_pessoa():
         )
     except SQLAlchemyError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de banco de dados ao criar pessoa: {str(e)}")
+        current_app.logger.error(f"Erro de banco de dados ao criar pessoa: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
         db.session.rollback()
@@ -189,9 +208,24 @@ def atualizar_pessoa(id):
         if "endereco" in dados:
             pessoa.endereco = dados.get("endereco")
 
+        # Atualiza vínculos de fazenda se enviados
+        if "fazendas" in dados:
+            PessoaFazenda.query.filter_by(pessoa_id=pessoa.id).delete()
+            for vinc in dados.get("fazendas"):
+                fazenda_id = vinc.get("fazenda_id") or vinc.get("id")
+                tipo_posse = vinc.get("tipo_posse")
+                data_fim = vinc.get("data_fim")
+                if fazenda_id and tipo_posse:
+                    pf = PessoaFazenda(
+                        pessoa_id=pessoa.id,
+                        fazenda_id=fazenda_id,
+                        tipo_posse=TipoPosse(tipo_posse),
+                        data_fim=data_fim,
+                    )
+                    db.session.add(pf)
+
         db.session.commit()
         
-        # Invalidar cache de busca de pessoas
         clear_related_cache("pessoa")
 
         current_app.logger.info(
@@ -211,7 +245,7 @@ def atualizar_pessoa(id):
     except IntegrityError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de integridade ao atualizar pessoa {id}: {str(e)}"
+            f"Erro de integridade ao atualizar pessoa {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -222,7 +256,7 @@ def atualizar_pessoa(id):
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao atualizar pessoa {id}: {str(e)}"
+            f"Erro de banco de dados ao atualizar pessoa {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
@@ -254,6 +288,7 @@ def excluir_pessoa(id):
                 400,
             )
 
+
         # Verificar se a pessoa tem fazendas associadas
         if pessoa.fazendas_associadas and len(pessoa.fazendas_associadas) > 0:
             # Remover associações com fazendas
@@ -263,7 +298,6 @@ def excluir_pessoa(id):
         db.session.delete(pessoa)
         db.session.commit()
         
-        # Invalidar cache de busca de pessoas
         clear_related_cache("pessoa")
 
         current_app.logger.info(f"Pessoa excluída com sucesso: {nome} (ID: {id})")
@@ -272,7 +306,7 @@ def excluir_pessoa(id):
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao excluir pessoa {id}: {str(e)}"
+            f"Erro de banco de dados ao excluir pessoa {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -282,7 +316,7 @@ def excluir_pessoa(id):
         )
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro ao excluir pessoa {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao excluir pessoa {id}: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao excluir pessoa", "detalhes": str(e)}), 500
 
 
@@ -311,7 +345,7 @@ def listar_fazendas_pessoa(id):
 
         return jsonify(fazendas)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar fazendas da pessoa {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao listar fazendas da pessoa {id}: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {"erro": f"Erro ao listar fazendas da pessoa {id}", "detalhes": str(e)}
@@ -329,10 +363,12 @@ def associar_fazenda(pessoa_id, fazenda_id):
         pessoa = Pessoa.query.get_or_404(pessoa_id)
         fazenda = Fazenda.query.get_or_404(fazenda_id)
 
+
         if fazenda in pessoa.fazendas_associadas:
             return jsonify({"mensagem": "Fazenda já associada a esta pessoa"}), 400
 
         pessoa.fazendas_associadas.append(fazenda)
+
         db.session.commit()
 
         current_app.logger.info(
@@ -350,7 +386,7 @@ def associar_fazenda(pessoa_id, fazenda_id):
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao associar fazenda {fazenda_id} à pessoa {pessoa_id}: {str(e)}"
+            f"Erro de banco de dados ao associar fazenda {fazenda_id} à pessoa {pessoa_id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -364,7 +400,7 @@ def associar_fazenda(pessoa_id, fazenda_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro ao associar fazenda {fazenda_id} à pessoa {pessoa_id}: {str(e)}"
+            f"Erro ao associar fazenda {fazenda_id} à pessoa {pessoa_id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify({"erro": "Erro ao associar fazenda à pessoa", "detalhes": str(e)}),
@@ -372,10 +408,11 @@ def associar_fazenda(pessoa_id, fazenda_id):
         )
 
 
-@pessoa_bp.route("/<int:pessoa_id>/fazendas/<int:fazenda_id>", methods=["DELETE"])
-def desassociar_fazenda(pessoa_id, fazenda_id):
-    """Remove a associação entre uma pessoa e uma fazenda."""
+@pessoa_bp.route("/<int:pessoa_id>/fazendas/<int:vinculo_id>", methods=["DELETE"])
+def desassociar_fazenda(pessoa_id, vinculo_id):
+    """Remove a associação entre uma pessoa e uma fazenda pelo vínculo intermediário."""
     try:
+
         from src.models.fazenda import Fazenda
 
         pessoa = Pessoa.query.get_or_404(pessoa_id)
@@ -388,13 +425,13 @@ def desassociar_fazenda(pessoa_id, fazenda_id):
         db.session.commit()
 
         current_app.logger.info(
-            f"Associação entre pessoa {pessoa.nome} (ID: {pessoa_id}) e fazenda {fazenda.nome} (ID: {fazenda_id}) removida"
+            f"Associação (vínculo id={vinculo_id}) removida para pessoa_id={pessoa_id}"
         )
 
         return (
             jsonify(
                 {
-                    "mensagem": f"Associação entre {pessoa.nome} e fazenda {fazenda.nome} removida com sucesso"
+                    "mensagem": f"Associação removida com sucesso"
                 }
             ),
             200,
@@ -402,7 +439,7 @@ def desassociar_fazenda(pessoa_id, fazenda_id):
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao desassociar fazenda {fazenda_id} da pessoa {pessoa_id}: {str(e)}"
+            f"Erro de banco de dados ao desassociar vínculo {vinculo_id} da pessoa {pessoa_id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -416,7 +453,7 @@ def desassociar_fazenda(pessoa_id, fazenda_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro ao desassociar fazenda {fazenda_id} da pessoa {pessoa_id}: {str(e)}"
+            f"Erro ao desassociar vínculo {vinculo_id} da pessoa {pessoa_id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -447,14 +484,14 @@ def listar_documentos_pessoa(id):
                     ),
                     "emails_notificacao": documento.emails_notificacao,
                     "prazos_notificacao": documento.prazos_notificacao,
-                    "esta_vencido": documento.esta_vencido,
-                    "proximo_vencimento": documento.proximo_vencimento,
+                    "esta_vencido": getattr(documento, "esta_vencido", False),
+                    "proximo_vencimento": getattr(documento, "proximo_vencimento", None),
                 }
             )
 
         return jsonify(documentos)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar documentos da pessoa {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao listar documentos da pessoa {id}: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {

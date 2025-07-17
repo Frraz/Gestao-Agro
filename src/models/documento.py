@@ -12,8 +12,16 @@ import enum
 import json
 from typing import Any, List, Optional, Union
 
-from sqlalchemy import (Column, Date, Enum, ForeignKey, Index, Integer, String,
-                        Text)
+from sqlalchemy import (
+    Column,
+    Date,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
@@ -25,10 +33,10 @@ class TipoDocumento(enum.Enum):
     DOCUMENTOS_AREA = "Documentos da Área"
     OUTROS = "Outros"
 
-# REMOVA O TipoEntidade e a coluna tipo_entidade,
+# REMOVIDO TipoEntidade e a coluna tipo_entidade,
 # pois agora um documento pode ser associado a fazenda, pessoa, ambos ou nenhum.
 
-class Documento(db.Model):  # type: ignore
+class Documento(db.Model):
     """
     Modelo para cadastro de documentos associados às fazendas/áreas e/ou pessoas.
 
@@ -49,37 +57,25 @@ class Documento(db.Model):  # type: ignore
 
     __tablename__ = "documento"
 
-    id: int = Column(Integer, primary_key=True)
-    nome: str = Column(String(100), nullable=False, index=True)
-    tipo: TipoDocumento = Column(Enum(TipoDocumento), nullable=False, index=True)
-    tipo_personalizado: Optional[str] = Column(
-        String(100), nullable=True
-    )
-    data_emissao: datetime.date = Column(Date, nullable=False)
-    data_vencimento: Optional[datetime.date] = Column(
-        Date, nullable=True, index=True
-    )
-    fazenda_id: Optional[int] = Column(
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(100), nullable=False, index=True)
+    tipo = Column(Enum(TipoDocumento), nullable=False, index=True)
+    tipo_personalizado = Column(String(100), nullable=True)
+    data_emissao = Column(Date, nullable=False)
+    data_vencimento = Column(Date, nullable=True, index=True)
+    fazenda_id = Column(
         Integer,
         ForeignKey("fazenda.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    pessoa_id: Optional[int] = Column(
+    pessoa_id = Column(
         Integer, ForeignKey("pessoa.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    _emails_notificacao: Optional[str] = Column(
-        "emails_notificacao", Text, nullable=True
-    )
-    _prazos_notificacao: Optional[str] = Column(
-        "prazos_notificacao", Text, nullable=True
-    )
-    data_criacao: datetime.date = Column(
-        Date, default=datetime.date.today, nullable=False
-    )
-    data_atualizacao: datetime.date = Column(
-        Date, default=datetime.date.today, onupdate=datetime.date.today, nullable=False
-    )
+    _emails_notificacao = Column("emails_notificacao", Text, nullable=True)
+    _prazos_notificacao = Column("prazos_notificacao", Text, nullable=True)
+    data_criacao = Column(Date, default=datetime.date.today, nullable=False)
+    data_atualizacao = Column(Date, default=datetime.date.today, onupdate=datetime.date.today, nullable=False)
 
     fazenda = relationship("Fazenda", back_populates="documentos", lazy="joined")
     pessoa = relationship("Pessoa", back_populates="documentos", lazy="joined")
@@ -91,9 +87,6 @@ class Documento(db.Model):  # type: ignore
     def __repr__(self) -> str:
         """
         Retorna representação textual do documento.
-
-        Returns:
-            str: String representando o documento e entidades associadas.
         """
         entidades = []
         if self.fazenda_id and self.fazenda:
@@ -181,9 +174,6 @@ class Documento(db.Model):  # type: ignore
     def entidades_relacionadas(self) -> List[Any]:
         """
         Retorna a lista de entidades relacionadas (fazenda e/ou pessoa).
-
-        Returns:
-            List[Any]: Lista de instâncias das entidades relacionadas.
         """
         entidades = []
         if self.fazenda:
@@ -196,9 +186,6 @@ class Documento(db.Model):  # type: ignore
     def nomes_entidades(self) -> str:
         """
         Retorna os nomes das entidades relacionadas.
-
-        Returns:
-            str: Nomes das entidades ou 'Não definido'.
         """
         entidades = self.entidades_relacionadas
         if not entidades:

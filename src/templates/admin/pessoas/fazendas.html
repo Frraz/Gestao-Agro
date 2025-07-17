@@ -1,3 +1,5 @@
+<!-- src/templates/admin/pessoas/fazendas.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Fazendas da Pessoa - Sistema de Gestão de Fazendas{% endblock %}
@@ -21,7 +23,7 @@
             <h6 class="m-0 font-weight-bold text-primary">Fazendas/Áreas Associadas</h6>
         </div>
         <div class="card-body">
-            {% if pessoa.fazendas %}
+            {% if pessoa.pessoas_fazenda and pessoa.pessoas_fazenda|length > 0 %}
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover" width="100%" cellspacing="0">
                         <thead>
@@ -35,27 +37,29 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for fazenda in pessoa.fazendas %}
+                            {% for pf in pessoa.pessoas_fazenda %}
                                 <tr>
-                                    <td>{{ fazenda.nome }}</td>
-                                    <td>{{ fazenda.matricula }}</td>
-                                    <td>{{ fazenda.tamanho_total }}</td>
+                                    <td>{{ pf.fazenda.nome }}</td>
+                                    <td>{{ pf.fazenda.matricula }}</td>
+                                    <td>{{ pf.fazenda.tamanho_total }}</td>
                                     <td>
-                                        {% if fazenda.tipo_posse.value == 'própria' %}
-                                            <span class="badge bg-success">Própria</span>
+                                        {% if pf.tipo_posse %}
+                                            <span class="badge bg-info">
+                                                {{ pf.tipo_posse.value }}
+                                            </span>
                                         {% else %}
-                                            <span class="badge bg-info">Arrendada</span>
+                                            <span class="badge bg-secondary">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ fazenda.municipio }}/{{ fazenda.estado }}</td>
+                                    <td>{{ pf.fazenda.municipio }}/{{ pf.fazenda.estado }}</td>
                                     <td>
-                                        <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ url_for('admin.editar_fazenda', id=pf.fazenda.id) }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-edit"></i> Editar
                                         </a>
-                                        <a href="{{ url_for('admin.listar_documentos_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-info">
+                                        <a href="{{ url_for('admin.listar_documentos_fazenda', id=pf.fazenda.id) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-file-alt"></i> Documentos
                                         </a>
-                                        <form action="{{ url_for('admin.desassociar_fazenda_pessoa', pessoa_id=pessoa.id, fazenda_id=fazenda.id) }}" method="POST" class="d-inline">
+                                        <form action="{{ url_for('admin.desassociar_fazenda_pessoa', pessoa_id=pessoa.id, vinculo_id=pf.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja desassociar esta fazenda?');">
                                             <button type="submit" class="btn btn-sm btn-warning btn-delete">
                                                 <i class="fas fa-unlink"></i> Desassociar
                                             </button>

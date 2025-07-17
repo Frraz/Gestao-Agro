@@ -20,7 +20,6 @@ def test_criar_listar_fazenda(client):
         "matricula": "123",
         "tamanho_total": 100.0,
         "area_consolidada": 20.0,
-        "tipo_posse": "Própria",
         "municipio": "Cidade X",
         "estado": "UF",
         "recibo_car": "CAR-001"
@@ -29,8 +28,8 @@ def test_criar_listar_fazenda(client):
     assert response.status_code == 201, f"Retorno: {response.status_code}, body: {response.get_json()}"
     data = response.get_json()
     assert data["nome"] == payload["nome"]
-    # Compara normalizando ambos (caso backend mude futura serialização para .name)
-    assert normalize_enum(data["tipo_posse"]) == normalize_enum("PROPRIA")
+    # tipo_posse is now a property of the relationship, not the farm
+    assert "tipo_posse" not in data
     fazenda_id = data["id"]
 
     response = client.get("/api/fazendas/")
@@ -44,7 +43,6 @@ def test_get_update_delete_fazenda(client):
         "matricula": "456",
         "tamanho_total": 150.0,
         "area_consolidada": 30.0,
-        "tipo_posse": "Própria",
         "municipio": "Cidade Y",
         "estado": "UF",
         "recibo_car": "CAR-002"
@@ -58,7 +56,8 @@ def test_get_update_delete_fazenda(client):
     assert response.status_code == 200
     data_get = response.get_json()
     assert data_get["nome"] == payload["nome"]
-    assert normalize_enum(data_get["tipo_posse"]) == normalize_enum("PROPRIA")
+    # tipo_posse is now a property of the relationship, not the farm
+    assert "tipo_posse" not in data_get
 
     response = client.put(f"/api/fazendas/{fazenda_id}", json={
         "municipio": "Cidade Alterada"
@@ -78,7 +77,6 @@ def test_criar_fazenda_faltando_nome(client):
         "matricula": "123",
         "tamanho_total": 100.0,
         "area_consolidada": 20.0,
-        "tipo_posse": "Própria",
         "municipio": "Cidade X",
         "estado": "UF",
         "recibo_car": "CAR-001"

@@ -14,25 +14,23 @@ from typing import Optional
 
 from src.models.db import db
 
-class NotificacaoEndividamento(db.Model):  # type: ignore
+class NotificacaoEndividamento(db.Model):
     """
     Modelo para notificações de endividamento.
     """
 
     __tablename__ = "notificacao_endividamento"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    endividamento_id: int = db.Column(
-        db.Integer, db.ForeignKey("endividamento.id"), nullable=False
+    id = db.Column(db.Integer, primary_key=True)
+    endividamento_id = db.Column(
+        db.Integer, db.ForeignKey("endividamento.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    emails: str = db.Column(db.Text, nullable=False)  # JSON string com lista de emails
-    ativo: bool = db.Column(db.Boolean, default=True)
-    created_at: datetime = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at: datetime = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    emails = db.Column(db.Text, nullable=False)  # JSON string com lista de emails
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    endividamento = db.relationship("Endividamento", back_populates="notificacoes")
+    endividamento = db.relationship("Endividamento", back_populates="notificacoes", lazy="joined")
 
     def __repr__(self) -> str:
         return f"<NotificacaoEndividamento {self.endividamento_id}>"
@@ -48,28 +46,28 @@ class NotificacaoEndividamento(db.Model):  # type: ignore
         }
 
 
-class HistoricoNotificacao(db.Model):  # type: ignore
+class HistoricoNotificacao(db.Model):
     """
     Modelo para histórico de notificações enviadas.
     """
 
     __tablename__ = "historico_notificacao"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    endividamento_id: int = db.Column(
-        db.Integer, db.ForeignKey("endividamento.id"), nullable=False
+    id = db.Column(db.Integer, primary_key=True)
+    endividamento_id = db.Column(
+        db.Integer, db.ForeignKey("endividamento.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    tipo_notificacao: str = db.Column(
-        db.String(20), nullable=False
+    tipo_notificacao = db.Column(
+        db.String(20), nullable=False, index=True
     )  # '6_meses', '3_meses', '30_dias', etc.
-    data_envio: datetime = db.Column(db.DateTime, default=datetime.utcnow)
-    emails_enviados: str = db.Column(
+    data_envio = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    emails_enviados = db.Column(
         db.Text, nullable=False
     )  # JSON string com lista de emails
-    sucesso: bool = db.Column(db.Boolean, default=True)
-    erro_mensagem: Optional[str] = db.Column(db.Text, nullable=True)
+    sucesso = db.Column(db.Boolean, default=True)
+    erro_mensagem = db.Column(db.Text, nullable=True)
 
-    endividamento = db.relationship("Endividamento")
+    endividamento = db.relationship("Endividamento", lazy="joined")
 
     def __repr__(self) -> str:
         return (

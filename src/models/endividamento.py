@@ -27,32 +27,36 @@ class Endividamento(db.Model):
     tipo_taxa_juros = db.Column(db.String(10), nullable=False)  # 'ano' ou 'mes'
     prazo_carencia = db.Column(db.Integer, nullable=True)  # em meses
     valor_operacao = db.Column(db.Numeric(15, 2), nullable=True)  # valor total da operação
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     pessoas = db.relationship(
-        "Pessoa", secondary="endividamento_pessoa", back_populates="endividamentos"
+        "Pessoa", secondary="endividamento_pessoa", back_populates="endividamentos", lazy="selectin"
     )
     fazenda_vinculos = db.relationship(
         "EndividamentoFazenda",
         back_populates="endividamento",
         cascade="all, delete-orphan",
+        lazy="selectin"
     )
     area_vinculos = db.relationship(
         "EndividamentoArea",
         back_populates="endividamento",
         cascade="all, delete-orphan",
+        lazy="selectin"
     )
     parcelas = db.relationship(
         "Parcela",
         back_populates="endividamento",
         cascade="all, delete-orphan",
         order_by="Parcela.data_vencimento",
+        lazy="selectin"
     )
     notificacoes = db.relationship(
         "NotificacaoEndividamento",
         back_populates="endividamento",
         cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
     def __repr__(self) -> str:
@@ -88,10 +92,17 @@ endividamento_pessoa = db.Table(
     db.Column(
         "endividamento_id",
         db.Integer,
-        db.ForeignKey("endividamento.id"),
+        db.ForeignKey("endividamento.id", ondelete="CASCADE"),
         primary_key=True,
+        index=True
     ),
-    db.Column("pessoa_id", db.Integer, db.ForeignKey("pessoa.id"), primary_key=True),
+    db.Column(
+        "pessoa_id",
+        db.Integer,
+        db.ForeignKey("pessoa.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True
+    ),
 )
 
 
@@ -100,19 +111,19 @@ class EndividamentoFazenda(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     endividamento_id = db.Column(
-        db.Integer, db.ForeignKey("endividamento.id"), nullable=False
+        db.Integer, db.ForeignKey("endividamento.id", ondelete="CASCADE"), nullable=False, index=True
     )
     fazenda_id = db.Column(
-        db.Integer, db.ForeignKey("fazenda.id"), nullable=True
+        db.Integer, db.ForeignKey("fazenda.id", ondelete="SET NULL"), nullable=True, index=True
     )
     hectares = db.Column(db.Numeric(10, 2), nullable=True)
     tipo = db.Column(
-        db.String(50), nullable=False
+        db.String(50), nullable=False, index=True
     )  # 'objeto_credito' ou 'garantia'
     descricao = db.Column(db.Text, nullable=True)
 
-    endividamento = db.relationship("Endividamento", back_populates="fazenda_vinculos")
-    fazenda = db.relationship("Fazenda")
+    endividamento = db.relationship("Endividamento", back_populates="fazenda_vinculos", lazy="joined")
+    fazenda = db.relationship("Fazenda", lazy="joined")
 
     def __repr__(self) -> str:
         return f'<EndividamentoFazenda {self.tipo} - {self.fazenda.nome if self.fazenda else "Descrição livre"}>'
@@ -134,16 +145,16 @@ class Parcela(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     endividamento_id = db.Column(
-        db.Integer, db.ForeignKey("endividamento.id"), nullable=False
+        db.Integer, db.ForeignKey("endividamento.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    data_vencimento = db.Column(db.Date, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
     valor = db.Column(db.Numeric(10, 2), nullable=False)
     pago = db.Column(db.Boolean, default=False)
     data_pagamento = db.Column(db.Date, nullable=True)
     valor_pago = db.Column(db.Numeric(10, 2), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
 
-    endividamento = db.relationship("Endividamento", back_populates="parcelas")
+    endividamento = db.relationship("Endividamento", back_populates="parcelas", lazy="joined")
 
     def __repr__(self) -> str:
         return f"<Parcela {self.data_vencimento} - R$ {self.valor}>"

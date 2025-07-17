@@ -270,13 +270,16 @@ def create_app(test_config=None):
         """Força verificação manual de notificações (útil para debug)"""
         try:
             # Tentar usar Celery primeiro
+
             task = celery.tasks.get('tasks.processar_todas_notificacoes')
             if task:
                 try:
+
                     result = task.delay()
                     return jsonify({
                         "status": "ok",
                         "task_id": result.id,
+
                         "message": "Verificação de notificações iniciada com Celery"
                     })
                 except Exception as celery_error:
@@ -301,6 +304,7 @@ def create_app(test_config=None):
                     "documentos": count_doc,
                     "total": count_end + count_doc
                 })
+
                 
             except Exception as service_error:
                 # Se os serviços normais falharem, usar o fallback

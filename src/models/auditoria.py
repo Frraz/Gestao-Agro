@@ -12,8 +12,7 @@ from typing import Optional
 
 from src.models.db import db
 
-
-class Auditoria(db.Model):  # type: ignore
+class Auditoria(db.Model):
     """
     Modelo unificado de auditoria do sistema.
 
@@ -33,24 +32,18 @@ class Auditoria(db.Model):  # type: ignore
 
     __tablename__ = "auditoria"
 
-    id: int = db.Column(db.Integer, primary_key=True)
-    usuario_id: Optional[int] = db.Column(
-        db.Integer, db.ForeignKey("usuario.id"), nullable=True
-    )
-    username: Optional[str] = db.Column(db.String(150), nullable=True)
-    acao: str = db.Column(
-        db.String(100), nullable=False
-    )  # Ex: 'UPDATE', 'DELETE', 'LOGIN', etc.
-    entidade: Optional[str] = db.Column(db.String(100), nullable=True)
-    valor_anterior: Optional[str] = db.Column(db.Text, nullable=True)
-    valor_novo: Optional[str] = db.Column(db.Text, nullable=True)
-    detalhes: Optional[str] = db.Column(
-        db.Text, nullable=True
-    )  # Detalhes adicionais (payload, erros, etc.)
-    ip: Optional[str] = db.Column(db.String(45), nullable=True)
-    data_hora: datetime = db.Column(db.DateTime, default=datetime.utcnow)
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    username = db.Column(db.String(150), nullable=True)
+    acao = db.Column(db.String(100), nullable=False)  # Ex: 'UPDATE', 'DELETE', 'LOGIN', etc.
+    entidade = db.Column(db.String(100), nullable=True)
+    valor_anterior = db.Column(db.Text, nullable=True)
+    valor_novo = db.Column(db.Text, nullable=True)
+    detalhes = db.Column(db.Text, nullable=True)  # Detalhes adicionais (payload, erros, etc.)
+    ip = db.Column(db.String(45), nullable=True)
+    data_hora = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    usuario = db.relationship("Usuario")
+    usuario = db.relationship("Usuario", lazy="joined")
 
     def __repr__(self) -> str:
         return (

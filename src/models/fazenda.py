@@ -2,7 +2,6 @@
 
 """
 Modelo para cadastro e gerenciamento de fazendas/áreas associadas a pessoas.
-
 Inclui relacionamentos com pessoas através do modelo intermediário PessoaFazenda,
 campos de auditoria, relacionamentos com documentos, áreas e vínculos de endividamento,
 além de propriedades utilitárias para cálculo de áreas e controle de documentação.
@@ -11,10 +10,12 @@ além de propriedades utilitárias para cálculo de áreas e controle de documen
 import datetime
 from typing import List, Optional
 
+
 from sqlalchemy import Column, Float, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
+
 
 class Fazenda(db.Model):  # type: ignore
     """
@@ -36,6 +37,7 @@ class Fazenda(db.Model):  # type: ignore
         documentos (List[Documento]): Documentos associados.
         endividamentos_vinculados (List[EndividamentoFazenda]): Vínculos de endividamento (por fazenda).
         areas (List[Area]): Áreas pertencentes à fazenda.
+
     """
 
     __tablename__ = "fazenda"
@@ -51,19 +53,22 @@ class Fazenda(db.Model):  # type: ignore
     recibo_car: Optional[str] = Column(String(100), nullable=True)
 
     data_criacao: datetime.date = Column(
+
         db.Date, default=datetime.date.today, nullable=False
     )
-    data_atualizacao: datetime.date = Column(
+    data_atualizacao = Column(
         db.Date,
         default=datetime.date.today,
         onupdate=datetime.date.today,
         nullable=False,
     )
 
+
     # Relacionamentos através do modelo intermediário PessoaFazenda
     pessoas_fazenda = relationship(
         "PessoaFazenda", 
         back_populates="fazenda", 
+
         cascade="all, delete-orphan",
         lazy="selectin"
     )
@@ -81,7 +86,10 @@ class Fazenda(db.Model):  # type: ignore
         lazy="selectin"
     )
     endividamentos_vinculados = relationship(
-        "EndividamentoFazenda", back_populates="fazenda", cascade="all, delete-orphan"
+        "EndividamentoFazenda",
+        back_populates="fazenda",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
     __table_args__ = (
@@ -97,51 +105,40 @@ class Fazenda(db.Model):  # type: ignore
         return self.tamanho_total - self.area_consolidada
 
     def atualizar_tamanho_disponivel(self) -> float:
-        """
-        Atualiza o campo tamanho_disponivel com base nos valores atuais.
-
-        Returns:
-            float: Novo valor do campo tamanho_disponivel.
-        """
         self.tamanho_disponivel = self.calcular_tamanho_disponivel
         return self.tamanho_disponivel
 
     @property
     def total_documentos(self) -> int:
-        """Retorna o número total de documentos associados à fazenda."""
         return len(self.documentos) if self.documentos else 0
 
     @property
     def documentos_vencidos(self) -> List:
-        """Retorna a lista de documentos vencidos."""
-        return [doc for doc in self.documentos if doc.esta_vencido]
+        return [doc for doc in self.documentos if getattr(doc, "esta_vencido", False)]
 
     @property
     def documentos_a_vencer(self) -> List:
-        """Retorna a lista de documentos próximos do vencimento."""
         return [
             doc
             for doc in self.documentos
-            if not doc.esta_vencido and doc.precisa_notificar
+            if not getattr(doc, "esta_vencido", False) and getattr(doc, "precisa_notificar", False)
         ]
 
     @property
     def area_usada_credito(self) -> float:
-        """Calcula a área total utilizada em operações de crédito."""
-        # Soma dos hectares de todos vínculos do tipo objeto_credito nesta fazenda
         total_usado = 0.0
         for vinculo in self.endividamentos_vinculados:
-            if vinculo.tipo == "objeto_credito" and vinculo.hectares:
+            if getattr(vinculo, "tipo", None) == "objeto_credito" and getattr(vinculo, "hectares", None):
                 total_usado += float(vinculo.hectares)
         return total_usado
 
-    @property 
+    @property
     def area_disponivel_credito(self) -> float:
-        """Calcula a área disponível para novas operações de crédito."""
         return self.tamanho_disponivel - self.area_usada_credito
 
     @property
     def total_endividamentos(self) -> int:
+
         """Retorna o número total de endividamentos vinculados (por fazenda)."""
         return len(self.endividamentos_vinculados)
 

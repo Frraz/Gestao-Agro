@@ -66,3 +66,4 @@ class PessoaFazenda(db.Model):  # type: ignore
             TipoPosse.POSSE: "Posse"
         }
         return mapping.get(self.tipo_posse, self.tipo_posse.value)
+

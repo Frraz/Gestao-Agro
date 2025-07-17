@@ -1,14 +1,14 @@
-# /src/routes/fazenda.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from werkzeug.exceptions import NotFound  # <-- adicionado
+from werkzeug.exceptions import NotFound
 
 from src.models.db import db
 from src.models.fazenda import Fazenda
+
 from src.models.pessoa_fazenda import TipoPosse
+
 
 fazenda_bp = Blueprint("fazenda", __name__, url_prefix="/api/fazendas")
 
@@ -21,8 +21,10 @@ def listar_fazendas():
         resultado = []
 
         for fazenda in fazendas:
+
             # Usar a nova propriedade pessoas_associadas
             pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas_associadas]
+
             resultado.append(
                 {
                     "id": fazenda.id,
@@ -41,7 +43,7 @@ def listar_fazendas():
 
         return jsonify(resultado)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar fazendas: {str(e)}")
+        current_app.logger.error(f"Erro ao listar fazendas: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao listar fazendas", "detalhes": str(e)}), 500
 
 
@@ -51,6 +53,7 @@ def obter_fazenda(id):
     try:
         fazenda = Fazenda.query.get_or_404(id)
         pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas_associadas]
+
         return jsonify(
             {
                 "id": fazenda.id,
@@ -68,7 +71,7 @@ def obter_fazenda(id):
         )
     except SQLAlchemyError as e:
         current_app.logger.error(
-            f"Erro de banco de dados ao obter fazenda {id}: {str(e)}"
+            f"Erro de banco de dados ao obter fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -83,7 +86,7 @@ def obter_fazenda(id):
 
 @fazenda_bp.route("/", methods=["POST"])
 def criar_fazenda():
-    """Cria uma nova fazenda/área."""
+    """Cria uma nova fazenda/área e já associa pessoas (proprietário, arrendatário, etc)."""
     try:
         dados = request.json
 
@@ -151,6 +154,23 @@ def criar_fazenda():
         )
 
         db.session.add(nova_fazenda)
+        db.session.flush()  # Para pegar o ID antes de criar vínculos
+
+        # Criar vínculos de pessoa-fazenda no ato da criação, se enviados
+        pessoas = dados.get("pessoas", [])
+        for vinc in pessoas:
+            pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
+            tipo_posse = vinc.get("tipo_posse")
+            data_fim = vinc.get("data_fim")
+            if pessoa_id and tipo_posse:
+                pf = PessoaFazenda(
+                    pessoa_id=pessoa_id,
+                    fazenda_id=nova_fazenda.id,
+                    tipo_posse=TipoPosse(tipo_posse),
+                    data_fim=data_fim,
+                )
+                db.session.add(pf)
+
         db.session.commit()
 
         current_app.logger.info(
@@ -175,7 +195,7 @@ def criar_fazenda():
         )
     except IntegrityError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de integridade ao criar fazenda: {str(e)}")
+        current_app.logger.error(f"Erro de integridade ao criar fazenda: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {"erro": "Erro de integridade no banco de dados", "detalhes": str(e)}
@@ -184,7 +204,7 @@ def criar_fazenda():
         )
     except SQLAlchemyError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de banco de dados ao criar fazenda: {str(e)}")
+        current_app.logger.error(f"Erro de banco de dados ao criar fazenda: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
         db.session.rollback()
@@ -196,7 +216,7 @@ def criar_fazenda():
 
 @fazenda_bp.route("/<int:id>", methods=["PUT"])
 def atualizar_fazenda(id):
-    """Atualiza os dados de uma fazenda/área existente."""
+    """Atualiza os dados de uma fazenda/área existente, inclusive vínculos de pessoas."""
     try:
         fazenda = Fazenda.query.get_or_404(id)
         dados = request.json
@@ -265,6 +285,23 @@ def atualizar_fazenda(id):
         if "recibo_car" in dados:
             fazenda.recibo_car = dados.get("recibo_car")
 
+        # Atualiza vínculos pessoa-fazenda: remove TODOS antigos e insere os recebidos
+        if "pessoas" in dados:
+            PessoaFazenda.query.filter_by(fazenda_id=fazenda.id).delete()
+            pessoas = dados.get("pessoas", [])
+            for vinc in pessoas:
+                pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
+                tipo_posse = vinc.get("tipo_posse")
+                data_fim = vinc.get("data_fim")
+                if pessoa_id and tipo_posse:
+                    pf = PessoaFazenda(
+                        pessoa_id=pessoa_id,
+                        fazenda_id=fazenda.id,
+                        tipo_posse=TipoPosse(tipo_posse),
+                        data_fim=data_fim,
+                    )
+                    db.session.add(pf)
+
         db.session.commit()
 
         current_app.logger.info(
@@ -288,7 +325,7 @@ def atualizar_fazenda(id):
     except IntegrityError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de integridade ao atualizar fazenda {id}: {str(e)}"
+            f"Erro de integridade ao atualizar fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -296,15 +333,15 @@ def atualizar_fazenda(id):
             ),
             400,
         )
-    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+    except NotFound as e:
         current_app.logger.error(
-            f"Fazenda não encontrada ao atualizar fazenda {id}: {str(e)}"
+            f"Fazenda não encontrada ao atualizar fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Fazenda não encontrada", "detalhes": str(e)}), 404
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao atualizar fazenda {id}: {str(e)}"
+            f"Erro de banco de dados ao atualizar fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
@@ -331,7 +368,6 @@ def excluir_fazenda(id):
                 ),
                 400,
             )
-
         # Verificar se a fazenda tem pessoas associadas
         if fazenda.pessoas_fazenda and len(fazenda.pessoas_fazenda) > 0:
             # As associações serão removidas automaticamente devido ao cascade
@@ -344,15 +380,15 @@ def excluir_fazenda(id):
         current_app.logger.info(f"Fazenda excluída com sucesso: {nome} (ID: {id})")
 
         return jsonify({"mensagem": f"Fazenda {nome} excluída com sucesso"}), 200
-    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+    except NotFound as e:
         current_app.logger.error(
-            f"Fazenda não encontrada ao excluir fazenda {id}: {str(e)}"
+            f"Fazenda não encontrada ao excluir fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Fazenda não encontrada", "detalhes": str(e)}), 404
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao excluir fazenda {id}: {str(e)}"
+            f"Erro de banco de dados ao excluir fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return (
             jsonify(
@@ -365,7 +401,7 @@ def excluir_fazenda(id):
         )
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro ao excluir fazenda {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao excluir fazenda {id}: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao excluir fazenda", "detalhes": str(e)}), 500
 
 
@@ -390,9 +426,10 @@ def listar_pessoas_fazenda(id):
                 }
             )
 
+
         return jsonify(pessoas)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar pessoas da fazenda {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao listar pessoas da fazenda {id}: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {"erro": f"Erro ao listar pessoas da fazenda {id}", "detalhes": str(e)}
@@ -422,14 +459,14 @@ def listar_documentos_fazenda(id):
                     ),
                     "emails_notificacao": documento.emails_notificacao,
                     "prazos_notificacao": documento.prazos_notificacao,
-                    "esta_vencido": documento.esta_vencido,
-                    "proximo_vencimento": documento.proximo_vencimento,
+                    "esta_vencido": getattr(documento, "esta_vencido", False),
+                    "proximo_vencimento": getattr(documento, "proximo_vencimento", None),
                 }
             )
 
         return jsonify(documentos)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar documentos da fazenda {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao listar documentos da fazenda {id}: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify(
                 {
@@ -439,4 +476,3 @@ def listar_documentos_fazenda(id):
             ),
             500,
         )
-    

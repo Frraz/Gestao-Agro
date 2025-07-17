@@ -58,14 +58,29 @@
                                         </a>
                                     </td>
                                     <td>
-                                        <span class="badge bg-warning">{{ fazenda.documentos|length }}</span>
+                                        <span class="badge bg-warning">
+                                            {% if fazenda.documentos is defined %}
+                                                {{ fazenda.documentos|length }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
                                         <a href="{{ url_for('admin.listar_documentos_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-outline-warning">
                                             <i class="fas fa-file-alt"></i> Ver
                                         </a>
                                     </td>
                                     <td>
-                                        <span class="badge bg-primary">{{ fazenda.total_endividamentos }}</span>
-                                        {% if fazenda.total_endividamentos > 0 %}
+                                        <span class="badge bg-primary">
+                                            {% if fazenda.total_endividamentos is defined %}
+                                                {{ fazenda.total_endividamentos }}
+                                            {% elif fazenda.endividamentos is defined %}
+                                                {{ fazenda.endividamentos|length }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
+                                        {% if (fazenda.total_endividamentos is defined and fazenda.total_endividamentos > 0) 
+                                              or (fazenda.endividamentos is defined and fazenda.endividamentos|length > 0) %}
                                         <a href="{{ url_for('admin.visualizar_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-money-bill-wave"></i> Ver
                                         </a>
@@ -78,7 +93,7 @@
                                         <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-edit"></i> Editar
                                         </a>
-                                        <form action="{{ url_for('admin.excluir_fazenda', id=fazenda.id) }}" method="POST" class="d-inline">
+                                        <form action="{{ url_for('admin.excluir_fazenda', id=fazenda.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta fazenda?');">
                                             <button type="submit" class="btn btn-sm btn-danger btn-delete">
                                                 <i class="fas fa-trash"></i> Excluir
                                             </button>

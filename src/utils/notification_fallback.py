@@ -1,6 +1,7 @@
 # /src/utils/notification_fallback.py
 
 """
+
 Sistema de fallback para notificações quando Redis/Celery não estão disponíveis.
 
 Este módulo fornece uma alternativa confiável para o envio de notificações
@@ -25,14 +26,17 @@ logger = logging.getLogger(__name__)
 
 class NotificationFallbackService:
     """
+
     Serviço de fallback para notificações quando Redis/Celery não estão disponíveis.
     
     Fornece funcionalidade completa de notificação sem dependências externas,
     incluindo formatação HTML, envio de emails e registro de histórico.
+
     """
     
     def __init__(self):
         self.email_service = EmailService()
+
         
     def verificar_e_enviar_todas_notificacoes(self) -> Dict[str, int]:
         """
@@ -313,3 +317,4 @@ class NotificationFallbackService:
         
         Esta é uma notificação automática do Sistema de Gestão Agrícola.
         """
+

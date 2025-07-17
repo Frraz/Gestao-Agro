@@ -1,5 +1,16 @@
 # /src/routes/admin.py
 
+"""
+Rotas administrativas para o Sistema de Gestão de Fazendas.
+
+Inclui:
+- Dashboard com documentos vencidos e próximos do vencimento
+- CRUD de Pessoas e Fazendas, incluindo associação/desassociação
+- CRUD de Documentos
+- Notificações de vencimento
+- Integração com Flask-Login e auditoria
+"""
+
 import datetime
 from datetime import date
 from math import ceil
@@ -20,9 +31,11 @@ from src.utils.auditoria import registrar_auditoria
 from src.utils.email_service import (
     EmailService, formatar_email_notificacao, verificar_documentos_vencendo
 )
+from src.forms.pessoa import PessoaForm
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
+# ---------------- Dashboard ----------------
 
 @admin_bp.route("/")
 @login_required
@@ -30,14 +43,12 @@ def index():
     """Página inicial do painel administrativo."""
     return redirect(url_for("admin.dashboard"))
 
-
 @admin_bp.route("/dashboard")
 @login_required
 def dashboard():
     hoje = date.today()
-
-    prox_page = int(request.args.get("prox_page", 1))
-    venc_page = int(request.args.get("venc_page", 1))
+    prox_page = request.args.get("prox_page", type=int, default=1)
+    venc_page = request.args.get("venc_page", type=int, default=1)
     per_page = 10
 
     docs_proximos_query = Documento.query.filter(
@@ -75,39 +86,29 @@ def dashboard():
         total_pag_vencidos=total_pag_vencidos,
     )
 
+# ---------------- Pessoas ----------------
 
-# --- Rotas para Pessoas ---
 @admin_bp.route("/pessoas")
 @login_required
 def listar_pessoas():
-    pessoas = Pessoa.query.all()
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
     return render_template("admin/pessoas/listar.html", pessoas=pessoas)
-
 
 @admin_bp.route("/pessoas/nova", methods=["GET", "POST"])
 @login_required
 def nova_pessoa():
-    if request.method == "POST":
-        nome = request.form.get("nome")
-        cpf_cnpj = request.form.get("cpf_cnpj")
-        email = request.form.get("email")
-        telefone = request.form.get("telefone")
-        endereco = request.form.get("endereco")
-        if not nome or not cpf_cnpj:
-            flash("Nome e CPF/CNPJ são obrigatórios.", "danger")
-            return render_template("admin/pessoas/form.html")
-        pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=cpf_cnpj).first()
+    form = PessoaForm()
+    if form.validate_on_submit():
+        pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=form.cpf_cnpj.data.strip()).first()
         if pessoa_existente:
-            flash(
-                f"Já existe uma pessoa cadastrada com o CPF/CNPJ {cpf_cnpj}.", "danger"
-            )
-            return render_template("admin/pessoas/form.html")
+            flash(f"Já existe uma pessoa cadastrada com o CPF/CNPJ {form.cpf_cnpj.data.strip()}.", "danger")
+            return render_template("admin/pessoas/form.html", form=form)
         nova_pessoa = Pessoa(
-            nome=nome,
-            cpf_cnpj=cpf_cnpj,
-            email=email,
-            telefone=telefone,
-            endereco=endereco,
+            nome=form.nome.data.strip(),
+            cpf_cnpj=form.cpf_cnpj.data.strip(),
+            email=form.email.data.strip(),
+            telefone=form.telefone.data.strip(),
+            endereco=form.endereco.data.strip(),
         )
         db.session.add(nova_pessoa)
         db.session.commit()
@@ -121,31 +122,20 @@ def nova_pessoa():
                 "cpf_cnpj": nova_pessoa.cpf_cnpj,
             },
         )
-        flash(f"Pessoa {nome} cadastrada com sucesso!", "success")
+        flash(f"Pessoa {nova_pessoa.nome} cadastrada com sucesso!", "success")
         return redirect(url_for("admin.listar_pessoas"))
-    return render_template("admin/pessoas/form.html")
-
+    return render_template("admin/pessoas/form.html", form=form)
 
 @admin_bp.route("/pessoas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_pessoa(id):
     pessoa = Pessoa.query.get_or_404(id)
-    if request.method == "POST":
-        nome = request.form.get("nome")
-        cpf_cnpj = request.form.get("cpf_cnpj")
-        email = request.form.get("email")
-        telefone = request.form.get("telefone")
-        endereco = request.form.get("endereco")
-        if not nome or not cpf_cnpj:
-            flash("Nome e CPF/CNPJ são obrigatórios.", "danger")
-            return render_template("admin/pessoas/form.html", pessoa=pessoa)
-        pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=cpf_cnpj).first()
+    form = PessoaForm(obj=pessoa)
+    if form.validate_on_submit():
+        pessoa_existente = Pessoa.query.filter_by(cpf_cnpj=form.cpf_cnpj.data.strip()).first()
         if pessoa_existente and pessoa_existente.id != pessoa.id:
-            flash(
-                f"Já existe outra pessoa cadastrada com o CPF/CNPJ {cpf_cnpj}.",
-                "danger",
-            )
-            return render_template("admin/pessoas/form.html", pessoa=pessoa)
+            flash(f"Já existe outra pessoa cadastrada com o CPF/CNPJ {form.cpf_cnpj.data.strip()}.", "danger")
+            return render_template("admin/pessoas/form.html", form=form, pessoa=pessoa)
         valor_anterior = {
             "id": pessoa.id,
             "nome": pessoa.nome,
@@ -154,11 +144,11 @@ def editar_pessoa(id):
             "telefone": pessoa.telefone,
             "endereco": pessoa.endereco,
         }
-        pessoa.nome = nome
-        pessoa.cpf_cnpj = cpf_cnpj
-        pessoa.email = email
-        pessoa.telefone = telefone
-        pessoa.endereco = endereco
+        pessoa.nome = form.nome.data.strip()
+        pessoa.cpf_cnpj = form.cpf_cnpj.data.strip()
+        pessoa.email = form.email.data.strip()
+        pessoa.telefone = form.telefone.data.strip()
+        pessoa.endereco = form.endereco.data.strip()
         db.session.commit()
         registrar_auditoria(
             acao="edição",
@@ -173,10 +163,9 @@ def editar_pessoa(id):
                 "endereco": pessoa.endereco,
             },
         )
-        flash(f"Pessoa {nome} atualizada com sucesso!", "success")
+        flash(f"Pessoa {pessoa.nome} atualizada com sucesso!", "success")
         return redirect(url_for("admin.listar_pessoas"))
-    return render_template("admin/pessoas/form.html", pessoa=pessoa)
-
+    return render_template("admin/pessoas/form.html", form=form, pessoa=pessoa)
 
 @admin_bp.route("/pessoas/<int:id>/excluir", methods=["POST"])
 @login_required
@@ -188,11 +177,8 @@ def excluir_pessoa(id):
             "danger",
         )
         return redirect(url_for("admin.listar_pessoas"))
-    if hasattr(pessoa, "documentos") and pessoa.documentos:
-        flash(
-            f"Não é possível excluir a pessoa {pessoa.nome} pois ela possui documentos associados.",
-            "danger",
-        )
+    if pessoa.documentos and len(pessoa.documentos) > 0:
+        flash(f"Não é possível excluir a pessoa {pessoa.nome} pois ela possui documentos associados.", "danger")
         return redirect(url_for("admin.listar_pessoas"))
     nome = pessoa.nome
     valor_anterior = {
@@ -214,20 +200,21 @@ def excluir_pessoa(id):
     flash(f"Pessoa {nome} excluída com sucesso!", "success")
     return redirect(url_for("admin.listar_pessoas"))
 
-
 @admin_bp.route("/pessoas/<int:id>/fazendas")
 @login_required
 def listar_fazendas_pessoa(id):
-    """Lista as fazendas associadas a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(id)
-    return render_template("admin/pessoas/fazendas.html", pessoa=pessoa)
-
+    return render_template(
+        "admin/pessoas/fazendas.html",
+        pessoa=pessoa,
+        vinculos=pessoa.pessoas_fazenda
+    )
 
 @admin_bp.route("/pessoas/<int:pessoa_id>/associar-fazenda", methods=["GET", "POST"])
 @login_required
 def associar_fazenda_pessoa(pessoa_id):
-    """Associa uma fazenda a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
+
 
     # Obter fazendas que ainda não estão associadas a esta pessoa
     fazendas_associadas = [f.id for f in pessoa.fazendas_associadas]
@@ -239,39 +226,42 @@ def associar_fazenda_pessoa(pessoa_id):
 
     if request.method == "POST":
         fazenda_id = request.form.get("fazenda_id")
+        tipo_posse = request.form.get("tipo_posse")
 
         if not fazenda_id:
-            flash("Selecione uma fazenda para associar.", "danger")
+            flash("Selecione uma fazenda.", "danger")
             return render_template(
                 "admin/pessoas/associar_fazenda.html",
                 pessoa=pessoa,
                 fazendas=fazendas_disponiveis,
+                tipos_posse=TipoPosse,
             )
 
         fazenda = Fazenda.query.get_or_404(fazenda_id)
 
+
         # Verificar se já está associada
         if fazenda in pessoa.fazendas_associadas:
             flash(
-                f"A fazenda {fazenda.nome} já está associada a esta pessoa.", "warning"
+                f"A fazenda {fazenda.nome} já está associada a esta pessoa com esse tipo de posse.",
+                "warning"
             )
             return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
 
+
         # Associar fazenda à pessoa
         pessoa.fazendas_associadas.append(fazenda)
+
         registrar_auditoria(
             acao="associação_fazenda",
-            entidade="Pessoa-Fazenda",
+            entidade="PessoaFazenda",
             valor_anterior=None,
             valor_novo={
                 "pessoa_id": pessoa.id,
-                "pessoa_nome": pessoa.nome,
                 "fazenda_id": fazenda.id,
-                "fazenda_nome": fazenda.nome,
+                "tipo_posse": tipo_posse,
             },
         )
-        db.session.commit()
-
         flash(
             f"Fazenda {fazenda.nome} associada com sucesso à pessoa {pessoa.nome}!",
             "success",
@@ -282,35 +272,37 @@ def associar_fazenda_pessoa(pessoa_id):
         "admin/pessoas/associar_fazenda.html",
         pessoa=pessoa,
         fazendas=fazendas_disponiveis,
+        tipos_posse=TipoPosse,
     )
 
-
 @admin_bp.route(
-    "/pessoas/<int:pessoa_id>/desassociar-fazenda/<int:fazenda_id>", methods=["POST"]
+    "/pessoas/<int:pessoa_id>/desassociar-fazenda/<int:vinculo_id>", methods=["POST"]
 )
 @login_required
-def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
-    """Desassocia uma fazenda de uma pessoa."""
+def desassociar_fazenda_pessoa(pessoa_id, vinculo_id):
     pessoa = Pessoa.query.get_or_404(pessoa_id)
-    fazenda = Fazenda.query.get_or_404(fazenda_id)
+    vinculo = PessoaFazenda.query.get_or_404(vinculo_id)
+    fazenda = vinculo.fazenda
+
 
     if fazenda not in pessoa.fazendas_associadas:
         flash(f"A fazenda {fazenda.nome} não está associada a esta pessoa.", "warning")
         return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
 
     pessoa.fazendas_associadas.remove(fazenda)
+
     registrar_auditoria(
         acao="desassociação_fazenda",
-        entidade="Pessoa-Fazenda",
+        entidade="PessoaFazenda",
         valor_anterior={
             "pessoa_id": pessoa.id,
             "pessoa_nome": pessoa.nome,
             "fazenda_id": fazenda.id,
             "fazenda_nome": fazenda.nome,
+            "tipo_posse": vinculo.tipo_posse.value if vinculo.tipo_posse else None,
         },
         valor_novo=None,
     )
-    db.session.commit()
 
     flash(
         f"Fazenda {fazenda.nome} desassociada com sucesso da pessoa {pessoa.nome}!",
@@ -319,86 +311,58 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
     return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
 
 
-# Rotas para Fazendas
+# ---------------- Fazendas ----------------
+
 @admin_bp.route("/fazendas")
 @login_required
 def listar_fazendas():
-    """Lista todas as fazendas cadastradas."""
-    fazendas = Fazenda.query.all()
+    fazendas = Fazenda.query.order_by(Fazenda.nome).all()
     return render_template("admin/fazendas/listar.html", fazendas=fazendas)
-
 
 @admin_bp.route("/fazendas/nova", methods=["GET", "POST"])
 @login_required
 def nova_fazenda():
-    """Cadastra uma nova fazenda."""
-    if request.method == "POST":
-        nome = request.form.get("nome")
-        matricula = request.form.get("matricula")
-        tamanho_total = request.form.get("tamanho_total")
-        area_consolidada = request.form.get("area_consolidada")
-        tipo_posse = request.form.get("tipo_posse")
-        municipio = request.form.get("municipio")
-        estado = request.form.get("estado")
-        recibo_car = request.form.get("recibo_car")
+    from src.forms.fazenda import FazendaForm, PessoaFazendaForm
+    from src.models.pessoa import Pessoa
 
-        # Validação básica
-        if (
-            not nome
-            or not matricula
-            or not tamanho_total
-            or not area_consolidada
-            or not tipo_posse
-            or not municipio
-            or not estado
-        ):
-            flash("Todos os campos com * são obrigatórios.", "danger")
-            return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
+    form = FazendaForm()
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
+    for pf_form in form.pessoas_fazenda:
+        pf_form.pessoa_id.choices = [(p.id, p.nome) for p in pessoas]
 
-        # Verificar se já existe fazenda com a mesma matrícula
-        fazenda_existente = Fazenda.query.filter_by(matricula=matricula).first()
-        if fazenda_existente:
-            flash(
-                f"Já existe uma fazenda cadastrada com a matrícula {matricula}.",
-                "danger",
-            )
-            return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
+    if form.validate_on_submit():
+        if form.area_consolidada.data > form.tamanho_total.data:
+            flash("A área consolidada não pode ser maior que o tamanho total.", "danger")
+            return render_template("admin/fazendas/form.html", form=form)
 
-        # Converter valores para float
-        try:
-            tamanho_total = float(tamanho_total)
-            area_consolidada = float(area_consolidada)
-        except ValueError:
-            flash("Os valores de tamanho devem ser numéricos.", "danger")
-            return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
+        tamanho_disponivel = form.tamanho_total.data - form.area_consolidada.data
 
-        # Validar tamanhos
-        if area_consolidada > tamanho_total:
-            flash(
-                "A área consolidada não pode ser maior que o tamanho total.", "danger"
-            )
-            return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
-
-        # Calcular tamanho disponível
-        tamanho_disponivel = tamanho_total - area_consolidada
-
-        # Criar nova fazenda
         nova_fazenda = Fazenda(
-            nome=nome,
-            matricula=matricula,
-            tamanho_total=tamanho_total,
-            area_consolidada=area_consolidada,
+            nome=form.nome.data.strip(),
+            matricula=form.matricula.data.strip(),
+            tamanho_total=form.tamanho_total.data,
+            area_consolidada=form.area_consolidada.data,
             tamanho_disponivel=tamanho_disponivel,
-            tipo_posse=TipoPosse(tipo_posse),
-            municipio=municipio,
-            estado=estado,
-            recibo_car=recibo_car,
+            municipio=form.municipio.data.strip(),
+            estado=form.estado.data.strip(),
+            recibo_car=form.recibo_car.data.strip() if getattr(form, "recibo_car", None) and form.recibo_car.data else None,
         )
 
         db.session.add(nova_fazenda)
+        db.session.flush()
+
+        # Vínculos PessoaFazenda (opcional)
+        for pf_form in form.pessoas_fazenda.entries:
+            if pf_form.pessoa_id.data:
+                vinculo = PessoaFazenda(
+                    pessoa_id=pf_form.pessoa_id.data,
+                    fazenda_id=nova_fazenda.id,
+                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None
+                )
+                db.session.add(vinculo)
+
         db.session.commit()
 
-        # LOG DE AUDITORIA
         registrar_auditoria(
             acao="criação",
             entidade="Fazenda",
@@ -409,31 +373,24 @@ def nova_fazenda():
                 "matricula": nova_fazenda.matricula,
             },
         )
-        flash(f"Fazenda {nome} cadastrada com sucesso!", "success")
+        flash(f"Fazenda {nova_fazenda.nome} cadastrada com sucesso!", "success")
         return redirect(url_for("admin.listar_fazendas"))
-    return render_template("admin/fazendas/form.html", tipos_posse=TipoPosse)
 
+    return render_template("admin/fazendas/form.html", form=form)
 
 @admin_bp.route("/fazendas/<int:id>")
 @login_required
 def visualizar_fazenda(id):
-    """Visualiza detalhes de uma fazenda."""
     from src.models.endividamento import EndividamentoFazenda
-    
+
     fazenda = Fazenda.query.get_or_404(id)
-    
-    # Obter vínculos com endividamentos
     vinculos_endividamento = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
-    
-    # Calcular área utilizada em créditos
     area_usada_credito = sum(
-        float(v.hectares) for v in vinculos_endividamento 
+        float(v.hectares) for v in vinculos_endividamento
         if v.tipo == 'objeto_credito' and v.hectares
     )
-    
-    # Calcular área disponível para crédito
     area_disponivel_credito = fazenda.tamanho_disponivel - area_usada_credito
-    
+
     return render_template(
         "admin/fazendas/visualizar.html",
         fazenda=fazenda,
@@ -442,69 +399,36 @@ def visualizar_fazenda(id):
         area_disponivel_credito=area_disponivel_credito,
     )
 
-
 @admin_bp.route("/fazendas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_fazenda(id):
-    """Edita uma fazenda existente."""
+    from src.forms.fazenda import FazendaForm, PessoaFazendaForm
+    from src.models.pessoa import Pessoa
+
     fazenda = Fazenda.query.get_or_404(id)
 
-    if request.method == "POST":
-        nome = request.form.get("nome")
-        matricula = request.form.get("matricula")
-        tamanho_total = request.form.get("tamanho_total")
-        area_consolidada = request.form.get("area_consolidada")
-        tipo_posse = request.form.get("tipo_posse")
-        municipio = request.form.get("municipio")
-        estado = request.form.get("estado")
-        recibo_car = request.form.get("recibo_car")
+    if request.method == "GET":
+        form = FazendaForm(obj=fazenda)
+        form.pessoas_fazenda.min_entries = len(fazenda.pessoas_fazenda) or 1
+        form.pessoas_fazenda.entries = []
+        for vinculo in fazenda.pessoas_fazenda:
+            pf_form = PessoaFazendaForm(
+                pessoa_id=vinculo.pessoa_id,
+                tipo_posse=vinculo.tipo_posse.name if vinculo.tipo_posse else ""
+            )
+            form.pessoas_fazenda.append_entry(pf_form.data)
+    else:
+        form = FazendaForm()
 
-        # Validação básica
-        if (
-            not nome
-            or not matricula
-            or not tamanho_total
-            or not area_consolidada
-            or not tipo_posse
-            or not municipio
-            or not estado
-        ):
-            flash("Todos os campos com * são obrigatórios.", "danger")
-            return render_template(
-                "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
-            )
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
+    for pf_form in form.pessoas_fazenda:
+        pf_form.pessoa_id.choices = [(p.id, p.nome) for p in pessoas]
 
-        # Verificar se já existe outra fazenda com a mesma matrícula
-        fazenda_existente = Fazenda.query.filter_by(matricula=matricula).first()
-        if fazenda_existente and fazenda_existente.id != fazenda.id:
-            flash(
-                f"Já existe outra fazenda cadastrada com a matrícula {matricula}.",
-                "danger",
-            )
-            return render_template(
-                "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
-            )
+    if form.validate_on_submit():
+        if form.area_consolidada.data > form.tamanho_total.data:
+            flash("A área consolidada não pode ser maior que o tamanho total.", "danger")
+            return render_template("admin/fazendas/form.html", form=form, fazenda=fazenda)
 
-        # Converter valores para float
-        try:
-            tamanho_total = float(tamanho_total)
-            area_consolidada = float(area_consolidada)
-        except ValueError:
-            flash("Os valores de tamanho devem ser numéricos.", "danger")
-            return render_template(
-                "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
-            )
-
-        # Validar tamanhos
-        if area_consolidada > tamanho_total:
-            flash(
-                "A área consolidada não pode ser maior que o tamanho total.", "danger"
-            )
-            return render_template(
-                "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
-            )
-
-        # Captura os dados antigos antes de modificar
         valor_anterior = {
             "id": fazenda.id,
             "nome": fazenda.nome,
@@ -512,29 +436,37 @@ def editar_fazenda(id):
             "tamanho_total": fazenda.tamanho_total,
             "area_consolidada": fazenda.area_consolidada,
             "tamanho_disponivel": fazenda.tamanho_disponivel,
-            "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
             "municipio": fazenda.municipio,
             "estado": fazenda.estado,
             "recibo_car": fazenda.recibo_car,
         }
 
-        # Calcular tamanho disponível
-        tamanho_disponivel = tamanho_total - area_consolidada
+        tamanho_disponivel = form.tamanho_total.data - form.area_consolidada.data
 
-        # Atualizar fazenda
-        fazenda.nome = nome
-        fazenda.matricula = matricula
-        fazenda.tamanho_total = tamanho_total
-        fazenda.area_consolidada = area_consolidada
+        fazenda.nome = form.nome.data.strip()
+        fazenda.matricula = form.matricula.data.strip()
+        fazenda.tamanho_total = form.tamanho_total.data
+        fazenda.area_consolidada = form.area_consolidada.data
         fazenda.tamanho_disponivel = tamanho_disponivel
-        fazenda.tipo_posse = TipoPosse(tipo_posse)
-        fazenda.municipio = municipio
-        fazenda.estado = estado
-        fazenda.recibo_car = recibo_car
+        fazenda.municipio = form.municipio.data.strip()
+        fazenda.estado = form.estado.data.strip()
+        fazenda.recibo_car = form.recibo_car.data.strip() if getattr(form, "recibo_car", None) and form.recibo_car.data else None
+
+        # Remove vínculos antigos
+        for vinculo in fazenda.pessoas_fazenda:
+            db.session.delete(vinculo)
+        # Adiciona novos vínculos (opcional)
+        for pf_form in form.pessoas_fazenda.entries:
+            if pf_form.pessoa_id.data:
+                vinculo = PessoaFazenda(
+                    pessoa_id=pf_form.pessoa_id.data,
+                    fazenda_id=fazenda.id,
+                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None
+                )
+                db.session.add(vinculo)
 
         db.session.commit()
 
-        # LOG DE AUDITORIA
         registrar_auditoria(
             acao="edição",
             entidade="Fazenda",
@@ -546,27 +478,21 @@ def editar_fazenda(id):
                 "tamanho_total": fazenda.tamanho_total,
                 "area_consolidada": fazenda.area_consolidada,
                 "tamanho_disponivel": fazenda.tamanho_disponivel,
-                "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
                 "municipio": fazenda.municipio,
                 "estado": fazenda.estado,
                 "recibo_car": fazenda.recibo_car,
             },
         )
-        flash(f"Fazenda {nome} atualizada com sucesso!", "success")
+        flash(f"Fazenda {fazenda.nome} atualizada com sucesso!", "success")
         return redirect(url_for("admin.listar_fazendas"))
-    return render_template(
-        "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
-    )
 
+    return render_template("admin/fazendas/form.html", form=form, fazenda=fazenda)
 
 @admin_bp.route("/fazendas/<int:id>/excluir", methods=["POST"])
 @login_required
 def excluir_fazenda(id):
-    """Exclui uma fazenda do sistema."""
     fazenda = Fazenda.query.get_or_404(id)
-
-    # Verificar se a fazenda tem documentos associados
-    if fazenda.documentos:
+    if fazenda.documentos and len(fazenda.documentos) > 0:
         flash(
             f"Não é possível excluir a fazenda {fazenda.nome} pois ela possui documentos associados.",
             "danger",
@@ -577,8 +503,8 @@ def excluir_fazenda(id):
     for pessoa in fazenda.pessoas_associadas:
         pessoa.fazendas_associadas.remove(fazenda)
 
+
     nome = fazenda.nome
-    # Capture o estado anterior antes do delete
     valor_anterior = {
         "id": fazenda.id,
         "nome": fazenda.nome,
@@ -586,7 +512,6 @@ def excluir_fazenda(id):
         "tamanho_total": fazenda.tamanho_total,
         "area_consolidada": fazenda.area_consolidada,
         "tamanho_disponivel": fazenda.tamanho_disponivel,
-        "tipo_posse": fazenda.tipo_posse.value if fazenda.tipo_posse else None,
         "municipio": fazenda.municipio,
         "estado": fazenda.estado,
         "recibo_car": fazenda.recibo_car,
@@ -594,7 +519,6 @@ def excluir_fazenda(id):
     db.session.delete(fazenda)
     db.session.commit()
 
-    # LOG DE AUDITORIA
     registrar_auditoria(
         acao="exclusão",
         entidade="Fazenda",
@@ -604,16 +528,27 @@ def excluir_fazenda(id):
     flash(f"Fazenda {nome} excluída com sucesso!", "success")
     return redirect(url_for("admin.listar_fazendas"))
 
+@admin_bp.route("/fazendas/<int:id>/pessoas")
+@login_required
+def listar_pessoas_fazenda(id):
+    """Lista todas as pessoas associadas a uma fazenda."""
+    fazenda = Fazenda.query.get_or_404(id)
+    return render_template(
+        "admin/fazendas/pessoas.html",
+        fazenda=fazenda,
+        vinculos=fazenda.pessoas_fazenda
+    )
 
 @admin_bp.route("/fazendas/<int:id>/documentos")
 @login_required
 def listar_documentos_fazenda(id):
-    """Lista os documentos associados a uma fazenda."""
     fazenda = Fazenda.query.get_or_404(id)
-    documentos = Documento.query.filter_by(fazenda_id=id).all()
+    documentos = Documento.query.filter_by(fazenda_id=id).order_by(Documento.data_emissao.desc()).all()
     return render_template(
         "admin/fazendas/documentos.html", fazenda=fazenda, documentos=documentos
     )
+
+# ---------------- Documentos ----------------
 
 
 @admin_bp.route("/fazendas/<int:id>/pessoas")
@@ -636,7 +571,6 @@ def listar_pessoas_fazenda(id):
 @admin_bp.route("/documentos")
 @login_required
 def listar_documentos():
-    """Lista todos os documentos cadastrados, com filtros."""
     fazendas = Fazenda.query.order_by(Fazenda.nome).all()
     pessoas = Pessoa.query.order_by(Pessoa.nome).all()
 
@@ -665,29 +599,26 @@ def listar_documentos():
         nome_busca=nome_busca,
     )
 
-
 @admin_bp.route("/documentos/novo", methods=["GET", "POST"])
 @login_required
 def novo_documento():
-    """Cadastra um novo documento."""
-    fazendas = Fazenda.query.all()
-    pessoas = Pessoa.query.all()
-    tipos_documento = TipoDocumento  # Enum para template
+    fazendas = Fazenda.query.order_by(Fazenda.nome).all()
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
+    tipos_documento = TipoDocumento
 
     if request.method == "POST":
-        nome = request.form.get("nome")
-        tipo = request.form.get("tipo")
-        tipo_personalizado = request.form.get("tipo_personalizado")
-        data_emissao = request.form.get("data_emissao")
-        data_vencimento = request.form.get("data_vencimento")
-        emails_notificacao = request.form.get("emails_notificacao")
+        nome = request.form.get("nome", "").strip()
+        tipo = request.form.get("tipo", "").strip()
+        tipo_personalizado = request.form.get("tipo_personalizado", "").strip()
+        data_emissao = request.form.get("data_emissao", "").strip()
+        data_vencimento = request.form.get("data_vencimento", "").strip()
+        emails_notificacao = request.form.get("emails_notificacao", "").strip()
         fazenda_id = request.form.get("fazenda_id") or None
         pessoa_id = request.form.get("pessoa_id") or None
 
         prazos_notificacao = request.form.getlist("prazo_notificacao[]")
         prazos_notificacao = [int(p) for p in prazos_notificacao if p.isdigit()]
 
-        # Validação básica
         if not nome or not tipo or not data_emissao:
             flash("Todos os campos com * são obrigatórios.", "danger")
             return render_template(
@@ -715,7 +646,6 @@ def novo_documento():
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
-        # Converter datas
         try:
             data_emissao = datetime.datetime.strptime(data_emissao, "%Y-%m-%d").date()
             data_vencimento = (
@@ -732,7 +662,6 @@ def novo_documento():
                 pessoas=pessoas,
             )
 
-        # Criar documento
         novo_documento = Documento(
             nome=nome,
             tipo=TipoDocumento(tipo),
@@ -777,53 +706,45 @@ def novo_documento():
         pessoas=pessoas,
     )
 
-
 @admin_bp.route("/documentos/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_documento(id):
-    """Edita um documento existente."""
     documento = Documento.query.get_or_404(id)
-    fazendas = Fazenda.query.all()
-    pessoas = Pessoa.query.all()
+    fazendas = Fazenda.query.order_by(Fazenda.nome).all()
+    pessoas = Pessoa.query.order_by(Pessoa.nome).all()
+    tipos_documento = TipoDocumento
 
     if request.method == "POST":
-        nome = request.form.get("nome")
-        tipo = request.form.get("tipo")
-        tipo_personalizado = request.form.get("tipo_personalizado")
-        data_emissao = request.form.get("data_emissao")
-        data_vencimento = request.form.get("data_vencimento")
-        emails_notificacao = request.form.get("emails_notificacao")
+        nome = request.form.get("nome", "").strip()
+        tipo = request.form.get("tipo", "").strip()
+        tipo_personalizado = request.form.get("tipo_personalizado", "").strip()
+        data_emissao = request.form.get("data_emissao", "").strip()
+        data_vencimento = request.form.get("data_vencimento", "").strip()
+        emails_notificacao = request.form.get("emails_notificacao", "").strip()
         fazenda_id = request.form.get("fazenda_id") or None
         pessoa_id = request.form.get("pessoa_id") or None
 
-        # Obter múltiplos prazos de notificação
         prazos_notificacao = request.form.getlist("prazo_notificacao[]")
-        if not prazos_notificacao:
-            prazos_notificacao = []
-        else:
-            prazos_notificacao = [int(prazo) for prazo in prazos_notificacao if str(prazo).isdigit()]
+        prazos_notificacao = [int(p) for p in prazos_notificacao if str(p).isdigit()]
 
-        # Validação básica
         if not nome or not tipo or not data_emissao:
             flash("Todos os campos com * são obrigatórios.", "danger")
             return render_template(
                 "admin/documentos/form.html",
                 documento=documento,
-                tipos_documento=TipoDocumento,
+                tipos_documento=tipos_documento,
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
-
         if not fazenda_id and not pessoa_id:
             flash("Selecione uma fazenda/área e/ou uma pessoa para relacionar o documento.", "danger")
             return render_template(
                 "admin/documentos/form.html",
                 documento=documento,
-                tipos_documento=TipoDocumento,
+                tipos_documento=tipos_documento,
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
-
         if tipo == "Outros" and not tipo_personalizado:
             flash(
                 'Para o tipo "Outros", é necessário informar o tipo personalizado.',
@@ -832,26 +753,23 @@ def editar_documento(id):
             return render_template(
                 "admin/documentos/form.html",
                 documento=documento,
-                tipos_documento=TipoDocumento,
+                tipos_documento=tipos_documento,
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
-
-        # Converter datas
         try:
             data_emissao = datetime.datetime.strptime(data_emissao, "%Y-%m-%d").date()
-            if data_vencimento:
-                data_vencimento = datetime.datetime.strptime(
-                    data_vencimento, "%Y-%m-%d"
-                ).date()
-            else:
-                data_vencimento = None
-        except ValueError:
+            data_vencimento = (
+                datetime.datetime.strptime(data_vencimento, "%Y-%m-%d").date()
+                if data_vencimento
+                else None
+            )
+        except Exception:
             flash("Formato de data inválido.", "danger")
             return render_template(
                 "admin/documentos/form.html",
                 documento=documento,
-                tipos_documento=TipoDocumento,
+                tipos_documento=tipos_documento,
                 fazendas=fazendas,
                 pessoas=pessoas,
             )
@@ -876,10 +794,8 @@ def editar_documento(id):
         documento.tipo_personalizado = tipo_personalizado if tipo == "Outros" else None
         documento.data_emissao = data_emissao
         documento.data_vencimento = data_vencimento
-
         documento.fazenda_id = int(fazenda_id) if fazenda_id else None
         documento.pessoa_id = int(pessoa_id) if pessoa_id else None
-
         documento.emails_notificacao = emails_notificacao
         documento.prazos_notificacao = prazos_notificacao
 
@@ -912,18 +828,15 @@ def editar_documento(id):
     return render_template(
         "admin/documentos/form.html",
         documento=documento,
-        tipos_documento=TipoDocumento,
+        tipos_documento=tipos_documento,
         fazendas=fazendas,
         pessoas=pessoas,
     )
 
-
 @admin_bp.route("/documentos/<int:id>/excluir", methods=["POST"])
 @login_required
 def excluir_documento(id):
-    """Exclui um documento do sistema."""
     documento = Documento.query.get_or_404(id)
-
     nome = documento.nome
     valor_anterior = {
         "id": documento.id,
@@ -950,11 +863,9 @@ def excluir_documento(id):
     flash(f"Documento {nome} excluído com sucesso!", "success")
     return redirect(url_for("admin.listar_documentos"))
 
-
 @admin_bp.route("/documentos/vencidos")
 @login_required
 def listar_documentos_vencidos():
-    """Lista documentos vencidos ou próximos do vencimento."""
     hoje = datetime.date.today()
 
     documentos_vencidos = (
@@ -971,11 +882,10 @@ def listar_documentos_vencidos():
         ).order_by(Documento.data_vencimento).all()
     )
 
-    # Garante que os prazos estão como inteiros para cálculo correto das notificações programadas
     for doc in documentos_proximos:
         prazos = doc.prazos_notificacao if doc.prazos_notificacao else [30, 15, 7, 1]
         prazos = [int(p) for p in prazos]
-        enviados = []  # Se houver histórico, preencha
+        enviados = []
         doc.proximas_notificacoes = calcular_proximas_notificacoes_programadas(
             doc.data_vencimento, prazos, enviados
         )
@@ -986,11 +896,9 @@ def listar_documentos_vencidos():
         documentos_proximos=documentos_proximos,
     )
 
-
 @admin_bp.route("/documentos/notificacoes", methods=["GET", "POST"])
 @login_required
 def notificacoes_documentos():
-    """Gerencia notificações de vencimento de documentos."""
     documentos_por_prazo = verificar_documentos_vencendo()
     if request.method == "POST":
         total = 0
@@ -1034,7 +942,6 @@ def notificacoes_documentos():
     return render_template(
         "admin/documentos/notificacoes.html", documentos_por_prazo=documentos_por_prazo
     )
-
 
 @admin_bp.route("/testar-email", methods=["POST"])
 @login_required

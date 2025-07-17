@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache para armazenar municípios por estado
     const municipiosPorEstado = {};
     
+
     // Dados de fallback offline para os principais municípios brasileiros
     const municipiosFallback = {
         'SP': [
@@ -97,9 +98,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         try {
-            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${siglaUF}`);
+            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${siglaUF}`, {
+                timeout: 5000,
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (compatible; Gestao-Agro/1.0)'
+                }
+            });
+            
             if (!response.ok) {
+
                 throw new Error('Erro ao buscar municípios da API');
+
             }
             
             const municipios = await response.json();
@@ -107,6 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             municipiosPorEstado[siglaUF] = municipios;
             return municipios;
         } catch (error) {
+
             console.warn('Erro ao buscar municípios da API, usando dados offline:', error);
             
             // Usar dados de fallback se disponíveis
@@ -115,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Armazenar em cache mesmo sendo fallback
             municipiosPorEstado[siglaUF] = municipiosFallbackUF;
             
+
             return municipiosFallbackUF;
         }
     }
@@ -130,8 +142,21 @@ document.addEventListener('DOMContentLoaded', function() {
         ).slice(0, 10); // Limitar a 10 sugestões
         
         if (municipiosFiltrados.length === 0) {
-            sugestoesContainer.style.display = 'none';
-            return;
+            // Mostrar mensagem quando não há sugestões
+            if (filtro.length > 2) {
+                const mensagem = document.createElement('div');
+                mensagem.className = 'sugestao-item sugestao-vazia';
+                mensagem.textContent = 'Nenhum município encontrado. Digite o nome manualmente.';
+                mensagem.style.padding = '8px 12px';
+                mensagem.style.color = '#6c757d';
+                mensagem.style.fontStyle = 'italic';
+                sugestoesContainer.appendChild(mensagem);
+                sugestoesContainer.style.display = 'block';
+                return;
+            } else {
+                sugestoesContainer.style.display = 'none';
+                return;
+            }
         }
         
         // Criar elementos para cada sugestão
@@ -141,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sugestao.textContent = municipio.nome;
             sugestao.style.padding = '8px 12px';
             sugestao.style.cursor = 'pointer';
+            sugestao.style.borderBottom = '1px solid #e9ecef';
             
             // Destacar ao passar o mouse
             sugestao.addEventListener('mouseover', function() {

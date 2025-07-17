@@ -7,12 +7,19 @@ from wtforms.validators import DataRequired, Length, ValidationError
 import re
 
 class NotificacaoEndividamentoForm(FlaskForm):
-    """Formulário para configuração de notificações de endividamento"""
+    """
+    Formulário para configuração de notificações de endividamento.
+    Campo de e-mails aceita um e-mail por linha.
+    """
 
     emails = TextAreaField(
         "E-mails para Notificação",
         validators=[DataRequired(), Length(max=2000)],
-        description="Digite um e-mail por linha. As notificações serão enviadas nos seguintes intervalos: 6 meses, 3 meses, 30 dias, 15 dias, 7 dias, 3 dias e 1 dia antes do vencimento.",
+        description=(
+            "Digite um e-mail por linha. "
+            "As notificações serão enviadas nos seguintes intervalos: "
+            "6 meses, 3 meses, 30 dias, 15 dias, 7 dias, 3 dias e 1 dia antes do vencimento."
+        ),
     )
     ativo = BooleanField(
         "Ativo",
