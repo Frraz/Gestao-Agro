@@ -1,0 +1,168 @@
+{% extends 'layouts/admin.html' %}
+
+{% block title %}Pessoas - {{ fazenda.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.listar_fazendas') }}">Fazendas</a></li>
+            <li class="breadcrumb-item active">Pessoas - {{ fazenda.nome }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-users"></i> Pessoas Associadas</h2>
+            <p class="text-muted mb-0">{{ fazenda.nome }} - {{ fazenda.matricula }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.visualizar_fazenda', id=fazenda.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar para Fazenda
+            </a>
+        </div>
+    </div>
+
+    <!-- Farm Info Card -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-map-marked-alt"></i> Informações da Fazenda</h5>
+                    <p><strong>Nome:</strong> {{ fazenda.nome }}</p>
+                    <p><strong>Matrícula:</strong> {{ fazenda.matricula }}</p>
+                    <p><strong>Localização:</strong> {{ fazenda.municipio }}/{{ fazenda.estado }}</p>
+                    <p><strong>Área Total:</strong> {{ "%.2f"|format(fazenda.tamanho_total) }} ha</p>
+                    <p class="mb-0"><strong>Área Disponível:</strong> {{ "%.2f"|format(fazenda.tamanho_disponivel) }} ha</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-pie"></i> Resumo de Associações</h5>
+                    <p><strong>Total de Pessoas:</strong> {{ fazenda.total_pessoas }}</p>
+                    {% if vinculos %}
+                        {% set tipos_count = {} %}
+                        {% for vinculo in vinculos %}
+                            {% set _ = tipos_count.update({vinculo.tipo_posse.value: tipos_count.get(vinculo.tipo_posse.value, 0) + 1}) %}
+                        {% endfor %}
+                        {% for tipo, count in tipos_count.items() %}
+                            <p><strong>{{ tipo }}:</strong> {{ count }} pessoa(s)</p>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Associated People Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-users"></i> Pessoas Associadas ({{ vinculos|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if vinculos %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF/CNPJ</th>
+                                <th>Email</th>
+                                <th>Telefone</th>
+                                <th>Tipo de Posse</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vinculo in vinculos %}
+                            <tr>
+                                <td>
+                                    <strong>{{ vinculo.pessoa.nome }}</strong>
+                                </td>
+                                <td>
+                                    <span class="font-monospace">{{ vinculo.pessoa.cpf_cnpj_formatado }}</span>
+                                </td>
+                                <td>
+                                    {% if vinculo.pessoa.email %}
+                                        <a href="mailto:{{ vinculo.pessoa.email }}">{{ vinculo.pessoa.email }}</a>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if vinculo.pessoa.telefone %}
+                                        {{ vinculo.pessoa.telefone }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-info">{{ vinculo.tipo_posse_descricao }}</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('admin.editar_pessoa', id=vinculo.pessoa.id) }}" 
+                                           class="btn btn-outline-primary" title="Editar Pessoa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('admin.visualizar_pessoa', id=vinculo.pessoa.id) }}" 
+                                           class="btn btn-outline-info" title="Ver Detalhes">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nenhuma pessoa associada</h5>
+                    <p class="text-muted">Esta fazenda ainda não possui pessoas associadas.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <a href="{{ url_for('admin.listar_fazendas') }}" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> Listar Fazendas
+                    </a>
+                </div>
+                <div>
+                    <a href="{{ url_for('admin.visualizar_fazenda', id=fazenda.id) }}" class="btn btn-primary">
+                        <i class="fas fa-map-marked-alt"></i> Ver Fazenda Completa
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any specific JavaScript for this page
+    $(document).ready(function() {
+        // Initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        // Add table hover effects
+        $('.table-hover tbody tr').hover(
+            function() { $(this).addClass('table-active'); },
+            function() { $(this).removeClass('table-active'); }
+        );
+    });
+</script>
+{% endblock %}

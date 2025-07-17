@@ -41,7 +41,7 @@
                                     <td>{{ pessoa.email or '-' }}</td>
                                     <td>{{ pessoa.telefone or '-' }}</td>
                                     <td>
-                                        <span class="badge bg-info">{{ pessoa.fazendas|length }}</span>
+                                        <span class="badge bg-info">{{ pessoa.total_fazendas }}</span>
                                         <a href="{{ url_for('admin.listar_fazendas_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-outline-info">
                                             <i class="fas fa-eye"></i> Ver
                                         </a>

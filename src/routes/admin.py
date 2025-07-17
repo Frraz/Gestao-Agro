@@ -616,6 +616,22 @@ def listar_documentos_fazenda(id):
     )
 
 
+@admin_bp.route("/fazendas/<int:id>/pessoas")
+@login_required
+def listar_pessoas_fazenda(id):
+    """Lista as pessoas associadas a uma fazenda específica."""
+    fazenda = Fazenda.query.get_or_404(id)
+    
+    # Usar a nova estrutura de relacionamento
+    vinculos = fazenda.pessoas_fazenda
+    
+    return render_template(
+        "admin/fazendas/pessoas.html", 
+        fazenda=fazenda, 
+        vinculos=vinculos
+    )
+
+
 # Rotas para Documentos
 @admin_bp.route("/documentos")
 @login_required
