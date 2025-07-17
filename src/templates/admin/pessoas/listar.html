@@ -50,12 +50,8 @@
                                     <td>{{ pessoa.telefone or '-' }}</td>
                                     <td>
                                         <span class="badge bg-info">
-                                            {% if pessoa.fazendas_associadas is defined %}
-                                                {{ pessoa.fazendas_associadas|length }}
-                                            {% elif pessoa.fazendas is defined %}
-                                                {{ pessoa.fazendas|length }}
-                                            {% elif pessoa.vinculos is defined %}
-                                                {{ pessoa.vinculos|length }}
+                                            {% if pessoa.pessoas_fazenda is defined %}
+                                                {{ pessoa.pessoas_fazenda|length }}
                                             {% else %}
                                                 0
                                             {% endif %}

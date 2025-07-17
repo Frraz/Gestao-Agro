@@ -1,5 +1,3 @@
-# /src/routes/fazenda.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
@@ -25,7 +23,8 @@ def listar_fazendas():
                 {
                     "id": pf.pessoa.id,
                     "nome": pf.pessoa.nome,
-                    "tipo_posse": pf.tipo_posse.value,
+                    "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
+                    "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 }
                 for pf in fazenda.pessoas_fazenda
             ]
@@ -59,7 +58,8 @@ def obter_fazenda(id):
             {
                 "id": pf.pessoa.id,
                 "nome": pf.pessoa.nome,
-                "tipo_posse": pf.tipo_posse.value,
+                "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
+                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in fazenda.pessoas_fazenda
         ]
@@ -169,11 +169,13 @@ def criar_fazenda():
         for vinc in pessoas:
             pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
             tipo_posse = vinc.get("tipo_posse")
+            data_fim = vinc.get("data_fim")
             if pessoa_id and tipo_posse:
                 pf = PessoaFazenda(
                     pessoa_id=pessoa_id,
                     fazenda_id=nova_fazenda.id,
-                    tipo_posse=TipoPosse(tipo_posse)
+                    tipo_posse=TipoPosse(tipo_posse),
+                    data_fim=data_fim,
                 )
                 db.session.add(pf)
 
@@ -298,11 +300,13 @@ def atualizar_fazenda(id):
             for vinc in pessoas:
                 pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
                 tipo_posse = vinc.get("tipo_posse")
+                data_fim = vinc.get("data_fim")
                 if pessoa_id and tipo_posse:
                     pf = PessoaFazenda(
                         pessoa_id=pessoa_id,
                         fazenda_id=fazenda.id,
-                        tipo_posse=TipoPosse(tipo_posse)
+                        tipo_posse=TipoPosse(tipo_posse),
+                        data_fim=data_fim,
                     )
                     db.session.add(pf)
 
@@ -420,6 +424,7 @@ def listar_pessoas_fazenda(id):
                 "email": pf.pessoa.email,
                 "telefone": pf.pessoa.telefone,
                 "tipo_posse": pf.tipo_posse.value,
+                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in fazenda.pessoas_fazenda
         ]

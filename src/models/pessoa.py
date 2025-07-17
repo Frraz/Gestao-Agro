@@ -62,6 +62,11 @@ class Pessoa(db.Model):
         return len(self.pessoas_fazenda) if self.pessoas_fazenda else 0
 
     @property
+    def fazendas_associadas(self):
+        """Retorna a lista de vínculos pessoa-fazenda (PessoaFazenda)"""
+        return self.pessoas_fazenda
+
+    @property
     def total_documentos(self) -> int:
         """Retorna o total de documentos vinculados à pessoa."""
         return len(self.documentos) if self.documentos else 0

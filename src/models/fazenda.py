@@ -115,3 +115,13 @@ class Fazenda(db.Model):
     @property
     def total_endividamentos(self) -> int:
         return len(self.endividamentos_vinculados) if self.endividamentos_vinculados else 0
+
+    @property
+    def pessoas_associadas(self):
+        """Retorna a lista de vínculos pessoa-fazenda (PessoaFazenda)"""
+        return self.pessoas_fazenda
+
+    @property
+    def total_pessoas(self) -> int:
+        """Retorna o total de pessoas associadas à fazenda"""
+        return len(self.pessoas_fazenda) if self.pessoas_fazenda else 0

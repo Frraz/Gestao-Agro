@@ -1,0 +1,117 @@
+<!-- /src/templates/admin/fazendas/pessoas.html -->
+
+{% extends 'layouts/base.html' %}
+
+{% block title %}Pessoas da Fazenda {{ fazenda.nome }} - Sistema de Gestão de Fazendas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Pessoas Associadas à Fazenda: {{ fazenda.nome }}</h1>
+        <a href="{{ url_for('admin.listar_fazendas') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar às Fazendas
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Informações da Fazenda</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Nome:</strong> {{ fazenda.nome }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Matrícula:</strong> {{ fazenda.matricula }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Município:</strong> {{ fazenda.municipio }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Estado:</strong> {{ fazenda.estado }}
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-4">
+                            <strong>Tamanho Total:</strong> {{ fazenda.tamanho_total }} ha
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Área Consolidada:</strong> {{ fazenda.area_consolidada }} ha
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Tamanho Disponível:</strong> {{ fazenda.tamanho_disponivel }} ha
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Pessoas Associadas ({{ vinculos|length }})</h6>
+        </div>
+        <div class="card-body">
+            {% if vinculos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF/CNPJ</th>
+                                <th>Email</th>
+                                <th>Telefone</th>
+                                <th>Tipo de Posse</th>
+                                <th>Data Fim</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vinculo in vinculos %}
+                                <tr>
+                                    <td>{{ vinculo.pessoa.nome }}</td>
+                                    <td>
+                                        {% if vinculo.pessoa.formatar_cpf_cnpj is defined %}
+                                            {{ vinculo.pessoa.formatar_cpf_cnpj() }}
+                                        {% else %}
+                                            {{ vinculo.pessoa.cpf_cnpj }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ vinculo.pessoa.email or '-' }}</td>
+                                    <td>{{ vinculo.pessoa.telefone or '-' }}</td>
+                                    <td>
+                                        {% if vinculo.tipo_posse %}
+                                            <span class="badge bg-{{ 'success' if vinculo.tipo_posse.value == 'PROPRIA' else 'info' }}">
+                                                {{ vinculo.tipo_posse.value }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ vinculo.data_fim.strftime('%d/%m/%Y') if vinculo.data_fim else '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.editar_pessoa', id=vinculo.pessoa.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i> Editar Pessoa
+                                        </a>
+                                        <form action="{{ url_for('admin.desassociar_fazenda_pessoa', pessoa_id=vinculo.pessoa.id, vinculo_id=vinculo.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja desassociar {{ vinculo.pessoa.nome }} desta fazenda?');">
+                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-unlink"></i> Desassociar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-gray-300 mb-3"></i>
+                    <p class="mb-0">Nenhuma pessoa associada a esta fazenda.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

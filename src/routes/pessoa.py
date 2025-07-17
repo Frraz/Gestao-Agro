@@ -1,5 +1,3 @@
-# /src/routes/pessoa.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
@@ -25,7 +23,8 @@ def listar_pessoas():
                 {
                     "id": pf.fazenda.id,
                     "nome": pf.fazenda.nome,
-                    "tipo_posse": pf.tipo_posse.value,
+                    "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
+                    "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 }
                 for pf in pessoa.pessoas_fazenda
             ]
@@ -56,7 +55,8 @@ def obter_pessoa(id):
             {
                 "id": pf.fazenda.id,
                 "nome": pf.fazenda.nome,
-                "tipo_posse": pf.tipo_posse.value,
+                "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
+                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in pessoa.pessoas_fazenda
         ]
@@ -124,11 +124,13 @@ def criar_pessoa():
         for vinc in fazendas:
             fazenda_id = vinc.get("fazenda_id") or vinc.get("id")
             tipo_posse = vinc.get("tipo_posse")
+            data_fim = vinc.get("data_fim")
             if fazenda_id and tipo_posse:
                 pf = PessoaFazenda(
                     pessoa_id=nova_pessoa.id,
                     fazenda_id=fazenda_id,
-                    tipo_posse=TipoPosse(tipo_posse)
+                    tipo_posse=TipoPosse(tipo_posse),
+                    data_fim=data_fim,
                 )
                 db.session.add(pf)
 
@@ -225,11 +227,13 @@ def atualizar_pessoa(id):
             for vinc in dados.get("fazendas"):
                 fazenda_id = vinc.get("fazenda_id") or vinc.get("id")
                 tipo_posse = vinc.get("tipo_posse")
+                data_fim = vinc.get("data_fim")
                 if fazenda_id and tipo_posse:
                     pf = PessoaFazenda(
                         pessoa_id=pessoa.id,
                         fazenda_id=fazenda_id,
-                        tipo_posse=TipoPosse(tipo_posse)
+                        tipo_posse=TipoPosse(tipo_posse),
+                        data_fim=data_fim,
                     )
                     db.session.add(pf)
 
@@ -342,6 +346,7 @@ def listar_fazendas_pessoa(id):
                 "municipio": pf.fazenda.municipio,
                 "estado": pf.fazenda.estado,
                 "recibo_car": pf.fazenda.recibo_car,
+                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in pessoa.pessoas_fazenda
         ]
@@ -366,6 +371,7 @@ def associar_fazenda(pessoa_id, fazenda_id):
         pessoa = Pessoa.query.get_or_404(pessoa_id)
         fazenda = Fazenda.query.get_or_404(fazenda_id)
         tipo_posse = request.json.get("tipo_posse")
+        data_fim = request.json.get("data_fim")
 
         # Verifica se já existe o vínculo
         vinculo_existe = PessoaFazenda.query.filter_by(
@@ -380,7 +386,8 @@ def associar_fazenda(pessoa_id, fazenda_id):
         pf = PessoaFazenda(
             pessoa_id=pessoa.id,
             fazenda_id=fazenda.id,
-            tipo_posse=TipoPosse(tipo_posse)
+            tipo_posse=TipoPosse(tipo_posse),
+            data_fim=data_fim,
         )
         db.session.add(pf)
         db.session.commit()
