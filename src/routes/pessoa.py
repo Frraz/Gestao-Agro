@@ -1,5 +1,3 @@
-# /src/routes/pessoa.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
@@ -348,7 +346,6 @@ def listar_fazendas_pessoa(id):
                 "municipio": pf.fazenda.municipio,
                 "estado": pf.fazenda.estado,
                 "recibo_car": pf.fazenda.recibo_car,
-                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in pessoa.pessoas_fazenda

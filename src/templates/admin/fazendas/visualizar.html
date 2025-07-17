@@ -99,8 +99,6 @@
                                         <tr>
                                             <th>Nome</th>
                                             <th>Tipo de Posse</th>
-                                            <th>Data de Início</th>
-                                            <th>Data de Fim</th>
                                             <th>CPF/CNPJ</th>
                                             <th>Email</th>
                                             <th>Telefone</th>
@@ -115,8 +113,6 @@
                                                     {{ pf.tipo_posse.value|capitalize }}
                                                 </span>
                                             </td>
-                                            <td>{{ pf.data_inicio.strftime('%d/%m/%Y') if pf.data_inicio else '-' }}</td>
-                                            <td>{{ pf.data_fim.strftime('%d/%m/%Y') if pf.data_fim else '-' }}</td>
                                             <td>
                                                 {% if pf.pessoa.formatar_cpf_cnpj is defined %}
                                                     {{ pf.pessoa.formatar_cpf_cnpj() }}

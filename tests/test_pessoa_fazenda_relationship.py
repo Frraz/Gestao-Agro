@@ -45,32 +45,31 @@ def fazenda_exemplo():
 def test_relacionamento_pessoa_fazenda(session):
     pessoa = pessoa_exemplo()
     fazenda = fazenda_exemplo()
-    
+
     # Add to session first
     session.add(pessoa)
     session.add(fazenda)
     session.flush()  # To get the IDs
-    
+
     # Create the relationship through PessoaFazenda
     vinculo = PessoaFazenda(
         pessoa_id=pessoa.id,
         fazenda_id=fazenda.id,
         tipo_posse=TipoPosse.PROPRIA
     )
-    
     session.add(vinculo)
     session.commit()
 
     # Consulta do banco para garantir persistência
     pessoa_db = Pessoa.query.filter_by(cpf_cnpj="12345678901").first()
     fazenda_db = Fazenda.query.filter_by(matricula="FZ-001").first()
-    
+
     # Pessoa reconhece a fazenda através do relacionamento
-    assert len(pessoa_db.fazendas_associadas) == 1
-    assert pessoa_db.fazendas_associadas[0].fazenda.nome == "Fazenda Relacionada"
-    assert pessoa_db.fazendas_associadas[0].tipo_posse == TipoPosse.PROPRIA
-    
+    assert len(pessoa_db.pessoas_fazenda) == 1
+    assert pessoa_db.pessoas_fazenda[0].fazenda.nome == "Fazenda Relacionada"
+    assert pessoa_db.pessoas_fazenda[0].tipo_posse == TipoPosse.PROPRIA
+
     # Fazenda reconhece a pessoa através do relacionamento
-    assert len(fazenda_db.pessoas_associadas) == 1
-    assert fazenda_db.pessoas_associadas[0].pessoa.nome == "Maria Teste"
-    assert fazenda_db.pessoas_associadas[0].tipo_posse == TipoPosse.PROPRIA
+    assert len(fazenda_db.pessoas_fazenda) == 1
+    assert fazenda_db.pessoas_fazenda[0].pessoa.nome == "Maria Teste"
+    assert fazenda_db.pessoas_fazenda[0].tipo_posse == TipoPosse.PROPRIA

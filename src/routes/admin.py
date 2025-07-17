@@ -220,7 +220,6 @@ def associar_fazenda_pessoa(pessoa_id):
     if request.method == "POST":
         fazenda_id = request.form.get("fazenda_id")
         tipo_posse = request.form.get("tipo_posse")
-        data_fim = request.form.get("data_fim")  # data_inicio removido, só data_fim
 
         if not fazenda_id:
             flash("Selecione uma fazenda.", "danger")
@@ -246,8 +245,7 @@ def associar_fazenda_pessoa(pessoa_id):
         vinculo = PessoaFazenda(
             pessoa=pessoa,
             fazenda=fazenda,
-            tipo_posse=TipoPosse(tipo_posse) if tipo_posse else None,
-            data_fim=data_fim if data_fim else None,
+            tipo_posse=TipoPosse(tipo_posse) if tipo_posse else None
         )
         db.session.add(vinculo)
         db.session.commit()
@@ -352,8 +350,7 @@ def nova_fazenda():
                 vinculo = PessoaFazenda(
                     pessoa_id=pf_form.pessoa_id.data,
                     fazenda_id=nova_fazenda.id,
-                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None,
-                    data_fim=pf_form.data_fim.data if pf_form.data_fim.data else None,
+                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None
                 )
                 db.session.add(vinculo)
 
@@ -410,8 +407,7 @@ def editar_fazenda(id):
         for vinculo in fazenda.pessoas_fazenda:
             pf_form = PessoaFazendaForm(
                 pessoa_id=vinculo.pessoa_id,
-                tipo_posse=vinculo.tipo_posse.name if vinculo.tipo_posse else "",
-                data_fim=vinculo.data_fim
+                tipo_posse=vinculo.tipo_posse.name if vinculo.tipo_posse else ""
             )
             form.pessoas_fazenda.append_entry(pf_form.data)
     else:
@@ -458,8 +454,7 @@ def editar_fazenda(id):
                 vinculo = PessoaFazenda(
                     pessoa_id=pf_form.pessoa_id.data,
                     fazenda_id=fazenda.id,
-                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None,
-                    data_fim=pf_form.data_fim.data if pf_form.data_fim.data else None,
+                    tipo_posse=pf_form.tipo_posse.data if pf_form.tipo_posse.data else None
                 )
                 db.session.add(vinculo)
 

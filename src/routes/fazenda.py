@@ -1,5 +1,3 @@
-# /src/routes/fazenda.py
-
 import traceback
 
 from flask import Blueprint, current_app, jsonify, request
@@ -426,7 +424,6 @@ def listar_pessoas_fazenda(id):
                 "email": pf.pessoa.email,
                 "telefone": pf.pessoa.telefone,
                 "tipo_posse": pf.tipo_posse.value,
-                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
             for pf in fazenda.pessoas_fazenda
