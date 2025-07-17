@@ -18,7 +18,7 @@ class TipoPosse(enum.Enum):
 
 class PessoaFazenda(db.Model):
     """
-    Modelo de vínculo entre Pessoa e Fazenda, permitindo guardar o tipo de posse e data de término do vínculo.
+    Modelo de vínculo entre Pessoa e Fazenda, permitindo guardar o tipo de posse.
     """
     __tablename__ = "pessoa_fazenda"
 
@@ -26,17 +26,17 @@ class PessoaFazenda(db.Model):
     pessoa_id = Column(Integer, ForeignKey("pessoa.id", ondelete="CASCADE"), nullable=False, index=True)
     fazenda_id = Column(Integer, ForeignKey("fazenda.id", ondelete="CASCADE"), nullable=False, index=True)
     tipo_posse = Column(Enum(TipoPosse, name="tipo_posse_enum"), nullable=True, index=True)
-    data_fim = Column(Date, nullable=True)
 
     pessoa = relationship("Pessoa", back_populates="pessoas_fazenda")
     fazenda = relationship("Fazenda", back_populates="pessoas_fazenda")
 
     __table_args__ = (
-        Index("idx_pessoa_fazenda_unico", "pessoa_id", "fazenda_id", "tipo_posse", unique=True),
+        # Remove unique constraint to allow multiple relationships with the same type
+        Index("idx_pessoa_fazenda", "pessoa_id", "fazenda_id", "tipo_posse"),
     )
 
     def __repr__(self):
         return (
             f"<PessoaFazenda id={self.id} pessoa_id={self.pessoa_id} fazenda_id={self.fazenda_id} "
-            f"tipo_posse={self.tipo_posse.value if self.tipo_posse else None} data_fim={self.data_fim}>"
+            f"tipo_posse={self.tipo_posse.value if self.tipo_posse else None}>"
         )

@@ -29,21 +29,17 @@
           <tr>
             <th>Nome</th>
             <th>Tipo de Posse</th>
-            <th>Data de Início</th>
-            <th>Data de Fim</th>
           </tr>
         </thead>
         <tbody>
-          {% for pf in fazenda.pessoas_associadas %}
+          {% for pf in fazenda.pessoas_fazenda %}
           <tr>
             <td>{{ pf.pessoa.nome }}</td>
             <td>{{ pf.tipo_posse.value|upper }}</td>
-            <td>{{ pf.data_inicio.strftime('%d/%m/%Y') if pf.data_inicio else '-' }}</td>
-            <td>{{ pf.data_fim.strftime('%d/%m/%Y') if pf.data_fim else '-' }}</td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="4" class="text-muted text-center">Nenhuma pessoa associada.</td>
+            <td colspan="2" class="text-muted text-center">Nenhuma pessoa associada.</td>
           </tr>
           {% endfor %}
         </tbody>

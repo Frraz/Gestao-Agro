@@ -2,7 +2,8 @@ import pytest
 from src.main import create_app
 from src.models.db import db
 from src.models.pessoa import Pessoa
-from src.models.fazenda import Fazenda, TipoPosse
+from src.models.fazenda import Fazenda
+from src.models.pessoa_fazenda import TipoPosse
 
 @pytest.fixture
 def app():
@@ -36,27 +37,38 @@ def fazenda_exemplo():
         tamanho_total=100.0,
         area_consolidada=20.0,
         tamanho_disponivel=80.0,
-        tipo_posse=TipoPosse.PROPRIA,
         municipio="Testópolis",
         estado="TS",
         recibo_car="CAR-TESTE"
     )
 
 def test_relacionamento_pessoa_fazenda(session):
+    from src.models.pessoa_fazenda import PessoaFazenda
+    
     pessoa = pessoa_exemplo()
     fazenda = fazenda_exemplo()
-    # Associa a fazenda à pessoa
-    pessoa.fazendas.append(fazenda)
+    
+    # Save pessoa and fazenda first
     session.add(pessoa)
+    session.add(fazenda)
+    session.commit()
+    
+    # Create the relationship through the intermediate model
+    vinculo = PessoaFazenda(
+        pessoa_id=pessoa.id,
+        fazenda_id=fazenda.id,
+        tipo_posse=TipoPosse.PROPRIA
+    )
+    session.add(vinculo)
     session.commit()
 
     # Consulta do banco para garantir persistência
     pessoa_db = Pessoa.query.filter_by(cpf_cnpj="12345678901").first()
     fazenda_db = Fazenda.query.filter_by(matricula="FZ-001").first()
     
-    # Pessoa reconhece a fazenda
-    assert len(pessoa_db.fazendas) == 1
-    assert pessoa_db.fazendas[0].nome == "Fazenda Relacionada"
-    # Fazenda reconhece a pessoa
-    assert len(fazenda_db.pessoas) == 1
-    assert fazenda_db.pessoas[0].nome == "Maria Teste"
+    # Pessoa reconhece a fazenda através do relacionamento
+    assert len(pessoa_db.pessoas_fazenda) == 1
+    assert pessoa_db.pessoas_fazenda[0].fazenda.nome == "Fazenda Relacionada"
+    # Fazenda reconhece a pessoa através do relacionamento
+    assert len(fazenda_db.pessoas_fazenda) == 1
+    assert fazenda_db.pessoas_fazenda[0].pessoa.nome == "Maria Teste"
