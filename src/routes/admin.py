@@ -13,8 +13,9 @@ from flask_login import login_required
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento
-from src.models.fazenda import Fazenda, TipoPosse
+from src.models.fazenda import Fazenda
 from src.models.pessoa import Pessoa
+from src.models.pessoa_fazenda import TipoPosse
 from src.utils.auditoria import registrar_auditoria
 from src.utils.email_service import (
     EmailService, formatar_email_notificacao, verificar_documentos_vencendo

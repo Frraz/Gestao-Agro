@@ -24,7 +24,72 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache para armazenar municípios por estado
     const municipiosPorEstado = {};
     
-    // Função para buscar municípios da API
+    // Dados de fallback offline para os principais municípios brasileiros
+    const municipiosFallback = {
+        'SP': [
+            {nome: 'São Paulo'}, {nome: 'Campinas'}, {nome: 'Santos'}, {nome: 'Ribeirão Preto'},
+            {nome: 'São José dos Campos'}, {nome: 'Sorocaba'}, {nome: 'Osasco'}, {nome: 'Piracicaba'},
+            {nome: 'Bauru'}, {nome: 'São Carlos'}, {nome: 'Marília'}, {nome: 'Taubaté'},
+            {nome: 'Limeira'}, {nome: 'Presidente Prudente'}, {nome: 'Araçatuba'}, {nome: 'Araraquara'},
+            {nome: 'Franca'}, {nome: 'Americana'}, {nome: 'Botucatu'}, {nome: 'Jacareí'}
+        ],
+        'RJ': [
+            {nome: 'Rio de Janeiro'}, {nome: 'Niterói'}, {nome: 'Nova Iguaçu'}, {nome: 'São Gonçalo'},
+            {nome: 'Duque de Caxias'}, {nome: 'Campos dos Goytacazes'}, {nome: 'Petrópolis'},
+            {nome: 'Volta Redonda'}, {nome: 'Magé'}, {nome: 'Barra Mansa'}, {nome: 'Nova Friburgo'},
+            {nome: 'Cabo Frio'}, {nome: 'Angra dos Reis'}, {nome: 'Resende'}, {nome: 'Teresópolis'}
+        ],
+        'MG': [
+            {nome: 'Belo Horizonte'}, {nome: 'Uberlândia'}, {nome: 'Contagem'}, {nome: 'Juiz de Fora'},
+            {nome: 'Montes Claros'}, {nome: 'Uberaba'}, {nome: 'Governador Valadares'}, {nome: 'Betim'},
+            {nome: 'Ipatinga'}, {nome: 'Sete Lagoas'}, {nome: 'Divinópolis'}, {nome: 'Santa Luzia'},
+            {nome: 'Ribeirão das Neves'}, {nome: 'Patos de Minas'}, {nome: 'Poços de Caldas'}
+        ],
+        'RS': [
+            {nome: 'Porto Alegre'}, {nome: 'Caxias do Sul'}, {nome: 'Canoas'}, {nome: 'Pelotas'},
+            {nome: 'Santa Maria'}, {nome: 'Gravataí'}, {nome: 'Viamão'}, {nome: 'Novo Hamburgo'},
+            {nome: 'São Leopoldo'}, {nome: 'Rio Grande'}, {nome: 'Alvorada'}, {nome: 'Passo Fundo'},
+            {nome: 'Sapucaia do Sul'}, {nome: 'Uruguaiana'}, {nome: 'Santa Cruz do Sul'}
+        ],
+        'PR': [
+            {nome: 'Curitiba'}, {nome: 'Londrina'}, {nome: 'Maringá'}, {nome: 'Ponta Grossa'},
+            {nome: 'Cascavel'}, {nome: 'São José dos Pinhais'}, {nome: 'Foz do Iguaçu'},
+            {nome: 'Colombo'}, {nome: 'Guarapuava'}, {nome: 'Paranaguá'}, {nome: 'Araucária'},
+            {nome: 'Toledo'}, {nome: 'Apucarana'}, {nome: 'Pinhais'}, {nome: 'Campo Largo'}
+        ],
+        'SC': [
+            {nome: 'Florianópolis'}, {nome: 'Joinville'}, {nome: 'Blumenau'}, {nome: 'São José'},
+            {nome: 'Criciúma'}, {nome: 'Chapecó'}, {nome: 'Itajaí'}, {nome: 'Lages'},
+            {nome: 'Jaraguá do Sul'}, {nome: 'Palhoça'}, {nome: 'Balneário Camboriú'},
+            {nome: 'Brusque'}, {nome: 'Tubarão'}, {nome: 'São Bento do Sul'}, {nome: 'Caçador'}
+        ],
+        'GO': [
+            {nome: 'Goiânia'}, {nome: 'Aparecida de Goiânia'}, {nome: 'Anápolis'}, {nome: 'Rio Verde'},
+            {nome: 'Luziânia'}, {nome: 'Águas Lindas de Goiás'}, {nome: 'Valparaíso de Goiás'},
+            {nome: 'Trindade'}, {nome: 'Formosa'}, {nome: 'Novo Gama'}, {nome: 'Itumbiara'},
+            {nome: 'Senador Canedo'}, {nome: 'Catalão'}, {nome: 'Jataí'}, {nome: 'Planaltina'}
+        ],
+        'MT': [
+            {nome: 'Cuiabá'}, {nome: 'Várzea Grande'}, {nome: 'Rondonópolis'}, {nome: 'Sinop'},
+            {nome: 'Tangará da Serra'}, {nome: 'Cáceres'}, {nome: 'Sorriso'}, {nome: 'Lucas do Rio Verde'},
+            {nome: 'Barra do Garças'}, {nome: 'Primavera do Leste'}, {nome: 'Alta Floresta'},
+            {nome: 'Poxoréu'}, {nome: 'Nova Mutum'}, {nome: 'Diamantino'}, {nome: 'Juína'}
+        ],
+        'MS': [
+            {nome: 'Campo Grande'}, {nome: 'Dourados'}, {nome: 'Três Lagoas'}, {nome: 'Corumbá'},
+            {nome: 'Ponta Porã'}, {nome: 'Naviraí'}, {nome: 'Nova Andradina'}, {nome: 'Aquidauana'},
+            {nome: 'Sidrolândia'}, {nome: 'Maracaju'}, {nome: 'São Gabriel do Oeste'},
+            {nome: 'Coxim'}, {nome: 'Chapadão do Sul'}, {nome: 'Amambai'}, {nome: 'Paranaíba'}
+        ],
+        'BA': [
+            {nome: 'Salvador'}, {nome: 'Feira de Santana'}, {nome: 'Vitória da Conquista'},
+            {nome: 'Camaçari'}, {nome: 'Juazeiro'}, {nome: 'Itabuna'}, {nome: 'Lauro de Freitas'},
+            {nome: 'Ilhéus'}, {nome: 'Jequié'}, {nome: 'Teixeira de Freitas'}, {nome: 'Alagoinhas'},
+            {nome: 'Porto Seguro'}, {nome: 'Simões Filho'}, {nome: 'Paulo Afonso'}, {nome: 'Eunápolis'}
+        ]
+    };
+
+    // Função para buscar municípios da API com fallback offline
     async function buscarMunicipios(siglaUF) {
         // Verificar se já temos os municípios em cache
         if (municipiosPorEstado[siglaUF]) {
@@ -34,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${siglaUF}`);
             if (!response.ok) {
-                throw new Error('Erro ao buscar municípios');
+                throw new Error('Erro ao buscar municípios da API');
             }
             
             const municipios = await response.json();
@@ -42,8 +107,15 @@ document.addEventListener('DOMContentLoaded', function() {
             municipiosPorEstado[siglaUF] = municipios;
             return municipios;
         } catch (error) {
-            console.error('Erro ao buscar municípios:', error);
-            return [];
+            console.warn('Erro ao buscar municípios da API, usando dados offline:', error);
+            
+            // Usar dados de fallback se disponíveis
+            const municipiosFallbackUF = municipiosFallback[siglaUF] || [];
+            
+            // Armazenar em cache mesmo sendo fallback
+            municipiosPorEstado[siglaUF] = municipiosFallbackUF;
+            
+            return municipiosFallbackUF;
         }
     }
     

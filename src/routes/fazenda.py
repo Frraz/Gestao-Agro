@@ -7,7 +7,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import NotFound  # <-- adicionado
 
 from src.models.db import db
-from src.models.fazenda import Fazenda, TipoPosse
+from src.models.fazenda import Fazenda
+from src.models.pessoa_fazenda import TipoPosse
 
 fazenda_bp = Blueprint("fazenda", __name__, url_prefix="/api/fazendas")
 
@@ -20,7 +21,8 @@ def listar_fazendas():
         resultado = []
 
         for fazenda in fazendas:
-            pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas]
+            # Usar a nova propriedade pessoas_associadas
+            pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas_associadas]
             resultado.append(
                 {
                     "id": fazenda.id,
@@ -29,11 +31,11 @@ def listar_fazendas():
                     "tamanho_total": fazenda.tamanho_total,
                     "area_consolidada": fazenda.area_consolidada,
                     "tamanho_disponivel": fazenda.tamanho_disponivel,
-                    "tipo_posse": fazenda.tipo_posse.value,
                     "municipio": fazenda.municipio,
                     "estado": fazenda.estado,
                     "recibo_car": fazenda.recibo_car,
                     "pessoas": pessoas,
+                    "total_pessoas": fazenda.total_pessoas,
                 }
             )
 

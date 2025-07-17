@@ -3,27 +3,18 @@
 """
 Modelo para cadastro e gerenciamento de fazendas/áreas associadas a pessoas.
 
-Inclui enum para tipo de posse, campos de auditoria, relacionamentos com pessoas, documentos,
-áreas e vínculos de endividamento, além de propriedades utilitárias para cálculo de áreas e controle de documentação.
+Inclui relacionamentos com pessoas através do modelo intermediário PessoaFazenda,
+campos de auditoria, relacionamentos com documentos, áreas e vínculos de endividamento,
+além de propriedades utilitárias para cálculo de áreas e controle de documentação.
 """
 
 import datetime
-import enum
 from typing import List, Optional
 
-from sqlalchemy import Column, Enum, Float, Index, Integer, String
+from sqlalchemy import Column, Float, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
-
-from .pessoa import pessoa_fazenda
-
-class TipoPosse(enum.Enum):
-    """Enumeração dos tipos de posse da fazenda."""
-    PROPRIA = "Própria"
-    ARRENDADA = "Arrendada"
-    COMODATO = "Comodato"
-    POSSE = "Posse"
 
 class Fazenda(db.Model):  # type: ignore
     """
@@ -36,13 +27,12 @@ class Fazenda(db.Model):  # type: ignore
         tamanho_total (float): Tamanho total da fazenda (ha).
         area_consolidada (float): Área consolidada (ha).
         tamanho_disponivel (float): Área disponível (ha).
-        tipo_posse (TipoPosse): Tipo de posse.
         municipio (str): Município da fazenda.
         estado (str): UF da fazenda.
         recibo_car (Optional[str]): Número do recibo do CAR.
         data_criacao (datetime.date): Data de criação.
         data_atualizacao (datetime.date): Data de atualização.
-        pessoas (List[Pessoa]): Pessoas associadas.
+        pessoas_fazenda (List[PessoaFazenda]): Vínculos com pessoas através do modelo intermediário.
         documentos (List[Documento]): Documentos associados.
         endividamentos_vinculados (List[EndividamentoFazenda]): Vínculos de endividamento (por fazenda).
         areas (List[Area]): Áreas pertencentes à fazenda.
@@ -56,7 +46,6 @@ class Fazenda(db.Model):  # type: ignore
     tamanho_total: float = Column(Float, nullable=False)  # em hectares
     area_consolidada: float = Column(Float, nullable=False)  # em hectares
     tamanho_disponivel: float = Column(Float, nullable=False)  # em hectares (calculado)
-    tipo_posse: TipoPosse = Column(Enum(TipoPosse), nullable=False, index=True)
     municipio: str = Column(String(100), nullable=False, index=True)
     estado: str = Column(String(2), nullable=False, index=True)
     recibo_car: Optional[str] = Column(String(100), nullable=True)
@@ -71,9 +60,14 @@ class Fazenda(db.Model):  # type: ignore
         nullable=False,
     )
 
-    pessoas = relationship(
-        "Pessoa", secondary=pessoa_fazenda, back_populates="fazendas", lazy="selectin"
+    # Relacionamentos através do modelo intermediário PessoaFazenda
+    pessoas_fazenda = relationship(
+        "PessoaFazenda", 
+        back_populates="fazenda", 
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
+    
     documentos = relationship(
         "Documento",
         back_populates="fazenda",
@@ -92,7 +86,6 @@ class Fazenda(db.Model):  # type: ignore
 
     __table_args__ = (
         Index("idx_fazenda_estado_municipio", "estado", "municipio"),
-        Index("idx_fazenda_tipo_posse", "tipo_posse"),
     )
 
     def __repr__(self) -> str:
@@ -151,3 +144,19 @@ class Fazenda(db.Model):  # type: ignore
     def total_endividamentos(self) -> int:
         """Retorna o número total de endividamentos vinculados (por fazenda)."""
         return len(self.endividamentos_vinculados)
+
+    # Propriedades para compatibilidade com o novo modelo de relacionamentos
+    @property
+    def pessoas_associadas(self) -> List["Pessoa"]:
+        """Retorna lista de pessoas associadas através dos vínculos (compatibilidade PR #4)."""
+        return [vinculo.pessoa for vinculo in self.pessoas_fazenda]
+
+    @property
+    def total_pessoas(self) -> int:
+        """Retorna o número total de pessoas associadas (PR #4)."""
+        return len(self.pessoas_fazenda)
+
+    def get_vinculos_por_tipo(self, tipo_posse: "TipoPosse") -> List["PessoaFazenda"]:
+        """Retorna vínculos filtrados por tipo de posse."""
+        from src.models.pessoa_fazenda import TipoPosse
+        return [v for v in self.pessoas_fazenda if v.tipo_posse == tipo_posse]

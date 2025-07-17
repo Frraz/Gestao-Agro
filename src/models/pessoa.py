@@ -3,35 +3,17 @@
 """
 Modelo para cadastro de pessoas e associação com fazendas/áreas, documentos e endividamentos.
 
-Inclui tabela de associação pessoa_fazenda, campos de auditoria, relacionamentos e utilitários para análise e formatação de dados.
+Inclui relacionamentos N:N com fazendas através do modelo intermediário PessoaFazenda,
+campos de auditoria e utilitários para análise e formatação de dados.
 """
 
 import datetime
 from typing import List, Optional
 
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, Table
+from sqlalchemy import Column, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
-
-# Tabela de associação entre Pessoa e Fazenda (relação muitos-para-muitos)
-pessoa_fazenda = Table(
-    "pessoa_fazenda",
-    db.Model.metadata,
-    Column(
-        "pessoa_id",
-        Integer,
-        ForeignKey("pessoa.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "fazenda_id",
-        Integer,
-        ForeignKey("fazenda.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Index("idx_pessoa_fazenda", "pessoa_id", "fazenda_id"),
-)
 
 
 class Pessoa(db.Model):  # type: ignore
@@ -47,7 +29,7 @@ class Pessoa(db.Model):  # type: ignore
         endereco (Optional[str]): Endereço.
         data_criacao (datetime.date): Data de criação.
         data_atualizacao (datetime.date): Data de atualização.
-        fazendas (List[Fazenda]): Fazendas associadas.
+        pessoas_fazenda (List[PessoaFazenda]): Vínculos com fazendas através do modelo intermediário.
         documentos (List[Documento]): Documentos associados.
         endividamentos (List[Endividamento]): Endividamentos associados.
     """
@@ -71,9 +53,14 @@ class Pessoa(db.Model):  # type: ignore
         nullable=False,
     )
 
-    fazendas = relationship(
-        "Fazenda", secondary=pessoa_fazenda, back_populates="pessoas", lazy="selectin"
+    # Relacionamentos através do modelo intermediário PessoaFazenda
+    pessoas_fazenda = relationship(
+        "PessoaFazenda", 
+        back_populates="pessoa", 
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
+    
     documentos = relationship(
         "Documento",
         back_populates="pessoa",
@@ -83,6 +70,41 @@ class Pessoa(db.Model):  # type: ignore
     endividamentos = relationship(
         "Endividamento", secondary="endividamento_pessoa", back_populates="pessoas"
     )
+
+    # Índices para otimização de consultas
+    __table_args__ = (
+        Index("idx_pessoa_nome_cpf", "nome", "cpf_cnpj"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Pessoa(id={self.id}, nome='{self.nome}', cpf_cnpj='{self.cpf_cnpj}')>"
+
+    @property
+    def cpf_cnpj_formatado(self) -> str:
+        """Retorna CPF/CNPJ formatado para exibição."""
+        documento = self.cpf_cnpj.replace(".", "").replace("-", "").replace("/", "")
+        
+        if len(documento) == 11:  # CPF
+            return f"{documento[:3]}.{documento[3:6]}.{documento[6:9]}-{documento[9:]}"
+        elif len(documento) == 14:  # CNPJ
+            return f"{documento[:2]}.{documento[2:5]}.{documento[5:8]}/{documento[8:12]}-{documento[12:]}"
+        
+        return self.cpf_cnpj
+
+    @property
+    def fazendas_associadas(self) -> List["Fazenda"]:
+        """Retorna lista de fazendas associadas através dos vínculos."""
+        return [vinculo.fazenda for vinculo in self.pessoas_fazenda]
+
+    @property
+    def total_fazendas(self) -> int:
+        """Retorna o número total de fazendas associadas."""
+        return len(self.pessoas_fazenda)
+
+    def get_vinculos_por_tipo(self, tipo_posse: "TipoPosse") -> List["PessoaFazenda"]:
+        """Retorna vínculos filtrados por tipo de posse."""
+        from src.models.pessoa_fazenda import TipoPosse
+        return [v for v in self.pessoas_fazenda if v.tipo_posse == tipo_posse]
 
     __table_args__ = (Index("idx_pessoa_nome_cpf", "nome", "cpf_cnpj"),)
 

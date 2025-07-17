@@ -279,23 +279,41 @@ def create_app(test_config=None):
                     "message": "Verificação de notificações iniciada"
                 })
             else:
-                # Fallback: executar sincronamente
-                from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
-                from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
-                
-                service_end = NotificacaoEndividamentoService()
-                service_doc = NotificacaoDocumentoService()
-                
-                count_end = service_end.verificar_e_enviar_notificacoes()
-                count_doc = service_doc.verificar_e_enviar_notificacoes()
-                
-                return jsonify({
-                    "status": "ok",
-                    "message": "Verificação executada sincronamente",
-                    "endividamentos": count_end,
-                    "documentos": count_doc,
-                    "total": count_end + count_doc
-                })
+                # Fallback: executar sincronamente com serviço de fallback
+                try:
+                    from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
+                    from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
+                    
+                    service_end = NotificacaoEndividamentoService()
+                    service_doc = NotificacaoDocumentoService()
+                    
+                    count_end = service_end.verificar_e_enviar_notificacoes()
+                    count_doc = service_doc.verificar_e_enviar_notificacoes()
+                    
+                    return jsonify({
+                        "status": "ok",
+                        "message": "Verificação executada sincronamente",
+                        "endividamentos": count_end,
+                        "documentos": count_doc,
+                        "total": count_end + count_doc
+                    })
+                    
+                except Exception as service_error:
+                    # Se os serviços normais falharem, usar o fallback
+                    app.logger.warning(f"Serviços principais falharam, usando fallback: {service_error}")
+                    
+                    from src.utils.notification_fallback import NotificationFallbackService
+                    
+                    fallback_service = NotificationFallbackService()
+                    result = fallback_service.verificar_e_enviar_todas_notificacoes()
+                    
+                    return jsonify({
+                        "status": "ok",
+                        "message": "Verificação executada com fallback (sem Redis/Celery)",
+                        "endividamentos": result.get("endividamentos", 0),
+                        "documentos": result.get("documentos", 0),
+                        "total": result.get("total", 0)
+                    })
                 
         except Exception as e:
             app.logger.error(f"Erro ao forçar verificação: {e}", exc_info=True)
