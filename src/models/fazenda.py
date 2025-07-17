@@ -3,76 +3,51 @@
 """
 Modelo para cadastro e gerenciamento de fazendas/áreas associadas a pessoas.
 
-Inclui enum para tipo de posse, campos de auditoria, relacionamentos com pessoas, documentos,
+Inclui campos de auditoria, relacionamentos com pessoas via PessoaFazenda, documentos,
 áreas e vínculos de endividamento, além de propriedades utilitárias para cálculo de áreas e controle de documentação.
 """
 
 import datetime
-import enum
-from typing import List, Optional
+from typing import List
 
-from sqlalchemy import Column, Enum, Float, Index, Integer, String
+from sqlalchemy import Column, Float, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
 
-from .pessoa import pessoa_fazenda
-
-class TipoPosse(enum.Enum):
-    """Enumeração dos tipos de posse da fazenda."""
-    PROPRIA = "Própria"
-    ARRENDADA = "Arrendada"
-    COMODATO = "Comodato"
-    POSSE = "Posse"
-
-class Fazenda(db.Model):  # type: ignore
+class Fazenda(db.Model):
     """
     Modelo para cadastro de fazendas/áreas.
-
-    Attributes:
-        id (int): Identificador único da fazenda.
-        nome (str): Nome da fazenda.
-        matricula (str): Número da matrícula da fazenda.
-        tamanho_total (float): Tamanho total da fazenda (ha).
-        area_consolidada (float): Área consolidada (ha).
-        tamanho_disponivel (float): Área disponível (ha).
-        tipo_posse (TipoPosse): Tipo de posse.
-        municipio (str): Município da fazenda.
-        estado (str): UF da fazenda.
-        recibo_car (Optional[str]): Número do recibo do CAR.
-        data_criacao (datetime.date): Data de criação.
-        data_atualizacao (datetime.date): Data de atualização.
-        pessoas (List[Pessoa]): Pessoas associadas.
-        documentos (List[Documento]): Documentos associados.
-        endividamentos_vinculados (List[EndividamentoFazenda]): Vínculos de endividamento (por fazenda).
-        areas (List[Area]): Áreas pertencentes à fazenda.
     """
 
     __tablename__ = "fazenda"
 
-    id: int = Column(Integer, primary_key=True)
-    nome: str = Column(String(100), nullable=False, index=True)
-    matricula: str = Column(String(50), unique=True, nullable=False, index=True)
-    tamanho_total: float = Column(Float, nullable=False)  # em hectares
-    area_consolidada: float = Column(Float, nullable=False)  # em hectares
-    tamanho_disponivel: float = Column(Float, nullable=False)  # em hectares (calculado)
-    tipo_posse: TipoPosse = Column(Enum(TipoPosse), nullable=False, index=True)
-    municipio: str = Column(String(100), nullable=False, index=True)
-    estado: str = Column(String(2), nullable=False, index=True)
-    recibo_car: Optional[str] = Column(String(100), nullable=True)
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(100), nullable=False, index=True)
+    matricula = Column(String(50), unique=True, nullable=False, index=True)
+    tamanho_total = Column(Float, nullable=False)  # em hectares
+    area_consolidada = Column(Float, nullable=False)  # em hectares
+    tamanho_disponivel = Column(Float, nullable=False)  # em hectares (calculado)
+    municipio = Column(String(100), nullable=False, index=True)
+    estado = Column(String(2), nullable=False, index=True)
+    recibo_car = Column(String(100), nullable=True)
 
-    data_criacao: datetime.date = Column(
+    data_criacao = Column(
         db.Date, default=datetime.date.today, nullable=False
     )
-    data_atualizacao: datetime.date = Column(
+    data_atualizacao = Column(
         db.Date,
         default=datetime.date.today,
         onupdate=datetime.date.today,
         nullable=False,
     )
 
-    pessoas = relationship(
-        "Pessoa", secondary=pessoa_fazenda, back_populates="fazendas", lazy="selectin"
+    # Relacionamento N:N via model intermediário (PessoaFazenda)
+    pessoas_fazenda = relationship(
+        "PessoaFazenda",
+        back_populates="fazenda",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
     documentos = relationship(
         "Documento",
@@ -87,12 +62,14 @@ class Fazenda(db.Model):  # type: ignore
         lazy="selectin"
     )
     endividamentos_vinculados = relationship(
-        "EndividamentoFazenda", back_populates="fazenda", cascade="all, delete-orphan"
+        "EndividamentoFazenda",
+        back_populates="fazenda",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
     __table_args__ = (
         Index("idx_fazenda_estado_municipio", "estado", "municipio"),
-        Index("idx_fazenda_tipo_posse", "tipo_posse"),
     )
 
     def __repr__(self) -> str:
@@ -104,50 +81,37 @@ class Fazenda(db.Model):  # type: ignore
         return self.tamanho_total - self.area_consolidada
 
     def atualizar_tamanho_disponivel(self) -> float:
-        """
-        Atualiza o campo tamanho_disponivel com base nos valores atuais.
-
-        Returns:
-            float: Novo valor do campo tamanho_disponivel.
-        """
         self.tamanho_disponivel = self.calcular_tamanho_disponivel
         return self.tamanho_disponivel
 
     @property
     def total_documentos(self) -> int:
-        """Retorna o número total de documentos associados à fazenda."""
         return len(self.documentos) if self.documentos else 0
 
     @property
     def documentos_vencidos(self) -> List:
-        """Retorna a lista de documentos vencidos."""
-        return [doc for doc in self.documentos if doc.esta_vencido]
+        return [doc for doc in self.documentos if getattr(doc, "esta_vencido", False)]
 
     @property
     def documentos_a_vencer(self) -> List:
-        """Retorna a lista de documentos próximos do vencimento."""
         return [
             doc
             for doc in self.documentos
-            if not doc.esta_vencido and doc.precisa_notificar
+            if not getattr(doc, "esta_vencido", False) and getattr(doc, "precisa_notificar", False)
         ]
 
     @property
     def area_usada_credito(self) -> float:
-        """Calcula a área total utilizada em operações de crédito."""
-        # Soma dos hectares de todos vínculos do tipo objeto_credito nesta fazenda
         total_usado = 0.0
         for vinculo in self.endividamentos_vinculados:
-            if vinculo.tipo == "objeto_credito" and vinculo.hectares:
+            if getattr(vinculo, "tipo", None) == "objeto_credito" and getattr(vinculo, "hectares", None):
                 total_usado += float(vinculo.hectares)
         return total_usado
 
-    @property 
+    @property
     def area_disponivel_credito(self) -> float:
-        """Calcula a área disponível para novas operações de crédito."""
         return self.tamanho_disponivel - self.area_usada_credito
 
     @property
     def total_endividamentos(self) -> int:
-        """Retorna o número total de endividamentos vinculados (por fazenda)."""
-        return len(self.endividamentos_vinculados)
+        return len(self.endividamentos_vinculados) if self.endividamentos_vinculados else 0

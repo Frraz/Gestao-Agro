@@ -1,3 +1,5 @@
+# /src/routes/test.py
+
 import datetime
 
 from flask import Blueprint
@@ -12,8 +14,8 @@ def enviar_email_real():
     class DummyDoc:
         nome = "Licença Ambiental"
         tipo = type("Tipo", (), {"value": "Certidão"})
-        data_emissao = datetime.datetime(2024, 1, 1)
-        data_vencimento = datetime.datetime(2024, 12, 31)
+        data_emissao = datetime.date(2024, 1, 1)
+        data_vencimento = datetime.date(2024, 12, 31)
         tipo_entidade = type("TipoEntidade", (), {"value": "Fazenda/Área"})
         nome_entidade = "Fazenda Santa Luzia"
 

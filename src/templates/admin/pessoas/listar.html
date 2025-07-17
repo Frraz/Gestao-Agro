@@ -1,3 +1,5 @@
+<!-- /src/templates/admin/pessoas/listar.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Pessoas - Sistema de Gestão de Fazendas{% endblock %}
@@ -37,11 +39,27 @@
                             {% for pessoa in pessoas %}
                                 <tr>
                                     <td>{{ pessoa.nome }}</td>
-                                    <td>{{ pessoa.cpf_cnpj }}</td>
+                                    <td>
+                                        {% if pessoa.formatar_cpf_cnpj is defined %}
+                                            {{ pessoa.formatar_cpf_cnpj() }}
+                                        {% else %}
+                                            {{ pessoa.cpf_cnpj }}
+                                        {% endif %}
+                                    </td>
                                     <td>{{ pessoa.email or '-' }}</td>
                                     <td>{{ pessoa.telefone or '-' }}</td>
                                     <td>
-                                        <span class="badge bg-info">{{ pessoa.fazendas|length }}</span>
+                                        <span class="badge bg-info">
+                                            {% if pessoa.fazendas_associadas is defined %}
+                                                {{ pessoa.fazendas_associadas|length }}
+                                            {% elif pessoa.fazendas is defined %}
+                                                {{ pessoa.fazendas|length }}
+                                            {% elif pessoa.vinculos is defined %}
+                                                {{ pessoa.vinculos|length }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </span>
                                         <a href="{{ url_for('admin.listar_fazendas_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-outline-info">
                                             <i class="fas fa-eye"></i> Ver
                                         </a>
@@ -50,7 +68,7 @@
                                         <a href="{{ url_for('admin.editar_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-edit"></i> Editar
                                         </a>
-                                        <form action="{{ url_for('admin.excluir_pessoa', id=pessoa.id) }}" method="POST" class="d-inline">
+                                        <form action="{{ url_for('admin.excluir_pessoa', id=pessoa.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta pessoa?');">
                                             <button type="submit" class="btn btn-sm btn-danger btn-delete">
                                                 <i class="fas fa-trash"></i> Excluir
                                             </button>

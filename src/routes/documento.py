@@ -21,7 +21,7 @@ def data_valida(data_str):
     """Valida e converte string de data para objeto date."""
     try:
         return datetime.datetime.strptime(data_str, "%Y-%m-%d").date()
-    except ValueError:
+    except Exception:
         return None
 
 # -------- API ROUTES --------
@@ -56,13 +56,13 @@ def listar_documentos():
                     "pessoa_nome": pessoa_nome,
                     "emails_notificacao": documento.emails_notificacao,
                     "prazos_notificacao": documento.prazos_notificacao,
-                    "esta_vencido": documento.esta_vencido,
-                    "proximo_vencimento": documento.proximo_vencimento,
+                    "esta_vencido": getattr(documento, "esta_vencido", False),
+                    "proximo_vencimento": getattr(documento, "proximo_vencimento", None),
                 }
             )
         return jsonify(resultado)
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar documentos: {str(e)}")
+        current_app.logger.error(f"Erro ao listar documentos: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao listar documentos", "detalhes": str(e)}), 500
 
 @documento_bp.route("/<int:id>", methods=["GET"])
@@ -101,13 +101,13 @@ def obter_documento(id):
                 "pessoa_nome": pessoa_nome,
                 "emails_notificacao": documento.emails_notificacao,
                 "prazos_notificacao": documento.prazos_notificacao,
-                "esta_vencido": documento.esta_vencido,
-                "proximo_vencimento": documento.proximo_vencimento,
+                "esta_vencido": getattr(documento, "esta_vencido", False),
+                "proximo_vencimento": getattr(documento, "proximo_vencimento", None),
                 "proximas_notificacoes": proximas_notificacoes,
             }
         )
     except Exception as e:
-        current_app.logger.error(f"Erro ao obter documento {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao obter documento {id}: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify({"erro": f"Erro ao obter documento {id}", "detalhes": str(e)}),
             500,
@@ -120,12 +120,12 @@ def criar_documento():
         dados = request.form if request.form else request.json
         campos_obrigatorios = ["nome", "tipo", "data_emissao"]
         for campo in campos_obrigatorios:
-            if campo not in dados:
+            if campo not in dados or not dados.get(campo):
                 return jsonify({"erro": f"Campo {campo} é obrigatório"}), 400
 
         try:
             tipo_documento = TipoDocumento(dados.get("tipo"))
-        except ValueError:
+        except Exception:
             return jsonify({"erro": "Tipo de documento inválido"}), 400
 
         data_emissao = data_valida(dados.get("data_emissao"))
@@ -145,19 +145,12 @@ def criar_documento():
         fazenda_id = int(dados.get("fazenda_id")) if dados.get("fazenda_id") else None
         pessoa_id = int(dados.get("pessoa_id")) if dados.get("pessoa_id") else None
 
-        # Validação opcional: se IDs forem passados, verifique existência
-        if fazenda_id:
-            fazenda = Fazenda.query.get(fazenda_id)
-            if not fazenda:
-                return jsonify({"erro": "Fazenda não encontrada"}), 404
-        else:
-            fazenda = None
-        if pessoa_id:
-            pessoa = Pessoa.query.get(pessoa_id)
-            if not pessoa:
-                return jsonify({"erro": "Pessoa não encontrada"}), 404
-        else:
-            pessoa = None
+        fazenda = Fazenda.query.get(fazenda_id) if fazenda_id else None
+        if fazenda_id and not fazenda:
+            return jsonify({"erro": "Fazenda não encontrada"}), 404
+        pessoa = Pessoa.query.get(pessoa_id) if pessoa_id else None
+        if pessoa_id and not pessoa:
+            return jsonify({"erro": "Pessoa não encontrada"}), 404
 
         prazos_notificacao = []
         prazo_notificacao = dados.get("prazo_notificacao", [])
@@ -228,13 +221,13 @@ def criar_documento():
         )
     except IntegrityError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de integridade ao criar documento: {str(e)}")
+        current_app.logger.error(f"Erro de integridade ao criar documento: {str(e)}\n{traceback.format_exc()}")
         return (
             jsonify({"erro": "Erro de integridade no banco de dados", "detalhes": str(e)}), 400
         )
     except SQLAlchemyError as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro de banco de dados ao criar documento: {str(e)}")
+        current_app.logger.error(f"Erro de banco de dados ao criar documento: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
         db.session.rollback()
@@ -259,7 +252,7 @@ def atualizar_documento(id):
                 documento.tipo = TipoDocumento(dados.get("tipo"))
                 if documento.tipo == TipoDocumento.OUTROS and dados.get("tipo_personalizado"):
                     documento.tipo_personalizado = dados.get("tipo_personalizado")
-            except ValueError:
+            except Exception:
                 return jsonify({"erro": "Tipo de documento inválido"}), 400
 
         if dados.get("data_emissao"):
@@ -277,7 +270,6 @@ def atualizar_documento(id):
             else:
                 documento.data_vencimento = None
 
-        # Atualiza os relacionamentos
         if "fazenda_id" in dados:
             fazenda_id = int(dados.get("fazenda_id")) if dados.get("fazenda_id") else None
             if fazenda_id:
@@ -352,13 +344,13 @@ def atualizar_documento(id):
     except IntegrityError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de integridade ao atualizar documento {id}: {str(e)}"
+            f"Erro de integridade ao atualizar documento {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro de integridade no banco de dados", "detalhes": str(e)}), 400
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao atualizar documento {id}: {str(e)}"
+            f"Erro de banco de dados ao atualizar documento {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro de banco de dados", "detalhes": str(e)}), 500
     except Exception as e:
@@ -382,12 +374,12 @@ def excluir_documento(id):
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Erro de banco de dados ao excluir documento {id}: {str(e)}"
+            f"Erro de banco de dados ao excluir documento {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro de banco de dados ao excluir documento", "detalhes": str(e)}), 500
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro ao excluir documento {id}: {str(e)}")
+        current_app.logger.error(f"Erro ao excluir documento {id}: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao excluir documento", "detalhes": str(e)}), 500
 
 @documento_bp.route("/vencidos", methods=["GET"])
@@ -403,7 +395,7 @@ def listar_documentos_vencidos():
             fazenda_matricula = documento.fazenda.matricula if documento.fazenda else None
             pessoa_nome = documento.pessoa.nome if documento.pessoa else None
 
-            if documento.esta_vencido:
+            if getattr(documento, "esta_vencido", False):
                 vencidos.append(
                     {
                         "id": documento.id,
@@ -418,7 +410,7 @@ def listar_documentos_vencidos():
                         "emails_notificacao": documento.emails_notificacao,
                     }
                 )
-            elif documento.precisa_notificar:
+            elif getattr(documento, "precisa_notificar", False):
                 prazos = documento.prazos_notificacao if documento.prazos_notificacao else [30, 15, 7, 1]
                 prazos = [int(p) for p in prazos]
                 enviados = []  # Implemente se tiver histórico
@@ -431,7 +423,7 @@ def listar_documentos_vencidos():
                         "nome": documento.nome,
                         "tipo": documento.tipo.value,
                         "data_vencimento": documento.data_vencimento.isoformat(),
-                        "dias_restantes": documento.proximo_vencimento,
+                        "dias_restantes": getattr(documento, "proximo_vencimento", None),
                         "fazenda_id": documento.fazenda_id,
                         "fazenda_nome": fazenda_nome,
                         "fazenda_matricula": fazenda_matricula,
@@ -447,7 +439,7 @@ def listar_documentos_vencidos():
             {"vencidos": vencidos, "proximos_vencimento": proximos_vencimento}
         )
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar documentos vencidos: {str(e)}")
+        current_app.logger.error(f"Erro ao listar documentos vencidos: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"erro": "Erro ao listar documentos vencidos", "detalhes": str(e)}), 500
 
 @documento_bp.route("/testar-email", methods=["POST"])
@@ -472,8 +464,8 @@ def testar_email():
         else:
             return jsonify({"sucesso": False, "mensagem": mensagem}), 500
     except Exception as e:
-        current_app.logger.error(f"Erro ao testar envio de e-mail: {str(e)}")
-        return jsonify({"sucesso": False, "mensagem": f"Erro ao enviar e-mail de teste: {str(e)}"}, 500)
+        current_app.logger.error(f"Erro ao testar envio de e-mail: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"sucesso": False, "mensagem": f"Erro ao enviar e-mail de teste: {str(e)}"}), 500
 
 # -------- HTML VIEW ROUTE --------
 

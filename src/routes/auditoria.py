@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, render_template, request
 from flask_login import login_required
+from sqlalchemy import or_
 
 from src.models.auditoria import Auditoria
 from src.models.db import db
@@ -17,14 +18,15 @@ auditoria_bp = Blueprint("auditoria", __name__)
 @auditoria_bp.app_template_global()
 def url_for_other_page(page):
     args = request.args.copy()
-    args = args.to_dict(flat=False)  # Aceita múltiplos valores por chave
+    args = args.to_dict(flat=False)
     args['page'] = [str(page)]
     return f"{request.path}?{urlencode(args, doseq=True)}"
 
 @auditoria_bp.route("/admin/auditoria")
 @login_required
 def painel_auditoria():
-    # Filtros
+    """Painel de logs de auditoria, com filtros avançados."""
+
     query = Auditoria.query
 
     data_ini = request.args.get("data_ini")
@@ -40,15 +42,15 @@ def painel_auditoria():
     if data_fim:
         query = query.filter(Auditoria.data_hora <= data_fim + " 23:59:59")
     if usuario:
-        query = query.join(Auditoria.usuario).filter(
-            Auditoria.usuario.has(nome=usuario)
-        )
+        # O join pode não ser necessário dependendo do relacionamento; mantenha se existir relacionamento.
+        query = query.filter(Auditoria.usuario_nome == usuario) if hasattr(Auditoria, "usuario_nome") else query
+
     if entidade:
         query = query.filter(Auditoria.entidade == entidade)
     if acao:
         query = query.filter(Auditoria.acao == acao)
 
-    # --- Filtro por nome da fazenda ---
+    # Filtro por nome da fazenda (pesquisa em valor_novo e valor_anterior)
     if nome_fazenda:
         fazendas_ids = [
             f.id
@@ -56,18 +58,15 @@ def painel_auditoria():
         ]
         if fazendas_ids:
             query = query.filter(
-                db.or_(
+                or_(
                     *[
-                        (
-                            Auditoria.valor_novo.contains(str(fid))
-                            | Auditoria.valor_anterior.contains(str(fid))
-                        )
+                        Auditoria.valor_novo.contains(str(fid)) | Auditoria.valor_anterior.contains(str(fid))
                         for fid in fazendas_ids
                     ]
                 )
             )
 
-    # --- Filtro por nome da pessoa ---
+    # Filtro por nome da pessoa (pesquisa em valor_novo e valor_anterior)
     if nome_pessoa:
         pessoas_ids = [
             p.id
@@ -75,12 +74,9 @@ def painel_auditoria():
         ]
         if pessoas_ids:
             query = query.filter(
-                db.or_(
+                or_(
                     *[
-                        (
-                            Auditoria.valor_novo.contains(str(pid))
-                            | Auditoria.valor_anterior.contains(str(pid))
-                        )
+                        Auditoria.valor_novo.contains(str(pid)) | Auditoria.valor_anterior.contains(str(pid))
                         for pid in pessoas_ids
                     ]
                 )
@@ -96,23 +92,33 @@ def painel_auditoria():
     pessoas = {p.id: p.nome for p in Pessoa.query.all()}
 
     def extrair_identificacao(log):
-        try:
-            valor = json.loads(log.valor_novo or log.valor_anterior or "{}")
-        except Exception:
-            valor = {}
+        valor = {}
+        for v in (log.valor_novo, log.valor_anterior):
+            if v:
+                try:
+                    valor = json.loads(v)
+                    break
+                except Exception:
+                    pass
         if log.entidade == "Documento":
             return valor.get("nome", f"ID {valor.get('id', '-')}")
         if log.entidade == "Pessoa":
             return valor.get("nome", valor.get("cpf_cnpj", "-"))
         if log.entidade == "Fazenda":
             return valor.get("nome", f"ID {valor.get('id', '-')}")
+        if log.entidade == "PessoaFazenda":
+            return f"Pessoa {valor.get('pessoa_id', '')} - Fazenda {valor.get('fazenda_id', '')}"
         return "-"
 
     def extrair_associado(log):
-        try:
-            valor = json.loads(log.valor_novo or log.valor_anterior or "{}")
-        except Exception:
-            valor = {}
+        valor = {}
+        for v in (log.valor_novo, log.valor_anterior):
+            if v:
+                try:
+                    valor = json.loads(v)
+                    break
+                except Exception:
+                    pass
         if log.entidade == "Documento":
             if valor.get("pessoa_id"):
                 nome = pessoas.get(valor["pessoa_id"], str(valor["pessoa_id"]))
@@ -124,14 +130,17 @@ def painel_auditoria():
             if valor.get("fazenda_id"):
                 nome = fazendas.get(valor["fazenda_id"], str(valor["fazenda_id"]))
                 return f"Fazenda: {nome}"
+        if log.entidade == "PessoaFazenda":
+            nome_p = pessoas.get(valor.get("pessoa_id"), str(valor.get("pessoa_id")))
+            nome_f = fazendas.get(valor.get("fazenda_id"), str(valor.get("fazenda_id")))
+            return f"Pessoa: {nome_p}, Fazenda: {nome_f}, Tipo Posse: {valor.get('tipo_posse')}"
         return "-"
 
     for log in logs:
         log.identificacao = extrair_identificacao(log)
         log.associado = extrair_associado(log)
 
-    # Se for requisição AJAX, retorna só a tabela
+    # Resposta AJAX
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return render_template("admin/_auditoria_table.html", logs=logs, pagination=pagination)
-    # Renderização normal da página
     return render_template("admin/auditoria.html", logs=logs, pagination=pagination)

@@ -58,7 +58,7 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>Tipo</th>
-                                <th>Fazenda</th>
+                                <th>Associação</th>
                                 <th>Data de Emissão</th>
                                 <th>Data de Vencimento</th>
                                 <th>Status</th>
@@ -73,9 +73,9 @@
                                     <td>{{ documento.tipo.value }}</td>
                                     <td>
                                         {% if documento.fazenda %}
-                                            {{ documento.fazenda.nome }} (Matrícula: {{ documento.fazenda.matricula }})
+                                            <span title="Fazenda">{{ documento.fazenda.nome }} (Matrícula: {{ documento.fazenda.matricula }})</span>
                                         {% elif documento.pessoa %}
-                                            {{ documento.pessoa.nome }}
+                                            <span title="Pessoa">{{ documento.pessoa.nome }}</span>
                                         {% else %}
                                             -
                                         {% endif %}

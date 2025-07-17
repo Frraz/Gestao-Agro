@@ -19,104 +19,93 @@
         </div>
         <div class="card-body">
             <form method="POST" class="needs-validation" novalidate>
+                {{ form.csrf_token }}
+
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="nome" class="form-label">Nome *</label>
-                        <input type="text" class="form-control" id="nome" name="nome" value="{{ fazenda.nome if fazenda is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o nome.
-                        </div>
+                        {{ form.nome.label(class="form-label") }}
+                        {{ form.nome(class="form-control", id="nome", required=True) }}
+                        {% if form.nome.errors %}
+                            <div class="invalid-feedback d-block">{{ form.nome.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label for="matricula" class="form-label">Matrícula *</label>
-                        <input type="text" class="form-control" id="matricula" name="matricula" value="{{ fazenda.matricula if fazenda is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe a matrícula.
-                        </div>
+                        {{ form.matricula.label(class="form-label") }}
+                        {{ form.matricula(class="form-control", id="matricula", required=True) }}
+                        {% if form.matricula.errors %}
+                            <div class="invalid-feedback d-block">{{ form.matricula.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="recibo_car" class="form-label">Recibo do CAR</label>
-                        <input type="text" class="form-control" id="recibo_car" name="recibo_car" value="{{ fazenda.recibo_car if fazenda is defined else '' }}">
-                        <small class="form-text text-muted">Opcional. Informe o número do recibo do CAR, se houver.</small>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="tipo_posse" class="form-label">Tipo de Posse *</label>
-                        <select class="form-select" id="tipo_posse" name="tipo_posse" required>
-                            <option value="" selected disabled>Selecione...</option>
-                            {% for tipo in tipos_posse %}
-                                <option value="{{ tipo.value }}" {{ 'selected' if fazenda is defined and fazenda.tipo_posse == tipo else '' }}>
-                                    {{ tipo.value }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione o tipo de posse.
-                        </div>
+                        {% if form.recibo_car is defined %}
+                            {{ form.recibo_car.label(class="form-label") }}
+                            {{ form.recibo_car(class="form-control", id="recibo_car") }}
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="tamanho_total" class="form-label">Tamanho Total (ha) *</label>
-                        <input type="number" step="0.01" class="form-control" id="tamanho_total" name="tamanho_total" value="{{ fazenda.tamanho_total if fazenda is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o tamanho total.
-                        </div>
+                        {{ form.tamanho_total.label(class="form-label") }}
+                        {{ form.tamanho_total(class="form-control", id="tamanho_total", required=True, step="0.01") }}
+                        {% if form.tamanho_total.errors %}
+                            <div class="invalid-feedback d-block">{{ form.tamanho_total.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label for="area_consolidada" class="form-label">Área Consolidada (ha) *</label>
-                        <input type="number" step="0.01" class="form-control" id="area_consolidada" name="area_consolidada" value="{{ fazenda.area_consolidada if fazenda is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe a área consolidada.
-                        </div>
+                        {{ form.area_consolidada.label(class="form-label") }}
+                        {{ form.area_consolidada(class="form-control", id="area_consolidada", required=True, step="0.01") }}
+                        {% if form.area_consolidada.errors %}
+                            <div class="invalid-feedback d-block">{{ form.area_consolidada.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <label for="estado" class="form-label">Estado *</label>
-                        <select class="form-select" id="estado" name="estado" required>
-                            <option value="" selected disabled>Selecione o estado...</option>
-                            <option value="AC" {{ 'selected' if fazenda is defined and fazenda.estado == 'AC' else '' }}>Acre</option>
-                            <option value="AL" {{ 'selected' if fazenda is defined and fazenda.estado == 'AL' else '' }}>Alagoas</option>
-                            <option value="AP" {{ 'selected' if fazenda is defined and fazenda.estado == 'AP' else '' }}>Amapá</option>
-                            <option value="AM" {{ 'selected' if fazenda is defined and fazenda.estado == 'AM' else '' }}>Amazonas</option>
-                            <option value="BA" {{ 'selected' if fazenda is defined and fazenda.estado == 'BA' else '' }}>Bahia</option>
-                            <option value="CE" {{ 'selected' if fazenda is defined and fazenda.estado == 'CE' else '' }}>Ceará</option>
-                            <option value="DF" {{ 'selected' if fazenda is defined and fazenda.estado == 'DF' else '' }}>Distrito Federal</option>
-                            <option value="ES" {{ 'selected' if fazenda is defined and fazenda.estado == 'ES' else '' }}>Espírito Santo</option>
-                            <option value="GO" {{ 'selected' if fazenda is defined and fazenda.estado == 'GO' else '' }}>Goiás</option>
-                            <option value="MA" {{ 'selected' if fazenda is defined and fazenda.estado == 'MA' else '' }}>Maranhão</option>
-                            <option value="MT" {{ 'selected' if fazenda is defined and fazenda.estado == 'MT' else '' }}>Mato Grosso</option>
-                            <option value="MS" {{ 'selected' if fazenda is defined and fazenda.estado == 'MS' else '' }}>Mato Grosso do Sul</option>
-                            <option value="MG" {{ 'selected' if fazenda is defined and fazenda.estado == 'MG' else '' }}>Minas Gerais</option>
-                            <option value="PA" {{ 'selected' if fazenda is defined and fazenda.estado == 'PA' else '' }}>Pará</option>
-                            <option value="PB" {{ 'selected' if fazenda is defined and fazenda.estado == 'PB' else '' }}>Paraíba</option>
-                            <option value="PR" {{ 'selected' if fazenda is defined and fazenda.estado == 'PR' else '' }}>Paraná</option>
-                            <option value="PE" {{ 'selected' if fazenda is defined and fazenda.estado == 'PE' else '' }}>Pernambuco</option>
-                            <option value="PI" {{ 'selected' if fazenda is defined and fazenda.estado == 'PI' else '' }}>Piauí</option>
-                            <option value="RJ" {{ 'selected' if fazenda is defined and fazenda.estado == 'RJ' else '' }}>Rio de Janeiro</option>
-                            <option value="RN" {{ 'selected' if fazenda is defined and fazenda.estado == 'RN' else '' }}>Rio Grande do Norte</option>
-                            <option value="RS" {{ 'selected' if fazenda is defined and fazenda.estado == 'RS' else '' }}>Rio Grande do Sul</option>
-                            <option value="RO" {{ 'selected' if fazenda is defined and fazenda.estado == 'RO' else '' }}>Rondônia</option>
-                            <option value="RR" {{ 'selected' if fazenda is defined and fazenda.estado == 'RR' else '' }}>Roraima</option>
-                            <option value="SC" {{ 'selected' if fazenda is defined and fazenda.estado == 'SC' else '' }}>Santa Catarina</option>
-                            <option value="SP" {{ 'selected' if fazenda is defined and fazenda.estado == 'SP' else '' }}>São Paulo</option>
-                            <option value="SE" {{ 'selected' if fazenda is defined and fazenda.estado == 'SE' else '' }}>Sergipe</option>
-                            <option value="TO" {{ 'selected' if fazenda is defined and fazenda.estado == 'TO' else '' }}>Tocantins</option>
-                        </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione o estado.
-                        </div>
+                        {{ form.estado.label(class="form-label") }}
+                        {{ form.estado(class="form-select", id="estado", required=True) }}
+                        {% if form.estado.errors %}
+                            <div class="invalid-feedback d-block">{{ form.estado.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-8">
-                        <label for="municipio" class="form-label">Município *</label>
-                        <input type="text" class="form-control" id="municipio" name="municipio" value="{{ fazenda.municipio if fazenda is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o município.
-                        </div>
+                        {{ form.municipio.label(class="form-label") }}
+                        {{ form.municipio(class="form-control", id="municipio", required=True) }}
+                        {% if form.municipio.errors %}
+                            <div class="invalid-feedback d-block">{{ form.municipio.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Associação de pessoas -->
+                <fieldset class="border rounded p-3 mb-3">
+                    <legend class="w-auto px-2">Pessoas Associadas</legend>
+                    <div class="mb-2 text-muted" style="font-size:90%">
+                        <i class="fas fa-info-circle"></i> Este campo é opcional. Você pode cadastrar uma fazenda sem associar nenhuma pessoa.
+                    </div>
+                    <div id="pessoas-fazenda-list">
+                        {% for pf_form in form.pessoas_fazenda %}
+                            <div class="row align-items-end mb-2 pessoa-fazenda-item">
+                                <div class="col-md-6">
+                                    {{ pf_form.pessoa_id.label(class="form-label") }}
+                                    {{ pf_form.pessoa_id(class="form-select") }}
+                                </div>
+                                <div class="col-md-5">
+                                    {{ pf_form.tipo_posse.label(class="form-label") }}
+                                    {{ pf_form.tipo_posse(class="form-select") }}
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-danger btn-sm remove-pessoa-fazenda" title="Remover vínculo">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-success btn-sm" id="add-pessoa-fazenda"><i class="fas fa-plus"></i> Adicionar Pessoa</button>
+                </fieldset>
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> {% if fazenda is defined and fazenda.id %}Atualizar{% else %}Cadastrar{% endif %}
@@ -128,19 +117,34 @@
 </div>
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/municipios.js') }}"></script>
 <script>
-    $(document).ready(function() {
-        // Calcular tamanho disponível automaticamente
-        $('#tamanho_total, #area_consolidada').on('input', function() {
-            const tamanhoTotal = parseFloat($('#tamanho_total').val()) || 0;
-            const areaConsolidada = parseFloat($('#area_consolidada').val()) || 0;
-            
-            if (areaConsolidada > tamanhoTotal) {
-                alert('A área consolidada não pode ser maior que o tamanho total.');
+document.addEventListener('DOMContentLoaded', function() {
+    let pessoasFazendaList = document.getElementById('pessoas-fazenda-list');
+    let addBtn = document.getElementById('add-pessoa-fazenda');
+
+    addBtn.addEventListener('click', function() {
+        // Clona o último item (ou um modelo oculto) e limpa os valores
+        let items = pessoasFazendaList.querySelectorAll('.pessoa-fazenda-item');
+        let last = items.length ? items[items.length - 1] : null;
+        if (last) {
+            let clone = last.cloneNode(true);
+            // Limpa valores
+            for (const input of clone.querySelectorAll('input, select')) {
+                input.value = '';
             }
-        });
+            pessoasFazendaList.appendChild(clone);
+        }
     });
+
+    pessoasFazendaList.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-pessoa-fazenda')) {
+            let item = e.target.closest('.pessoa-fazenda-item');
+            if (pessoasFazendaList.children.length > 1) {
+                item.remove();
+            }
+        }
+    });
+});
 </script>
 {% endblock %}
 {% endblock %}

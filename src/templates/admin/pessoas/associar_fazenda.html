@@ -1,3 +1,5 @@
+<!-- src/templates/admin/pessoas/associar_fazenda.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Associar Fazenda - Sistema de Gestão de Fazendas{% endblock %}
@@ -28,6 +30,28 @@
                         </select>
                         <div class="invalid-feedback">
                             Por favor, selecione uma fazenda/área.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipo_posse" class="form-label">Tipo de Posse</label>
+                        <select class="form-select" id="tipo_posse" name="tipo_posse">
+                            <option value="" selected disabled>Selecione o tipo de posse...</option>
+                            {% for tipo in tipos_posse %}
+                                <option value="{{ tipo.name }}">{{ tipo.value }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">
+                            Por favor, selecione o tipo de posse.
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="data_inicio" class="form-label">Data de Início</label>
+                            <input type="date" class="form-control" id="data_inicio" name="data_inicio">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="data_fim" class="form-label">Data de Fim</label>
+                            <input type="date" class="form-control" id="data_fim" name="data_fim">
                         </div>
                     </div>
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">

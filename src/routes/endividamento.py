@@ -13,11 +13,10 @@ from src.models.endividamento import Endividamento, EndividamentoFazenda, Parcel
 from src.models.fazenda import Fazenda
 from src.models.notificacao_endividamento import NotificacaoEndividamento
 from src.models.pessoa import Pessoa
+from src.models.pessoa_fazenda import PessoaFazenda
 from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
 from src.utils.validators import sanitize_input
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
-
-# IMPORTS PARA ÁREAS VINCULADAS AO ENDIVIDAMENTO
 from src.utils.endividamento_area_utils import (
     adicionar_areas_endividamento,
     get_areas_vinculadas,
@@ -31,10 +30,7 @@ endividamento_bp = Blueprint("endividamento", __name__, url_prefix="/endividamen
 
 @endividamento_bp.route("/<int:id>/areas", methods=["POST"])
 def add_areas_endividamento(id):
-    """
-    Vincula áreas a um endividamento.
-    Espera JSON: {"areas": [{"area_id":..., "tipo":..., "hectares_utilizados":...}, ...]}
-    """
+    """Vincula áreas a um endividamento."""
     data = request.get_json()
     for area in data['areas']:
         if area.get('hectares_utilizados'):
@@ -46,17 +42,13 @@ def add_areas_endividamento(id):
 
 @endividamento_bp.route("/<int:id>/areas", methods=["GET"])
 def listar_areas_endividamento(id):
-    """
-    Lista áreas vinculadas a um endividamento.
-    """
+    """Lista áreas vinculadas a um endividamento."""
     areas = get_areas_vinculadas(id)
     return jsonify(areas), 200
 
 @endividamento_bp.route("/<int:endividamento_id>/area/<int:area_id>", methods=["DELETE"])
 def desvincular_area(endividamento_id, area_id):
-    """
-    Desvincula uma área de um endividamento.
-    """
+    """Desvincula uma área de um endividamento."""
     remover_area_vinculo(endividamento_id, area_id)
     return jsonify({"message": "Área desvinculada com sucesso."}), 200
 
@@ -66,8 +58,6 @@ def desvincular_area(endividamento_id, area_id):
 def listar():
     """Lista todos os endividamentos com filtros opcionais"""
     form_filtro = FiltroEndividamentoForm()
-
-    # Preencher opções dos selects
     form_filtro.pessoa_id.choices = [(0, "Todas as pessoas")] + [
         (p.id, p.nome) for p in Pessoa.query.all()
     ]
@@ -145,13 +135,11 @@ def novo():
                 db.session.add(endividamento)
                 db.session.flush()  # Para obter o ID
 
-                # Processar pessoas selecionadas
                 pessoas_ids = request.form.getlist("pessoas_ids")
                 if pessoas_ids:
                     pessoas = Pessoa.query.filter(Pessoa.id.in_(pessoas_ids)).all()
                     endividamento.pessoas = pessoas
 
-                # Processar vínculos com fazendas (objeto do crédito)
                 objetos_credito = json.loads(request.form.get("objetos_credito") or "[]")
                 for obj in objetos_credito:
                     if obj.get("fazenda_id") and obj.get("hectares"):
@@ -164,7 +152,6 @@ def novo():
                         )
                         db.session.add(vinculo)
 
-                # Processar garantias
                 garantias = json.loads(request.form.get("garantias") or "[]")
                 for gar in garantias:
                     if gar.get("fazenda_id"):
@@ -177,7 +164,6 @@ def novo():
                         )
                         db.session.add(vinculo)
 
-                # Processar parcelas
                 parcelas = json.loads(request.form.get("parcelas") or "[]")
                 for parc in parcelas:
                     if parc.get("data_vencimento") and parc.get("valor"):
@@ -218,8 +204,6 @@ def novo():
 def visualizar(id):
     """Visualiza detalhes de um endividamento"""
     endividamento = Endividamento.query.get_or_404(id)
-
-    # Obter configuração de notificação
     config = NotificacaoEndividamento.query.filter_by(endividamento_id=id, ativo=True).first()
     prazos = [30, 15, 7, 1]
     if config and hasattr(config, "prazos") and config.prazos:
@@ -228,7 +212,6 @@ def visualizar(id):
         except Exception:
             pass
 
-    # Já enviadas?
     from src.models.notificacao_endividamento import HistoricoNotificacao
     enviados = [
         n.tipo_notificacao for n in HistoricoNotificacao.query.filter_by(endividamento_id=id, sucesso=True)
@@ -237,7 +220,6 @@ def visualizar(id):
         endividamento.data_vencimento_final, prazos, enviados
     )
 
-    # Áreas vinculadas via utilitário
     areas_vinculadas = get_areas_vinculadas(endividamento.id)
 
     return render_template(
@@ -258,9 +240,7 @@ def editar(id):
         if form.validate_on_submit():
             try:
                 endividamento.banco = sanitize_input(form.banco.data)
-                endividamento.numero_proposta = sanitize_input(
-                    form.numero_proposta.data
-                )
+                endividamento.numero_proposta = sanitize_input(form.numero_proposta.data)
                 endividamento.data_emissao = form.data_emissao.data
                 endividamento.data_vencimento_final = form.data_vencimento_final.data
                 endividamento.taxa_juros = form.taxa_juros.data
@@ -343,7 +323,6 @@ def editar(id):
 def excluir(id):
     """Exclui um endividamento"""
     endividamento = Endividamento.query.get_or_404(id)
-
     try:
         db.session.delete(endividamento)
         db.session.commit()
@@ -351,22 +330,18 @@ def excluir(id):
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao excluir endividamento: {str(e)}", "danger")
-
     return redirect(url_for("endividamento.listar"))
 
 @endividamento_bp.route("/vencimentos")
 def vencimentos():
     """Lista parcelas próximas do vencimento e exibe próximas notificações programadas"""
     hoje = date.today()
-
     parcelas_vencidas = (
         Parcela.query.filter(Parcela.data_vencimento < hoje, Parcela.pago.is_(False))
         .order_by(Parcela.data_vencimento.asc())
         .all()
     )
-
     data_limite = hoje + timedelta(days=30)
-
     parcelas_a_vencer = (
         Parcela.query.filter(
             and_(
@@ -379,9 +354,7 @@ def vencimentos():
         .all()
     )
 
-    # Adiciona próximas notificações programadas a cada parcela (baseado no endividamento da parcela)
     from src.models.notificacao_endividamento import HistoricoNotificacao
-
     for parcela in parcelas_a_vencer:
         endividamento = parcela.endividamento
         config = NotificacaoEndividamento.query.filter_by(endividamento_id=endividamento.id, ativo=True).first()
@@ -409,19 +382,16 @@ def vencimentos():
 def pagar_parcela(id):
     """Marca uma parcela como paga"""
     parcela = Parcela.query.get_or_404(id)
-
     try:
         parcela.pago = True
         parcela.data_pagamento = date.today()
         parcela.valor_pago = request.form.get("valor_pago", parcela.valor)
         parcela.observacoes = sanitize_input(request.form.get("observacoes", ""))
-
         db.session.commit()
         flash("Parcela marcada como paga!", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao marcar parcela como paga: {str(e)}", "danger")
-
     return redirect(url_for("endividamento.vencimentos"))
 
 @endividamento_bp.route("/api/fazendas/<int:pessoa_id>")
@@ -429,8 +399,15 @@ def api_fazendas_pessoa(pessoa_id):
     """API para obter fazendas de uma pessoa"""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
     fazendas = [
-        {"id": f.id, "nome": f.nome, "tamanho_total": float(f.tamanho_total)}
-        for f in pessoa.fazendas
+        {
+            "id": vinc.fazenda.id,
+            "nome": vinc.fazenda.nome,
+            "tamanho_total": float(vinc.fazenda.tamanho_total),
+            "tipo_posse": vinc.tipo_posse.value,
+            "data_inicio": vinc.data_inicio.isoformat() if vinc.data_inicio else None,
+            "data_fim": vinc.data_fim.isoformat() if vinc.data_fim else None,
+        }
+        for vinc in pessoa.fazendas_associadas
     ]
     return jsonify(fazendas)
 
@@ -438,32 +415,23 @@ def api_fazendas_pessoa(pessoa_id):
 def buscar_pessoas():
     """Endpoint para busca AJAX de pessoas com cache Redis e paginação"""
     from src.utils.cache import cache
-
     termo = request.args.get("q", "").strip()
     page = request.args.get("page", 1, type=int)
     limit = request.args.get("limit", 10, type=int)
-
     if len(termo) < 2:
         return jsonify([])
-
     page = max(1, page)
     limit = min(max(1, limit), 50)
-
     cache_key = f"buscar_pessoas:{termo}:{page}:{limit}"
-
     resultado_cache = cache.get(cache_key)
     if resultado_cache is not None:
         return jsonify(resultado_cache)
-
     offset = (page - 1) * limit
-
     query = Pessoa.query.filter(
         or_(Pessoa.nome.ilike(f"%{termo}%"), Pessoa.cpf_cnpj.ilike(f"%{termo}%"))
     )
-
     total_count = query.count()
     pessoas = query.offset(offset).limit(limit).all()
-
     resultado = [
         {
             "id": pessoa.id,
@@ -473,7 +441,6 @@ def buscar_pessoas():
         }
         for pessoa in pessoas
     ]
-
     response_data = resultado
     if "page" in request.args or "limit" in request.args:
         response_data = {
@@ -487,9 +454,7 @@ def buscar_pessoas():
                 "total_pages": (total_count + limit - 1) // limit
             }
         }
-
     cache.set(cache_key, response_data, timeout=300)
-
     return jsonify(response_data)
 
 @endividamento_bp.route("/<int:id>/notificacoes", methods=["GET", "POST"])
@@ -498,7 +463,6 @@ def configurar_notificacoes(id):
     endividamento = Endividamento.query.get_or_404(id)
     form = NotificacaoEndividamentoForm()
     service = NotificacaoEndividamentoService()
-
     if request.method == "POST":
         if form.validate_on_submit():
             try:
@@ -507,17 +471,14 @@ def configurar_notificacoes(id):
                     for email in form.emails.data.split("\n")
                     if email.strip()
                 ]
-
                 sucesso = service.configurar_notificacao(
                     endividamento_id=id, emails=emails, ativo=form.ativo.data
                 )
-
                 if sucesso:
                     flash("Configurações de notificação salvas com sucesso!", "success")
                     return redirect(url_for("endividamento.visualizar", id=id))
                 else:
                     flash("Erro ao salvar configurações de notificação.", "danger")
-
             except Exception as e:
                 flash(f"Erro ao processar configurações: {str(e)}", "danger")
         else:
@@ -525,14 +486,11 @@ def configurar_notificacoes(id):
                 "Erro na validação do formulário. Verifique os dados informados.",
                 "danger",
             )
-
     configuracao = service.obter_configuracao(id)
     if configuracao["emails"]:
         form.emails.data = "\n".join(configuracao["emails"])
         form.ativo.data = configuracao["ativo"]
-
     historico = service.obter_historico(id)
-
     return render_template(
         "admin/endividamentos/notificacoes.html",
         endividamento=endividamento,
@@ -546,7 +504,6 @@ def processar_notificacoes():
     try:
         service = NotificacaoEndividamentoService()
         notificacoes_enviadas = service.verificar_e_enviar_notificacoes()
-
         return jsonify(
             {
                 "sucesso": True,
@@ -554,6 +511,5 @@ def processar_notificacoes():
                 "mensagem": f"{notificacoes_enviadas} notificações foram enviadas.",
             }
         )
-
     except Exception as e:
         return jsonify({"sucesso": False, "erro": str(e)}), 500

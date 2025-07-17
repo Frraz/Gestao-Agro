@@ -8,4 +8,5 @@ A variável `db` é utilizada nos modelos para mapear as tabelas do banco de dad
 
 from flask_sqlalchemy import SQLAlchemy
 
+# Instância global do SQLAlchemy para uso em todos os modelos
 db = SQLAlchemy()

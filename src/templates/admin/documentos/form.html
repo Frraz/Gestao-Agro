@@ -19,139 +19,109 @@
         </div>
         <div class="card-body">
             <form method="POST" class="needs-validation" novalidate>
+                {{ form.csrf_token }}
+
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="nome" class="form-label">Nome do Documento *</label>
-                        <input type="text" class="form-control" id="nome" name="nome" value="{{ documento.nome if documento is defined else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o nome do documento.
-                        </div>
+                        {{ form.nome.label(class="form-label") }}
+                        {{ form.nome(class="form-control", id="nome", required=True) }}
+                        {% if form.nome.errors %}
+                            <div class="invalid-feedback d-block">{{ form.nome.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label for="tipo" class="form-label">Tipo de Documento *</label>
-                        <select class="form-select" id="tipo" name="tipo" required>
-                            <option value="" selected disabled>Selecione...</option>
-                            {% for tipo in tipos_documento %}
-                                <option value="{{ tipo.value }}" {{ 'selected' if documento is defined and documento.tipo == tipo else '' }}>
-                                    {{ tipo.value }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione o tipo de documento.
-                        </div>
+                        {{ form.tipo.label(class="form-label") }}
+                        {{ form.tipo(class="form-select", id="tipo", required=True) }}
+                        {% if form.tipo.errors %}
+                            <div class="invalid-feedback d-block">{{ form.tipo.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                
+
                 <div class="row mb-3" id="tipo_personalizado_container" style="display: none;">
                     <div class="col-md-12">
-                        <label for="tipo_personalizado" class="form-label">Tipo Personalizado *</label>
-                        <input type="text" class="form-control" id="tipo_personalizado" name="tipo_personalizado" value="{{ documento.tipo_personalizado if documento is defined else '' }}">
-                        <div class="invalid-feedback">
-                            Por favor, informe o tipo personalizado.
-                        </div>
+                        {{ form.tipo_personalizado.label(class="form-label") }}
+                        {{ form.tipo_personalizado(class="form-control", id="tipo_personalizado") }}
+                        {% if form.tipo_personalizado.errors %}
+                            <div class="invalid-feedback d-block">{{ form.tipo_personalizado.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="data_emissao" class="form-label">Data de Emissão *</label>
-                        <input type="date" class="form-control" id="data_emissao" name="data_emissao" value="{{ documento.data_emissao.strftime('%Y-%m-%d') if documento is defined and documento.data_emissao else '' }}" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe a data de emissão.
-                        </div>
+                        {{ form.data_emissao.label(class="form-label") }}
+                        {{ form.data_emissao(class="form-control", id="data_emissao", required=True, type="date") }}
+                        {% if form.data_emissao.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_emissao.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label for="data_vencimento" class="form-label">Data de Vencimento</label>
-                        <input type="date" class="form-control" id="data_vencimento" name="data_vencimento" value="{{ documento.data_vencimento.strftime('%Y-%m-%d') if documento is defined and documento.data_vencimento else '' }}">
+                        {{ form.data_vencimento.label(class="form-label") }}
+                        {{ form.data_vencimento(class="form-control", id="data_vencimento", type="date") }}
                         <small class="form-text text-muted">Deixe em branco se o documento não tiver data de vencimento.</small>
+                        {% if form.data_vencimento.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_vencimento.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                
-                <!-- INÍCIO DO NOVO BLOCO: Associação flexível -->
+
+                <!-- Associação flexível: Fazenda/Área e Pessoa -->
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="fazenda_id" class="form-label">Fazenda/Área</label>
-                        <select class="form-select" id="fazenda_id" name="fazenda_id">
-                            <option value="">Selecione...</option>
-                            {% for fazenda in fazendas %}
-                                <option value="{{ fazenda.id }}" {{ 'selected' if documento is defined and documento.fazenda_id == fazenda.id else '' }}>
-                                    {{ fazenda.nome }} (Matrícula: {{ fazenda.matricula }})
-                                </option>
-                            {% endfor %}
-                        </select>
+                        {{ form.fazenda_id.label(class="form-label") }}
+                        {{ form.fazenda_id(class="form-select", id="fazenda_id") }}
                         <small class="form-text text-muted">Opcional. Relacione a uma fazenda/área, se desejar.</small>
+                        {% if form.fazenda_id.errors %}
+                            <div class="invalid-feedback d-block">{{ form.fazenda_id.errors[0] }}</div>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <label for="pessoa_id" class="form-label">Pessoa</label>
-                        <select class="form-select" id="pessoa_id" name="pessoa_id">
-                            <option value="">Selecione...</option>
-                            {% for pessoa in pessoas %}
-                                <option value="{{ pessoa.id }}" {{ 'selected' if documento is defined and documento.pessoa_id == pessoa.id else '' }}>
-                                    {{ pessoa.nome }} ({{ pessoa.cpf_cnpj }})
-                                </option>
-                            {% endfor %}
-                        </select>
+                        {{ form.pessoa_id.label(class="form-label") }}
+                        {{ form.pessoa_id(class="form-select", id="pessoa_id") }}
                         <small class="form-text text-muted">Opcional. Relacione a uma pessoa, se desejar.</small>
+                        {% if form.pessoa_id.errors %}
+                            <div class="invalid-feedback d-block">{{ form.pessoa_id.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                <!-- FIM DO NOVO BLOCO -->
+                <!-- Fim do bloco associação -->
 
                 <div class="row mb-3">
                     <div class="col-md-12">
-                        <label for="emails_notificacao" class="form-label">Emails para Notificação</label>
+                        {{ form.emails_notificacao.label(class="form-label") }}
                         <div class="input-group">
-                            <input type="text" class="form-control" id="emails_notificacao" name="emails_notificacao" 
-                                   value="{{ ','.join(documento.emails_notificacao) if documento is defined and documento.emails_notificacao else '' }}"
-                                   placeholder="Informe um ou mais emails separados por vírgula">
+                            {{ form.emails_notificacao(class="form-control", id="emails_notificacao", placeholder="Informe um ou mais emails separados por vírgula") }}
                             <button class="btn btn-outline-primary" type="button" id="btn_teste_email">
                                 <i class="fas fa-paper-plane"></i> Testar Email
                             </button>
                         </div>
                         <small class="form-text text-muted">Informe um ou mais emails separados por vírgula para receber notificações de vencimento.</small>
                         <div id="email_teste_resultado" class="mt-2" style="display: none;"></div>
+                        {% if form.emails_notificacao.errors %}
+                            <div class="invalid-feedback d-block">{{ form.emails_notificacao.errors[0] }}</div>
+                        {% endif %}
                     </div>
                 </div>
-                
+
                 <div class="row mb-3">
                     <div class="col-md-12">
                         <label class="form-label">Prazos de Notificação</label>
                         <div class="d-flex flex-wrap gap-3">
+                            {% for prazo in [30, 15, 7, 3, 1] %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="30" id="prazo30" {% if documento is defined and 30 in documento.prazos_notificacao %}checked{% endif %}>
-                                <label class="form-check-label" for="prazo30">
-                                    30 dias antes
+                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="{{ prazo }}" id="prazo{{ prazo }}"
+                                    {% if documento is defined and prazo in documento.prazos_notificacao %}checked{% endif %}>
+                                <label class="form-check-label" for="prazo{{ prazo }}">
+                                    {{ prazo }} dias antes
                                 </label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="15" id="prazo15" {% if documento is defined and 15 in documento.prazos_notificacao %}checked{% endif %}>
-                                <label class="form-check-label" for="prazo15">
-                                    15 dias antes
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="7" id="prazo7" {% if documento is defined and 7 in documento.prazos_notificacao %}checked{% endif %}>
-                                <label class="form-check-label" for="prazo7">
-                                    7 dias antes
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="3" id="prazo3" {% if documento is defined and 3 in documento.prazos_notificacao %}checked{% endif %}>
-                                <label class="form-check-label" for="prazo3">
-                                    3 dias antes
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="prazo_notificacao[]" value="1" id="prazo1" {% if documento is defined and 1 in documento.prazos_notificacao %}checked{% endif %}>
-                                <label class="form-check-label" for="prazo1">
-                                    1 dia antes
-                                </label>
-                            </div>
+                            {% endfor %}
                         </div>
                         <small class="form-text text-muted">Selecione quando deseja receber notificações antes do vencimento.</small>
                     </div>
                 </div>
-                
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> {% if documento is defined and documento.id %}Atualizar{% else %}Cadastrar{% endif %}
