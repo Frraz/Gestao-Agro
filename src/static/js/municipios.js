@@ -24,6 +24,51 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache para armazenar municípios por estado
     const municipiosPorEstado = {};
     
+    // Municípios mais comuns por estado (fallback)
+    const municipiosFallback = {
+        'SP': [
+            {nome: 'São Paulo'}, {nome: 'Campinas'}, {nome: 'Santos'}, 
+            {nome: 'Ribeirão Preto'}, {nome: 'Sorocaba'}, {nome: 'São José dos Campos'},
+            {nome: 'Piracicaba'}, {nome: 'Bauru'}, {nome: 'Jundiaí'}, {nome: 'Franca'}
+        ],
+        'RJ': [
+            {nome: 'Rio de Janeiro'}, {nome: 'Niterói'}, {nome: 'Campos dos Goytacazes'},
+            {nome: 'Volta Redonda'}, {nome: 'Petrópolis'}, {nome: 'Nova Iguaçu'}
+        ],
+        'MG': [
+            {nome: 'Belo Horizonte'}, {nome: 'Uberlândia'}, {nome: 'Contagem'},
+            {nome: 'Juiz de Fora'}, {nome: 'Betim'}, {nome: 'Montes Claros'}
+        ],
+        'RS': [
+            {nome: 'Porto Alegre'}, {nome: 'Caxias do Sul'}, {nome: 'Pelotas'},
+            {nome: 'Canoas'}, {nome: 'Santa Maria'}, {nome: 'Gravataí'}
+        ],
+        'PR': [
+            {nome: 'Curitiba'}, {nome: 'Londrina'}, {nome: 'Maringá'},
+            {nome: 'Ponta Grossa'}, {nome: 'Cascavel'}, {nome: 'São José dos Pinhais'}
+        ],
+        'SC': [
+            {nome: 'Florianópolis'}, {nome: 'Joinville'}, {nome: 'Blumenau'},
+            {nome: 'São José'}, {nome: 'Criciúma'}, {nome: 'Chapecó'}
+        ],
+        'GO': [
+            {nome: 'Goiânia'}, {nome: 'Aparecida de Goiânia'}, {nome: 'Anápolis'},
+            {nome: 'Rio Verde'}, {nome: 'Luziânia'}, {nome: 'Águas Lindas de Goiás'}
+        ],
+        'MT': [
+            {nome: 'Cuiabá'}, {nome: 'Várzea Grande'}, {nome: 'Rondonópolis'},
+            {nome: 'Sinop'}, {nome: 'Tangará da Serra'}, {nome: 'Cáceres'}
+        ],
+        'MS': [
+            {nome: 'Campo Grande'}, {nome: 'Dourados'}, {nome: 'Três Lagoas'},
+            {nome: 'Corumbá'}, {nome: 'Ponta Porã'}, {nome: 'Naviraí'}
+        ],
+        'BA': [
+            {nome: 'Salvador'}, {nome: 'Feira de Santana'}, {nome: 'Vitória da Conquista'},
+            {nome: 'Camaçari'}, {nome: 'Juazeiro'}, {nome: 'Ilhéus'}
+        ]
+    };
+
     // Função para buscar municípios da API
     async function buscarMunicipios(siglaUF) {
         // Verificar se já temos os municípios em cache
@@ -32,9 +77,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         try {
-            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${siglaUF}`);
+            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${siglaUF}`, {
+                timeout: 5000,
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (compatible; Gestao-Agro/1.0)'
+                }
+            });
+            
             if (!response.ok) {
-                throw new Error('Erro ao buscar municípios');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const municipios = await response.json();
@@ -42,8 +94,13 @@ document.addEventListener('DOMContentLoaded', function() {
             municipiosPorEstado[siglaUF] = municipios;
             return municipios;
         } catch (error) {
-            console.error('Erro ao buscar municípios:', error);
-            return [];
+            console.warn('Erro ao buscar municípios da API:', error);
+            console.info('Usando lista de municípios offline para', siglaUF);
+            
+            // Fallback para lista local
+            const municipiosFallbackUF = municipiosFallback[siglaUF] || [];
+            municipiosPorEstado[siglaUF] = municipiosFallbackUF;
+            return municipiosFallbackUF;
         }
     }
     
@@ -58,8 +115,21 @@ document.addEventListener('DOMContentLoaded', function() {
         ).slice(0, 10); // Limitar a 10 sugestões
         
         if (municipiosFiltrados.length === 0) {
-            sugestoesContainer.style.display = 'none';
-            return;
+            // Mostrar mensagem quando não há sugestões
+            if (filtro.length > 2) {
+                const mensagem = document.createElement('div');
+                mensagem.className = 'sugestao-item sugestao-vazia';
+                mensagem.textContent = 'Nenhum município encontrado. Digite o nome manualmente.';
+                mensagem.style.padding = '8px 12px';
+                mensagem.style.color = '#6c757d';
+                mensagem.style.fontStyle = 'italic';
+                sugestoesContainer.appendChild(mensagem);
+                sugestoesContainer.style.display = 'block';
+                return;
+            } else {
+                sugestoesContainer.style.display = 'none';
+                return;
+            }
         }
         
         // Criar elementos para cada sugestão
@@ -69,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sugestao.textContent = municipio.nome;
             sugestao.style.padding = '8px 12px';
             sugestao.style.cursor = 'pointer';
+            sugestao.style.borderBottom = '1px solid #e9ecef';
             
             // Destacar ao passar o mouse
             sugestao.addEventListener('mouseover', function() {

@@ -269,33 +269,33 @@ def create_app(test_config=None):
     def force_check_notifications():
         """Força verificação manual de notificações (útil para debug)"""
         try:
-            # Buscar a tarefa registrada no celery
-            task = celery.tasks.get('tasks.processar_todas_notificacoes')
-            if task:
-                result = task.delay()
-                return jsonify({
-                    "status": "ok",
-                    "task_id": result.id,
-                    "message": "Verificação de notificações iniciada"
-                })
-            else:
-                # Fallback: executar sincronamente
-                from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
-                from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
-                
-                service_end = NotificacaoEndividamentoService()
-                service_doc = NotificacaoDocumentoService()
-                
-                count_end = service_end.verificar_e_enviar_notificacoes()
-                count_doc = service_doc.verificar_e_enviar_notificacoes()
-                
-                return jsonify({
-                    "status": "ok",
-                    "message": "Verificação executada sincronamente",
-                    "endividamentos": count_end,
-                    "documentos": count_doc,
-                    "total": count_end + count_doc
-                })
+            # Tentar usar Celery primeiro
+            try:
+                # Buscar a tarefa registrada no celery
+                task = celery.tasks.get('tasks.processar_todas_notificacoes')
+                if task:
+                    result = task.delay()
+                    return jsonify({
+                        "status": "ok",
+                        "task_id": result.id,
+                        "message": "Verificação de notificações iniciada (Celery)",
+                        "method": "celery"
+                    })
+            except Exception as celery_error:
+                app.logger.warning(f"Celery não disponível: {celery_error}")
+            
+            # Fallback: usar sistema sem Redis/Celery
+            from src.utils.notification_fallback import notification_fallback_service
+            
+            app.logger.info("Usando sistema de notificações de fallback (sem Redis/Celery)")
+            result = notification_fallback_service.check_and_send_notifications()
+            
+            return jsonify({
+                "status": "ok",
+                "message": "Verificação executada com sistema de fallback",
+                "method": "fallback",
+                "result": result
+            })
                 
         except Exception as e:
             app.logger.error(f"Erro ao forçar verificação: {e}", exc_info=True)
