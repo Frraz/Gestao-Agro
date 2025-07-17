@@ -12,8 +12,6 @@ class PessoaFazendaForm(FlaskForm):
         choices=[(tipo.name, tipo.value) for tipo in TipoPosse],
         validators=[Optional()]
     )
-    # Removido o campo data_inicio!
-    data_fim = DateField('Data de Fim', format='%Y-%m-%d', validators=[Optional()])
 
 class FazendaForm(FlaskForm):
     nome = StringField('Nome', validators=[DataRequired()])
