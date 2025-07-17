@@ -524,6 +524,17 @@ def excluir_fazenda(id):
     flash(f"Fazenda {nome} excluída com sucesso!", "success")
     return redirect(url_for("admin.listar_fazendas"))
 
+@admin_bp.route("/fazendas/<int:id>/pessoas")
+@login_required
+def listar_pessoas_fazenda(id):
+    """Lista todas as pessoas associadas a uma fazenda."""
+    fazenda = Fazenda.query.get_or_404(id)
+    return render_template(
+        "admin/fazendas/pessoas.html",
+        fazenda=fazenda,
+        vinculos=fazenda.pessoas_fazenda
+    )
+
 @admin_bp.route("/fazendas/<int:id>/documentos")
 @login_required
 def listar_documentos_fazenda(id):

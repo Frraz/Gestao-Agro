@@ -2,7 +2,8 @@ import pytest
 from src.main import create_app
 from src.models.db import db
 from src.models.pessoa import Pessoa
-from src.models.fazenda import Fazenda, TipoPosse
+from src.models.fazenda import Fazenda
+from src.models.pessoa_fazenda import PessoaFazenda, TipoPosse
 
 @pytest.fixture
 def app():

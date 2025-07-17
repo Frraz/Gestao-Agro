@@ -25,11 +25,10 @@ def listar_fazendas():
                 {
                     "id": pf.pessoa.id,
                     "nome": pf.pessoa.nome,
-                    "tipo_posse": pf.tipo_posse.value,
-                    "data_inicio": pf.data_inicio.isoformat() if pf.data_inicio else None,
+                    "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
                     "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 }
-                for pf in fazenda.pessoas_associadas
+                for pf in fazenda.pessoas_fazenda
             ]
             resultado.append(
                 {
@@ -61,11 +60,10 @@ def obter_fazenda(id):
             {
                 "id": pf.pessoa.id,
                 "nome": pf.pessoa.nome,
-                "tipo_posse": pf.tipo_posse.value,
-                "data_inicio": pf.data_inicio.isoformat() if pf.data_inicio else None,
+                "tipo_posse": pf.tipo_posse.value if pf.tipo_posse else None,
                 "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
-            for pf in fazenda.pessoas_associadas
+            for pf in fazenda.pessoas_fazenda
         ]
         return jsonify(
             {
@@ -173,14 +171,12 @@ def criar_fazenda():
         for vinc in pessoas:
             pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
             tipo_posse = vinc.get("tipo_posse")
-            data_inicio = vinc.get("data_inicio")
             data_fim = vinc.get("data_fim")
             if pessoa_id and tipo_posse:
                 pf = PessoaFazenda(
                     pessoa_id=pessoa_id,
                     fazenda_id=nova_fazenda.id,
                     tipo_posse=TipoPosse(tipo_posse),
-                    data_inicio=data_inicio,
                     data_fim=data_fim,
                 )
                 db.session.add(pf)
@@ -306,14 +302,12 @@ def atualizar_fazenda(id):
             for vinc in pessoas:
                 pessoa_id = vinc.get("pessoa_id") or vinc.get("id")
                 tipo_posse = vinc.get("tipo_posse")
-                data_inicio = vinc.get("data_inicio")
                 data_fim = vinc.get("data_fim")
                 if pessoa_id and tipo_posse:
                     pf = PessoaFazenda(
                         pessoa_id=pessoa_id,
                         fazenda_id=fazenda.id,
                         tipo_posse=TipoPosse(tipo_posse),
-                        data_inicio=data_inicio,
                         data_fim=data_fim,
                     )
                     db.session.add(pf)
@@ -432,10 +426,10 @@ def listar_pessoas_fazenda(id):
                 "email": pf.pessoa.email,
                 "telefone": pf.pessoa.telefone,
                 "tipo_posse": pf.tipo_posse.value,
-                "data_inicio": pf.data_inicio.isoformat() if pf.data_inicio else None,
+                "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
                 "data_fim": pf.data_fim.isoformat() if pf.data_fim else None,
             }
-            for pf in fazenda.pessoas_associadas
+            for pf in fazenda.pessoas_fazenda
         ]
 
         return jsonify(pessoas)
