@@ -20,7 +20,7 @@ def listar_pessoas():
         resultado = []
 
         for pessoa in pessoas:
-            fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas]
+            fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas_associadas_associadas]
             resultado.append(
                 {
                     "id": pessoa.id,
@@ -44,7 +44,7 @@ def obter_pessoa(id):
     """Obtém detalhes de uma pessoa específica."""
     try:
         pessoa = Pessoa.query.get_or_404(id)
-        fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas]
+        fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas_associadas]
 
         return jsonify(
             {
@@ -255,9 +255,9 @@ def excluir_pessoa(id):
             )
 
         # Verificar se a pessoa tem fazendas associadas
-        if pessoa.fazendas and len(pessoa.fazendas) > 0:
+        if pessoa.fazendas_associadas and len(pessoa.fazendas_associadas) > 0:
             # Remover associações com fazendas
-            pessoa.fazendas = []
+            pessoa.fazendas_associadas = []
 
         nome = pessoa.nome
         db.session.delete(pessoa)
@@ -293,7 +293,7 @@ def listar_fazendas_pessoa(id):
         pessoa = Pessoa.query.get_or_404(id)
         fazendas = []
 
-        for fazenda in pessoa.fazendas:
+        for fazenda in pessoa.fazendas_associadas:
             fazendas.append(
                 {
                     "id": fazenda.id,
@@ -329,10 +329,10 @@ def associar_fazenda(pessoa_id, fazenda_id):
         pessoa = Pessoa.query.get_or_404(pessoa_id)
         fazenda = Fazenda.query.get_or_404(fazenda_id)
 
-        if fazenda in pessoa.fazendas:
+        if fazenda in pessoa.fazendas_associadas:
             return jsonify({"mensagem": "Fazenda já associada a esta pessoa"}), 400
 
-        pessoa.fazendas.append(fazenda)
+        pessoa.fazendas_associadas.append(fazenda)
         db.session.commit()
 
         current_app.logger.info(
@@ -381,10 +381,10 @@ def desassociar_fazenda(pessoa_id, fazenda_id):
         pessoa = Pessoa.query.get_or_404(pessoa_id)
         fazenda = Fazenda.query.get_or_404(fazenda_id)
 
-        if fazenda not in pessoa.fazendas:
+        if fazenda not in pessoa.fazendas_associadas:
             return jsonify({"erro": "Fazenda não está associada a esta pessoa"}), 400
 
-        pessoa.fazendas.remove(fazenda)
+        pessoa.fazendas_associadas.remove(fazenda)
         db.session.commit()
 
         current_app.logger.info(

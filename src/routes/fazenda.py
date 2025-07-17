@@ -50,7 +50,7 @@ def obter_fazenda(id):
     """Obtém detalhes de uma fazenda/área específica."""
     try:
         fazenda = Fazenda.query.get_or_404(id)
-        pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas]
+        pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas_associadas]
         return jsonify(
             {
                 "id": fazenda.id,
@@ -59,11 +59,11 @@ def obter_fazenda(id):
                 "tamanho_total": fazenda.tamanho_total,
                 "area_consolidada": fazenda.area_consolidada,
                 "tamanho_disponivel": fazenda.tamanho_disponivel,
-                "tipo_posse": fazenda.tipo_posse.value,
                 "municipio": fazenda.municipio,
                 "estado": fazenda.estado,
                 "recibo_car": fazenda.recibo_car,
                 "pessoas": pessoas,
+                "total_pessoas": fazenda.total_pessoas,
             }
         )
     except SQLAlchemyError as e:
@@ -87,13 +87,12 @@ def criar_fazenda():
     try:
         dados = request.json
 
-        # Validação de campos obrigatórios
+        # Validação de campos obrigatórios (removido tipo_posse)
         campos_obrigatorios = [
             "nome",
             "matricula",
             "tamanho_total",
             "area_consolidada",
-            "tipo_posse",
             "municipio",
             "estado",
         ]
@@ -114,19 +113,6 @@ def criar_fazenda():
         # Verifica se já existe fazenda com a mesma matrícula
         if Fazenda.query.filter_by(matricula=dados.get("matricula")).first():
             return jsonify({"erro": "Matrícula já cadastrada para outra fazenda"}), 400
-
-        # Validação do tipo de posse
-        try:
-            tipo_posse = TipoPosse(dados.get("tipo_posse"))
-        except ValueError:
-            return (
-                jsonify(
-                    {
-                        "erro": 'Tipo de posse inválido. Use "PROPRIA", "ARRENDADA", "COMODATO" ou "POSSE"'
-                    }
-                ),
-                400,
-            )
 
         # Validação dos tamanhos
         try:
@@ -159,7 +145,6 @@ def criar_fazenda():
             tamanho_total=tamanho_total,
             area_consolidada=area_consolidada,
             tamanho_disponivel=tamanho_disponivel,
-            tipo_posse=tipo_posse,
             municipio=dados.get("municipio"),
             estado=dados.get("estado"),
             recibo_car=dados.get("recibo_car"),
@@ -181,7 +166,6 @@ def criar_fazenda():
                     "tamanho_total": nova_fazenda.tamanho_total,
                     "area_consolidada": nova_fazenda.area_consolidada,
                     "tamanho_disponivel": nova_fazenda.tamanho_disponivel,
-                    "tipo_posse": nova_fazenda.tipo_posse.value,
                     "municipio": nova_fazenda.municipio,
                     "estado": nova_fazenda.estado,
                     "recibo_car": nova_fazenda.recibo_car,
@@ -273,20 +257,6 @@ def atualizar_fazenda(id):
             except ValueError:
                 return jsonify({"erro": "Tamanhos devem ser valores numéricos"}), 400
 
-        # Atualiza tipo de posse se fornecido
-        if dados.get("tipo_posse"):
-            try:
-                fazenda.tipo_posse = TipoPosse(dados.get("tipo_posse"))
-            except ValueError:
-                return (
-                    jsonify(
-                        {
-                            "erro": 'Tipo de posse inválido. Use "PROPRIA", "ARRENDADA", "COMODATO" ou "POSSE"'
-                        }
-                    ),
-                    400,
-                )
-
         # Atualiza outros campos
         if dados.get("municipio"):
             fazenda.municipio = dados.get("municipio")
@@ -309,10 +279,10 @@ def atualizar_fazenda(id):
                 "tamanho_total": fazenda.tamanho_total,
                 "area_consolidada": fazenda.area_consolidada,
                 "tamanho_disponivel": fazenda.tamanho_disponivel,
-                "tipo_posse": fazenda.tipo_posse.value,
                 "municipio": fazenda.municipio,
                 "estado": fazenda.estado,
                 "recibo_car": fazenda.recibo_car,
+                "total_pessoas": fazenda.total_pessoas,
             }
         )
     except IntegrityError as e:
@@ -363,10 +333,9 @@ def excluir_fazenda(id):
             )
 
         # Verificar se a fazenda tem pessoas associadas
-        if fazenda.pessoas and len(fazenda.pessoas) > 0:
-            # Remover associações com pessoas
-            for pessoa in fazenda.pessoas:
-                pessoa.fazendas.remove(fazenda)
+        if fazenda.pessoas_fazenda and len(fazenda.pessoas_fazenda) > 0:
+            # As associações serão removidas automaticamente devido ao cascade
+            pass
 
         nome = fazenda.nome
         db.session.delete(fazenda)
@@ -407,7 +376,8 @@ def listar_pessoas_fazenda(id):
         fazenda = Fazenda.query.get_or_404(id)
         pessoas = []
 
-        for pessoa in fazenda.pessoas:
+        for vinculo in fazenda.pessoas_fazenda:
+            pessoa = vinculo.pessoa
             pessoas.append(
                 {
                     "id": pessoa.id,
@@ -415,6 +385,8 @@ def listar_pessoas_fazenda(id):
                     "cpf_cnpj": pessoa.cpf_cnpj,
                     "email": pessoa.email,
                     "telefone": pessoa.telefone,
+                    "tipo_posse": vinculo.tipo_posse.value,
+                    "tipo_posse_descricao": vinculo.tipo_posse_descricao,
                 }
             )
 

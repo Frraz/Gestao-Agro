@@ -182,7 +182,7 @@ def editar_pessoa(id):
 @login_required
 def excluir_pessoa(id):
     pessoa = Pessoa.query.get_or_404(id)
-    if pessoa.fazendas:
+    if pessoa.fazendas_associadas:
         flash(
             f"Não é possível excluir a pessoa {pessoa.nome} pois ela possui fazendas associadas.",
             "danger",
@@ -230,7 +230,7 @@ def associar_fazenda_pessoa(pessoa_id):
     pessoa = Pessoa.query.get_or_404(pessoa_id)
 
     # Obter fazendas que ainda não estão associadas a esta pessoa
-    fazendas_associadas = [f.id for f in pessoa.fazendas]
+    fazendas_associadas = [f.id for f in pessoa.fazendas_associadas]
     fazendas_disponiveis = (
         Fazenda.query.filter(~Fazenda.id.in_(fazendas_associadas)).all()
         if fazendas_associadas
@@ -251,14 +251,14 @@ def associar_fazenda_pessoa(pessoa_id):
         fazenda = Fazenda.query.get_or_404(fazenda_id)
 
         # Verificar se já está associada
-        if fazenda in pessoa.fazendas:
+        if fazenda in pessoa.fazendas_associadas:
             flash(
                 f"A fazenda {fazenda.nome} já está associada a esta pessoa.", "warning"
             )
             return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
 
         # Associar fazenda à pessoa
-        pessoa.fazendas.append(fazenda)
+        pessoa.fazendas_associadas.append(fazenda)
         registrar_auditoria(
             acao="associação_fazenda",
             entidade="Pessoa-Fazenda",
@@ -294,11 +294,11 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
     pessoa = Pessoa.query.get_or_404(pessoa_id)
     fazenda = Fazenda.query.get_or_404(fazenda_id)
 
-    if fazenda not in pessoa.fazendas:
+    if fazenda not in pessoa.fazendas_associadas:
         flash(f"A fazenda {fazenda.nome} não está associada a esta pessoa.", "warning")
         return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
 
-    pessoa.fazendas.remove(fazenda)
+    pessoa.fazendas_associadas.remove(fazenda)
     registrar_auditoria(
         acao="desassociação_fazenda",
         entidade="Pessoa-Fazenda",
@@ -574,8 +574,8 @@ def excluir_fazenda(id):
         return redirect(url_for("admin.listar_fazendas"))
 
     # Remover associações com pessoas
-    for pessoa in fazenda.pessoas:
-        pessoa.fazendas.remove(fazenda)
+    for pessoa in fazenda.pessoas_associadas:
+        pessoa.fazendas_associadas.remove(fazenda)
 
     nome = fazenda.nome
     # Capture o estado anterior antes do delete
