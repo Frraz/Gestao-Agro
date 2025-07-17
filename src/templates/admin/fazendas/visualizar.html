@@ -92,7 +92,7 @@
                     <!-- Pessoas Associadas -->
                     <div class="mb-4">
                         <h5>Pessoas Associadas</h5>
-                        {% if fazenda.pessoas_associadas and fazenda.pessoas_associadas|length > 0 %}
+                        {% if fazenda.pessoas_fazenda and fazenda.pessoas_fazenda|length > 0 %}
                             <div class="table-responsive">
                                 <table class="table table-bordered align-middle">
                                     <thead>
@@ -107,7 +107,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for pf in fazenda.pessoas_associadas %}
+                                        {% for pf in fazenda.pessoas_fazenda %}
                                         <tr>
                                             <td>{{ pf.pessoa.nome }}</td>
                                             <td>

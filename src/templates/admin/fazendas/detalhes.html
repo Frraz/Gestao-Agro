@@ -34,7 +34,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for pf in fazenda.pessoas_associadas %}
+          {% for pf in fazenda.pessoas_fazenda %}
           <tr>
             <td>{{ pf.pessoa.nome }}</td>
             <td>{{ pf.tipo_posse.value|upper }}</td>

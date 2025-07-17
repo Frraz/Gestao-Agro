@@ -1,7 +1,8 @@
 import pytest
 from src.main import create_app
 from src.models.db import db
-from src.models.fazenda import Fazenda, TipoPosse
+from src.models.fazenda import Fazenda
+from src.models.pessoa_fazenda import TipoPosse
 
 @pytest.fixture
 def app():
@@ -28,7 +29,6 @@ def fazenda_exemplo():
         "tamanho_total": 100.0,
         "area_consolidada": 40.0,
         "tamanho_disponivel": 60.0,
-        "tipo_posse": TipoPosse.PROPRIA,
         "municipio": "Uberlândia",
         "estado": "MG",
         "recibo_car": "CAR-2025"
@@ -45,7 +45,6 @@ def test_cria_fazenda(session):
     assert found.tamanho_total == 100.0
     assert found.area_consolidada == 40.0
     assert found.tamanho_disponivel == 60.0
-    assert found.tipo_posse == TipoPosse.PROPRIA
     assert found.municipio == "Uberlândia"
     assert found.estado == "MG"
     assert found.recibo_car == "CAR-2025"
