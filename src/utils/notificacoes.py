@@ -5,9 +5,6 @@ Utilitários para gerenciamento e exibição de notificações e alertas
 relacionados aos documentos e seus vencimentos.
 """
 
-import datetime
-from typing import Tuple, List, Dict, Any, Optional
-
 from flask import current_app, flash
 from sqlalchemy import and_, or_, func
 

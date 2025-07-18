@@ -103,7 +103,7 @@ def criar_pessoa():
 
         db.session.add(nova_pessoa)
         db.session.commit()
-        
+
         # Invalidar cache de busca de pessoas
         clear_related_cache("pessoa")
 
@@ -190,7 +190,7 @@ def atualizar_pessoa(id):
             pessoa.endereco = dados.get("endereco")
 
         db.session.commit()
-        
+
         # Invalidar cache de busca de pessoas
         clear_related_cache("pessoa")
 
@@ -262,7 +262,7 @@ def excluir_pessoa(id):
         nome = pessoa.nome
         db.session.delete(pessoa)
         db.session.commit()
-        
+
         # Invalidar cache de busca de pessoas
         clear_related_cache("pessoa")
 

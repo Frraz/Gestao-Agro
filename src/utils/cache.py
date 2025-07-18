@@ -6,12 +6,6 @@ Fornece cache distribuído para melhorar performance do sistema
 """
 
 import pickle
-import json
-import hashlib
-from datetime import timedelta, datetime
-from typing import Any, Optional, Union, Callable, Dict, List
-from functools import wraps
-from contextlib import contextmanager
 
 import redis
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
@@ -297,21 +291,13 @@ class CacheManager:
 cache = CacheManager()
 
 
-def cached(timeout: Optional[int] = None, 
-          key_prefix: str = "",
-          unless: Optional[Callable] = None,
-          forced_update: Optional[Callable] = None):
-    """
-    Decorator para cache de funções
-    
-    Args:
-        timeout: Tempo de expiração em segundos
-        key_prefix: Prefixo customizado para a chave
-        unless: Função que retorna True para pular o cache
-        forced_update: Função que retorna True para forçar atualização
-    """
+def cached(timeout=300, key_prefix=""):
+    """Decorator para cache de funções"""
+
+
     def decorator(f):
-        @wraps(f)
+
+
         def wrapper(*args, **kwargs):
             # Verificar se deve pular o cache
             if unless and unless():

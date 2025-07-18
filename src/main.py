@@ -106,18 +106,19 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def create_app(test_config: Optional[dict] = None) -> Flask:
-    """Factory function para criar a aplicação Flask"""
+def create_app(test_config=None):
+    global celery
+
     app = Flask(__name__)
 
     # Configuração centralizada
     config_name = parse_str_env("FLASK_ENV", "development")
     app.config.from_object(config_by_name[config_name])
-    
+
     # Garantir que REDIS_URL do ambiente (.env) está presente na config Flask
     if "REDIS_URL" not in app.config or not app.config["REDIS_URL"]:
         app.config["REDIS_URL"] = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    
+
     # Garantir que as configurações do Celery estão presentes
     app.config["CELERY_BROKER_URL"] = app.config.get("CELERY_BROKER_URL", app.config["REDIS_URL"])
     app.config["CELERY_RESULT_BACKEND"] = app.config.get("CELERY_RESULT_BACKEND", app.config["REDIS_URL"])
@@ -138,10 +139,10 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     # ========== ATUALIZAR CELERY COM CONTEXTO DO FLASK ==========
     global celery
     celery = make_celery(app)
-    
+
     # Registrar tarefas de notificação
-    celery_tasks = criar_tarefas_notificacao(celery)
-    
+    criar_tarefas_notificacao(celery)
+
     # Log de confirmação
     app.logger.info(f"Celery inicializado com broker: {app.config.get('CELERY_BROKER_URL')}")
     app.logger.info(f"Tarefas registradas: {list(celery_tasks.keys())}")
@@ -282,50 +283,30 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
         try:
             # Testar banco de dados
             db.session.execute(text("SELECT 1"))
-            db_status = "connected"
-        except Exception as e:
-            app.logger.error(f"DB health check failed: {e}")
-            db_status = "disconnected"
-            
-        # Testar Redis
-        redis_status = "disconnected"
-        try:
-            import redis
-            r = redis.from_url(
-                app.config.get('REDIS_URL', 'redis://localhost:6379/0'),
-                socket_connect_timeout=5,
-                socket_timeout=5
-            )
-            r.ping()
-            redis_status = "connected"
-        except Exception as e:
-            app.logger.warning(f"Redis health check failed: {e}")
-        
-        # Testar Celery
-        celery_status = "disconnected"
-        workers = []
-        try:
-            i = celery.control.inspect(timeout=5)
-            stats = i.stats()
-            if stats:
-                celery_status = "connected"
-                workers = list(stats.keys())
-        except Exception as e:
-            app.logger.warning(f"Celery health check failed: {e}")
-        
-        # Determinar status geral
-        all_connected = all([
-            db_status == "connected",
-            redis_status == "connected",
-            celery_status == "connected"
-        ])
-        
-        response = {
-            "status": "healthy" if all_connected else "degraded",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "timezone": os.environ.get("TZ", "UTC"),
-            "services": {
-                "database": db_status,
+
+            # Verificar também o Celery/Redis
+            celery_status = "disconnected"
+            redis_status = "disconnected"
+
+            try:
+                # Testar conexão com Redis
+                import redis
+                r = redis.from_url(app.config.get('REDIS_URL', 'redis://localhost:6379/0'))
+                r.ping()
+                redis_status = "connected"
+
+                # Testar Celery
+                from celery import current_app as current_celery_app
+                i = current_celery_app.control.inspect()
+                stats = i.stats()
+                if stats:
+                    celery_status = "connected"
+            except Exception as e:
+                app.logger.warning(f"Celery/Redis check failed: {e}")
+
+            return jsonify({
+                "status": "ok",
+                "database": "connected",
                 "redis": redis_status,
                 "celery": celery_status,
                 "workers": workers
@@ -369,7 +350,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
                 "error": str(e),
                 "timestamp": datetime.datetime.now().isoformat()
             }), 500
-    
+
     @app.route("/force-check-notifications")
     def force_check_notifications():
         """Força verificação manual de notificações (útil para debug)"""
@@ -385,20 +366,23 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
                     "timestamp": datetime.datetime.now().isoformat()
                 })
             else:
-                # Fallback: importar e executar sincronamente
-                app.logger.info("Executando verificação de notificações sincronamente")
-                
-                from src.utils.tasks_notificacao import processar_todas_notificacoes_sync
-                
-                resultado = processar_todas_notificacoes_sync()
-                
+                # Fallback: executar sincronamente
+                from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
+                from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
+
+                service_end = NotificacaoEndividamentoService()
+                service_doc = NotificacaoDocumentoService()
+
+                count_end = service_end.verificar_e_enviar_notificacoes()
+                count_doc = service_doc.verificar_e_enviar_notificacoes()
+
                 return jsonify({
                     "status": "ok",
                     "message": "Verificação executada sincronamente",
                     "resultado": resultado,
                     "timestamp": datetime.datetime.now().isoformat()
                 })
-                
+
         except Exception as e:
             app.logger.error(f"Erro ao forçar verificação: {e}", exc_info=True)
             return jsonify({
@@ -411,30 +395,15 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     def celery_status():
         """Verifica o status detalhado do Celery"""
         try:
-            i = celery.control.inspect(timeout=5)
-            
-            # Obter informações com timeout
-            stats = i.stats() or {}
-            registered = i.registered() or {}
-            active = i.active() or {}
-            scheduled = i.scheduled() or {}
-            reserved = i.reserved() or {}
-            
-            # Listar tarefas registradas localmente
-            local_tasks = [t for t in celery.tasks.keys() if not t.startswith('celery.')]
-            
-            # Verificar beat schedule
-            beat_schedule = {}
-            if hasattr(celery.conf, 'beat_schedule'):
-                beat_schedule = {
-                    name: {
-                        'task': config.get('task'),
-                        'schedule': str(config.get('schedule')),
-                        'enabled': config.get('enabled', True)
-                    }
-                    for name, config in celery.conf.beat_schedule.items()
-                }
-            
+            from celery import current_app as current_celery_app
+            i = current_celery_app.control.inspect()
+
+            # Obter informações
+            stats = i.stats()
+            registered = i.registered()
+            active = i.active()
+            scheduled = i.scheduled()
+
             return jsonify({
                 "status": "ok",
                 "workers": list(stats.keys()),
@@ -549,9 +518,8 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     # Rota temporária para testar o template de notificação por e-mail
     @app.route("/testar-email-notificacao")
     def testar_email_notificacao():
-        """Testa o template de email de notificação"""
-        from src.utils.email_service import formatar_email_notificacao
-        
+
+
         class DummyDoc:
             nome = "Licença Ambiental"
             tipo = type("Tipo", (), {"value": "Certidão"})
@@ -609,6 +577,4 @@ if __name__ == "__main__":
         debug=debug,
         host="0.0.0.0",
         port=port,
-        use_reloader=debug,
-        use_debugger=debug
     )

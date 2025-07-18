@@ -54,7 +54,7 @@ class PerformanceOptimizer:
             bool: True se as otimizações foram aplicadas com sucesso
         """
         try:
-            engine = db.get_engine()
+            engine = db.engine
             backend = engine.url.get_backend_name()
             logger.info(f"Backend do banco detectado: {backend}")
             
@@ -274,18 +274,11 @@ class PerformanceOptimizer:
             return {"error": str(e)}
 
 
-def rate_limit(max_requests: int = 100, window: int = 3600) -> Callable:
-    """
-    Decorator para aplicar limites de taxa de requisições
-    
-    Args:
-        max_requests: Máximo de requisições permitidas no período
-        window: Janela de tempo em segundos
-        
-    Returns:
-        Função decorada com limitação de taxa
-    """
-    def decorator(f: F) -> F:
+def rate_limit(max_requests=100, window=3600):
+    """Decorator para rate limiting"""
+
+
+    def decorator(f):
         @wraps(f)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             client_ip = request.environ.get("HTTP_X_FORWARDED_FOR", request.remote_addr)
@@ -567,7 +560,7 @@ class DatabaseOptimizer:
             )
             .filter(
                 Parcela.data_vencimento.between(hoje, data_limite),
-                Parcela.pago == False,
+                ~Parcela.pago,
             )
             .order_by(Parcela.data_vencimento)
             .all()
@@ -808,15 +801,8 @@ def init_performance_optimizations(app: Any) -> Dict[str, Any]:
 
 
 class PerformanceMiddleware:
-    """Middleware para monitoramento de performance das requisições"""
-    
-    def __init__(self, app: Any):
-        """
-        Inicializa o middleware
-        
-        Args:
-            app: Aplicação Flask
-        """
+
+    def __init__(self, app):
         self.app = app
         self.init_app(app)
 
@@ -879,45 +865,3 @@ class PerformanceMiddleware:
                     metrics["avg_time"] = metrics["total_time"] / metrics["count"]
         
         return response
-
-
-# Registra um handler para monitorar consultas SQL lentas
-@event.listens_for(Engine, "before_cursor_execute")
-def before_cursor_execute(
-    conn, cursor, statement, parameters, context, executemany
-) -> None:
-    """Registra o início da execução de uma consulta SQL"""
-    conn.info.setdefault("query_start_time", []).append(time.time())
-
-
-@event.listens_for(Engine, "after_cursor_execute")
-def after_cursor_execute(
-    conn, cursor, statement, parameters, context, executemany
-) -> None:
-    """Monitora consultas SQL lentas"""
-    global performance_metrics
-    
-    total = time.time() - conn.info["query_start_time"].pop(-1)
-    
-    # Registrar consultas lentas
-    if total > 0.1:  # 100ms
-        # Simplificar a consulta para o log
-        clean_stmt = " ".join(statement.split())
-        if len(clean_stmt) > 100:
-            clean_stmt = clean_stmt[:97] + "..."
-            
-        logger.warning(f"Consulta SQL lenta: {clean_stmt} - {total:.3f}s")
-        
-        # Registrar métricas
-        if "queries_lentas" not in performance_metrics:
-            performance_metrics["queries_lentas"] = []
-            
-        performance_metrics["queries_lentas"].append({
-            "query": clean_stmt,
-            "duration": total,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Manter apenas as últimas 100 consultas lentas
-        if len(performance_metrics["queries_lentas"]) > 100:
-            performance_metrics["queries_lentas"].pop(0)

@@ -2,10 +2,10 @@
 
 from flask_wtf import FlaskForm
 from wtforms import (
-    DateField, DecimalField, HiddenField, IntegerField, SelectField, StringField,
-    TextAreaField
+    DateField, DecimalField, HiddenField, IntegerField, SelectField, StringField
 )
 from wtforms.validators import DataRequired, Length, NumberRange, Optional, ValidationError
+
 
 class EndividamentoForm(FlaskForm):
     """Formulário principal para cadastro de endividamentos"""
@@ -46,6 +46,7 @@ class EndividamentoForm(FlaskForm):
                 raise ValidationError(
                     "A data de vencimento final deve ser posterior à data de emissão."
                 )
+
 
 class FiltroEndividamentoForm(FlaskForm):
     banco = StringField("Banco")

@@ -7,8 +7,7 @@ Responsável por verificar, criar e enviar notificações para endividamentos co
 
 import json
 import logging
-from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Union, Any, Set
+from datetime import date, datetime
 
 from sqlalchemy import and_, or_, func, desc
 
@@ -70,19 +69,22 @@ class NotificacaoEndividamentoService:
         notificacoes_enviadas = 0
 
         try:
-            logger.info("Iniciando verificação de notificações de endividamento")
-            
-            # 1. Processar notificações já agendadas e pendentes
-            notificacoes_enviadas += self._processar_notificacoes_pendentes()
-            
-            # 2. Criar novas notificações para endividamentos sem notificações agendadas
-            self._criar_notificacoes_faltantes()
-            
-            # 3. Verificar notificações urgentes
-            notificacoes_enviadas += self._processar_notificacoes_urgentes()
-            
-            self._estatisticas["enviadas"] = notificacoes_enviadas
-            
+            # Buscar todos os endividamentos ativos com notificações configuradas
+            endividamentos = (
+                db.session.query(Endividamento)
+                .join(NotificacaoEndividamento)
+                .filter(
+                    NotificacaoEndividamento.ativo,
+                    Endividamento.data_vencimento_final > hoje,
+                )
+                .all()
+            )
+
+            for endividamento in endividamentos:
+                notificacoes_enviadas += self._processar_endividamento(
+                    endividamento, hoje
+                )
+
             logger.info(
                 f"Processamento concluído. {notificacoes_enviadas} notificações enviadas. "
                 f"Estatísticas: {self._estatisticas}"
@@ -249,18 +251,36 @@ class NotificacaoEndividamentoService:
             db.session.rollback()
             return 0
 
-    def _verificar_e_criar_notificacoes(self, endividamento: Endividamento) -> int:
-        """
-        Verifica e cria notificações faltantes para um endividamento
-        
-        Args:
-            endividamento: Objeto Endividamento
-            
-        Returns:
-            Número de novas notificações criadas
-        """
-        novas_criadas = 0
-        
+    def _processar_endividamento(self, endividamento, hoje):
+        """Processa um endividamento específico para verificar se precisa enviar notificações"""
+        notificacoes_enviadas = 0
+        dias_para_vencimento = (endividamento.data_vencimento_final - hoje).days
+
+        for tipo_notificacao, dias_antecedencia in self.INTERVALOS_NOTIFICACAO.items():
+            if dias_para_vencimento == dias_antecedencia:
+                if not self._ja_foi_enviada(endividamento.id, tipo_notificacao):
+                    if self._enviar_notificacao(endividamento, tipo_notificacao):
+                        notificacoes_enviadas += 1
+
+        return notificacoes_enviadas
+
+    def _ja_foi_enviada(self, endividamento_id, tipo_notificacao):
+        """Verifica se a notificação já foi enviada para este endividamento"""
+        return (
+            db.session.query(HistoricoNotificacao)
+            .filter(
+                and_(
+                    HistoricoNotificacao.endividamento_id == endividamento_id,
+                    HistoricoNotificacao.tipo_notificacao == tipo_notificacao,
+                    HistoricoNotificacao.sucesso,
+                )
+            )
+            .first()
+            is not None
+        )
+
+    def _enviar_notificacao(self, endividamento, tipo_notificacao):
+        """Envia a notificação por e-mail"""
         try:
             # Obter configuração de emails
             config = NotificacaoEndividamento.query.filter_by(
@@ -520,66 +540,37 @@ class NotificacaoEndividamentoService:
 
         corpo = f"""
         <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background-color: {cor_cabecalho}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
-                .content {{ background-color: #ffffff; padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 5px 5px; }}
-                .info-box {{ background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-                .alert-box {{ background-color: {cor_alerta}; border: 2px solid {borda_alerta}; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-                .footer {{ font-size: 12px; color: #666; margin-top: 30px; text-align: center; }}
-                .label {{ font-weight: bold; width: 40%; display: inline-block; }}
-                .value {{ width: 60%; display: inline-block; }}
-                ul {{ list-style-type: none; padding-left: 0; }}
-                li {{ padding: 5px 0; }}
-                @media only screen and (max-width: 600px) {{
-                    .label, .value {{ display: block; width: 100%; }}
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2>{emoji} {'NOTIFICAÇÃO URGENTE' if urgente else 'Lembrete de Vencimento'}</h2>
-                    <h3>Endividamento vencendo em {periodo}</h3>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;">
+                    🚨 Lembrete de Vencimento de Endividamento
+                </h2>
+
+                <p>Este é um lembrete automático sobre um endividamento que vencerá em <strong>{periodo}</strong>.</p>
+
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #1976d2;">Detalhes do Endividamento:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li><strong>Banco:</strong> {endividamento.banco}</li>
+                        <li><strong>Número da Proposta:</strong> {endividamento.numero_proposta}</li>
+                        <li><strong>Data de Vencimento:</strong> {endividamento.data_vencimento_final.strftime('%d/%m/%Y')}</li>
+                        <li><strong>Taxa de Juros:</strong> {endividamento.taxa_juros}% {'a.a.' if endividamento.tipo_taxa_juros == 'ano' else 'a.m.'}</li>
+                        {f'<li><strong>Valor da Operação:</strong> R$ {endividamento.valor_operacao:,.2f}</li>' if endividamento.valor_operacao else ''}
+                        <li><strong>Valor Total Pendente:</strong> R$ {valor_total_pendente:,.2f}</li>
+                        <li><strong>Pessoas Vinculadas:</strong> {', '.join(pessoas_nomes)}</li>
+                    </ul>
                 </div>
-                <div class="content">
-                    <p>Este é um lembrete automático sobre um endividamento com vencimento {
-                    'HOJE' if dias == 0 else f'em {periodo}' if dias > 0 else f'há {periodo}'
-                    }.</p>
-                    
-                    <div class="info-box">
-                        <h3 style="margin-top: 0; color: {cor_cabecalho};">Detalhes do Endividamento:</h3>
-                        <ul>
-                            <li><span class="label">Banco:</span> <span class="value">{endividamento.banco}</span></li>
-                            <li><span class="label">Número da Proposta:</span> <span class="value">{endividamento.numero_proposta or 'N/A'}</span></li>
-                            <li><span class="label">Data de Vencimento:</span> <span class="value">{endividamento.data_vencimento_final.strftime('%d/%m/%Y')}</span></li>
-                            <li><span class="label">Taxa de Juros:</span> <span class="value">{endividamento.taxa_juros}% {'a.a.' if getattr(endividamento, 'tipo_taxa_juros', None) == 'ano' else 'a.m.'}</span></li>
-                            {f'<li><span class="label">Valor da Operação:</span> <span class="value">R$ {endividamento.valor_operacao:,.2f}</span></li>' if getattr(endividamento, 'valor_operacao', None) else ''}
-                            <li><span class="label">Valor Total Pendente:</span> <span class="value">R$ {valor_total_pendente:,.2f}</span></li>
-                            {f'<li><span class="label">Pessoas Vinculadas:</span> <span class="value">{", ".join(pessoas_nomes)}</span></li>' if pessoas_nomes else ''}
-                        </ul>
-                    </div>
-                    
-                    <div class="alert-box">
-                        <p style="margin: 0;"><strong>{emoji} {'ATENÇÃO URGENTE:' if urgente else 'Atenção:'}</strong> {
-                        'Este endividamento vence HOJE. Providências imediatas são necessárias!' if dias == 0 else 
-                        'Este endividamento está VENCIDO. Ação imediata é necessária!' if dias < 0 else
-                        'Certifique-se de que todas as providências necessárias foram tomadas para o pagamento dentro do prazo.'
-                        }</p>
-                    </div>
-                    
-                    {'<p><strong>Observação:</strong> Esta é uma notificação urgente automaticamente gerada devido à proximidade do vencimento. Por favor, verifique e tome as devidas providências o mais rápido possível.</p>' if urgente else ''}
-                    
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                    
-                    <div class="footer">
-                        <p>Este é um e-mail automático do Sistema de Gestão Agrícola. Não responda a este e-mail.</p>
-                        <p>Data de envio: {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
-                    </div>
+
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>⚠️ Atenção:</strong> Certifique-se de que todas as providências necessárias foram tomadas para o cumprimento das obrigações dentro do prazo.</p>
                 </div>
+
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                <p style="font-size: 12px; color: #666;">
+                    Este é um e-mail automático do Sistema de Gestão Agrícola. Não responda a este e-mail.
+                    <br>Data de envio: {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+                </p>
             </div>
         </body>
         </html>

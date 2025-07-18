@@ -19,39 +19,21 @@ logger = logging.getLogger(__name__)
 celery_tasks = {}
 
 
-def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
-    """
-    Cria e registra as tarefas de notificação no Celery
-    
-    Args:
-        celery: Instância do Celery
-        
-    Returns:
-        Dicionário com as tarefas registradas
-    """
-    
-    @celery.task(
-        name='tasks.processar_notificacoes_endividamento',
-        bind=True,
-        max_retries=3,
-        soft_time_limit=300,  # 5 minutos soft limit
-        time_limit=600,       # 10 minutos hard limit
-        rate_limit='100/m'    # Max 100 execuções por minuto
-    )
-    def processar_notificacoes_endividamento(self) -> Dict[str, Any]:
-        """
-        Tarefa agendada para processar notificações de endividamento
-        
-        Returns:
-            Dicionário com resultados do processamento
-        """
-        from src.utils.notificacao_endividamento_service import notificacao_endividamento_service
-        
+def criar_tarefas_notificacao(celery):
+    """Cria e registra as tarefas de notificação no Celery"""
+
+    @celery.task(name='tasks.processar_notificacoes_endividamento', bind=True, max_retries=3)
+    def processar_notificacoes_endividamento(self):
+        """Tarefa agendada para processar notificações de endividamento"""
+        from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
+
         try:
             with current_app.app_context():
-                start_time = datetime.now()
-                task_id = self.request.id or 'task-no-id'
-                
+                logger.info(f"[{self.request.id}] Iniciando processamento de notificações de endividamento - {datetime.now()}")
+
+                service = NotificacaoEndividamentoService()
+                notificacoes_enviadas = service.verificar_e_enviar_notificacoes()
+
                 logger.info(
                     f"[{task_id}] Iniciando processamento de notificações de endividamento - {start_time}"
                 )
@@ -89,28 +71,18 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
             # Retry com backoff exponencial
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
 
-    @celery.task(
-        name='tasks.processar_notificacoes_documentos',
-        bind=True,
-        max_retries=3,
-        soft_time_limit=300,
-        time_limit=600,
-        rate_limit='100/m'
-    )
-    def processar_notificacoes_documentos(self) -> Dict[str, Any]:
-        """
-        Tarefa agendada para processar notificações de documentos
-        
-        Returns:
-            Dicionário com resultados do processamento
-        """
-        from src.utils.notificacao_documentos_service import notificacao_documento_service
-        
+    @celery.task(name='tasks.processar_notificacoes_documentos', bind=True, max_retries=3)
+    def processar_notificacoes_documentos(self):
+        """Tarefa agendada para processar notificações de documentos"""
+        from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
+
         try:
             with current_app.app_context():
-                start_time = datetime.now()
-                task_id = self.request.id or 'task-no-id'
-                
+                logger.info(f"[{self.request.id}] Iniciando processamento de notificações de documentos - {datetime.now()}")
+
+                service = NotificacaoDocumentoService()
+                notificacoes_enviadas = service.verificar_e_enviar_notificacoes()
+
                 logger.info(
                     f"[{task_id}] Iniciando processamento de notificações de documentos - {start_time}"
                 )
@@ -162,14 +134,9 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
         """
         try:
             with current_app.app_context():
-                start_time = datetime.now()
-                task_id = self.request.id or 'task-no-id'
-                
-                logger.info(
-                    f"[{task_id}] === INICIANDO PROCESSAMENTO DE TODAS AS NOTIFICAÇÕES ==="
-                )
-                
-                # Registrar métricas de início
+                logger.info(f"[{self.request.id}] === INICIANDO PROCESSAMENTO DE TODAS AS NOTIFICAÇÕES ===")
+
+                # Processar notificações de endividamento
                 try:
                     _registrar_metricas_inicio_processamento()
                 except Exception as e:
@@ -180,45 +147,25 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
                     resultado_endividamento = processar_notificacoes_endividamento.apply_async().get(timeout=300)
                 except Exception as e:
                     logger.error(f"Erro em notificações de endividamento: {e}")
-                    resultado_endividamento = {
-                        'notificacoes_enviadas': 0,
-                        'status': 'error',
-                        'error': str(e)
-                    }
-                
-                # Processar notificações de documentos com timeout
+                    resultado_endividamento = {'notificacoes_enviadas': 0, 'status': 'error', 'error': str(e)}
+
+                # Processar notificações de documentos
                 try:
                     resultado_documentos = processar_notificacoes_documentos.apply_async().get(timeout=300)
                 except Exception as e:
                     logger.error(f"Erro em notificações de documentos: {e}")
-                    resultado_documentos = {
-                        'notificacoes_enviadas': 0,
-                        'status': 'error',
-                        'error': str(e)
-                    }
-                
-                # Calcular totais
+                    resultado_documentos = {'notificacoes_enviadas': 0, 'status': 'error', 'error': str(e)}
+
                 total_enviadas = (
                     resultado_endividamento.get('notificacoes_enviadas', 0) +
                     resultado_documentos.get('notificacoes_enviadas', 0)
                 )
-                
-                duration = (datetime.now() - start_time).total_seconds()
-                
-                # Registrar métricas de conclusão
-                try:
-                    _registrar_metricas_conclusao_processamento(
-                        total_enviadas=total_enviadas, 
-                        duracao=duration
-                    )
-                except Exception as e:
-                    logger.error(f"Erro ao registrar métricas de conclusão: {e}")
-                
+
                 logger.info(
                     f"[{task_id}] === PROCESSAMENTO CONCLUÍDO === "
                     f"Total de notificações enviadas: {total_enviadas} em {duration:.2f}s"
                 )
-                
+
                 return {
                     'status': 'success',
                     'endividamento': resultado_endividamento,
@@ -228,7 +175,7 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
                     'timestamp': datetime.now().isoformat(),
                     'task_id': task_id
                 }
-                
+
         except Exception as e:
             logger.error(
                 f"[{self.request.id}] Erro crítico ao processar todas as notificações: {str(e)}",
@@ -257,43 +204,22 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
                 from src.models.notificacao_endividamento import NotificacaoEndividamento
                 from src.models.endividamento import Endividamento
                 from src.models.documento import Documento
-                
-                start_time = time.time()
-                
-                # Conta notificações pendentes de endividamento (excluindo configurações)
-                notif_endividamento_pendentes = NotificacaoEndividamento.query.filter(
-                    NotificacaoEndividamento.ativo == True,
-                    NotificacaoEndividamento.enviado == False,
-                    NotificacaoEndividamento.tipo_notificacao != 'config',
-                    NotificacaoEndividamento.data_envio <= datetime.utcnow()
+
+                # Conta notificações pendentes de endividamento
+                notif_endividamento = NotificacaoEndividamento.query.filter_by(
+                    ativo=True
                 ).count()
-                
+
                 # Conta endividamentos ativos
                 endividamentos_ativos = Endividamento.query.filter(
                     Endividamento.data_vencimento_final > datetime.now().date()
                 ).count()
-                
-                # Conta documentos com vencimento próximo (30 dias)
-                data_limite = datetime.now().date() + timedelta(days=30)
-                docs_vencimento_proximo = Documento.query.filter(
-                    and_(
-                        Documento.data_vencimento.isnot(None),
-                        Documento.data_vencimento <= data_limite,
-                        Documento.data_vencimento >= datetime.now().date()
-                    )
+
+                # Conta documentos com vencimento
+                docs_com_vencimento = Documento.query.filter(
+                    Documento.data_vencimento.isnot(None)
                 ).count()
-                
-                # Conta documentos vencidos
-                docs_vencidos = Documento.query.filter(
-                    and_(
-                        Documento.data_vencimento.isnot(None),
-                        Documento.data_vencimento < datetime.now().date()
-                    )
-                ).count()
-                
-                # Medir tempo de resposta
-                query_time = time.time() - start_time
-                
+
                 return {
                     'status': 'ok',
                     'notificacoes_endividamento_pendentes': notif_endividamento_pendentes,
@@ -467,282 +393,22 @@ def criar_tarefas_notificacao(celery) -> Dict[str, Any]:
         'limpar_notificacoes_antigas': limpar_notificacoes_antigas,
         'test_celery': test_celery
     }
-    
-    logger.info(f"Tarefas de notificação registradas: {list(celery_tasks.keys())}")
-    
+
     return celery_tasks
 
 
 # Funções auxiliares para execução direta (sem Celery)
-def processar_notificacoes_endividamento_sync() -> int:
-    """
-    Executa diretamente o serviço de notificações de endividamento
-    
-    Returns:
-        Número de notificações enviadas
-    """
-    from src.utils.notificacao_endividamento_service import notificacao_endividamento_service
-    return notificacao_endividamento_service.verificar_e_enviar_notificacoes()
 
 
-def processar_notificacoes_documentos_sync() -> int:
-    """
-    Executa diretamente o serviço de notificações de documentos
-    
-    Returns:
-        Número de notificações enviadas
-    """
-    from src.utils.notificacao_documentos_service import notificacao_documento_service
-    return notificacao_documento_service.verificar_e_enviar_notificacoes()
+def processar_notificacoes_endividamento():
+    """Executa diretamente o serviço de notificações de endividamento"""
+    from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
+    service = NotificacaoEndividamentoService()
+    return service.verificar_e_enviar_notificacoes()
 
 
-def processar_todas_notificacoes_sync() -> Dict[str, Any]:
-    """
-    Executa todas as notificações sincronamente
-    
-    Returns:
-        Dicionário com resultados do processamento
-    """
-    try:
-        start_time = datetime.now()
-        
-        notif_endividamento = processar_notificacoes_endividamento_sync()
-        notif_documentos = processar_notificacoes_documentos_sync()
-        
-        duration = (datetime.now() - start_time).total_seconds()
-        
-        return {
-            'status': 'success',
-            'endividamento': notif_endividamento,
-            'documentos': notif_documentos,
-            'total': notif_endividamento + notif_documentos,
-            'duration_seconds': duration,
-            'timestamp': datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Erro ao processar notificações sincronamente: {e}", exc_info=True)
-        return {
-            'status': 'error',
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }
-
-
-def agendar_proxima_execucao(app=None) -> Dict[str, Any]:
-    """
-    Agenda as próximas execuções das tarefas de notificação
-    
-    Args:
-        app: Aplicação Flask (opcional)
-        
-    Returns:
-        Dicionário com IDs das tarefas agendadas
-    """
-    try:
-        if not celery_tasks:
-            logger.error("Tarefas Celery não foram inicializadas")
-            return {'status': 'error', 'message': 'Tarefas não inicializadas'}
-        
-        # Determinar horários de execução
-        agora = datetime.now()
-        proxima_execucao_documentos = None
-        proxima_execucao_endividamentos = None
-        
-        # Tentar agendar as tarefas
-        try:
-            # Horário para notificações de documentos (duas vezes ao dia)
-            hora_documentos_manha = 9  # 9:00 da manhã
-            hora_documentos_tarde = 15  # 15:00 da tarde
-            
-            if agora.hour < hora_documentos_manha:
-                # Agendar para hoje de manhã
-                proxima_execucao_documentos = agora.replace(
-                    hour=hora_documentos_manha, minute=0, second=0, microsecond=0
-                )
-            elif agora.hour < hora_documentos_tarde:
-                # Agendar para hoje à tarde
-                proxima_execucao_documentos = agora.replace(
-                    hour=hora_documentos_tarde, minute=0, second=0, microsecond=0
-                )
-            else:
-                # Agendar para amanhã de manhã
-                proxima_execucao_documentos = agora.replace(
-                    hour=hora_documentos_manha, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
-            
-            # Horário para notificações de endividamentos (uma vez ao dia)
-            hora_endividamentos = 10  # 10:00 da manhã
-            
-            if agora.hour < hora_endividamentos:
-                # Agendar para hoje
-                proxima_execucao_endividamentos = agora.replace(
-                    hour=hora_endividamentos, minute=0, second=0, microsecond=0
-                )
-            else:
-                # Agendar para amanhã
-                proxima_execucao_endividamentos = agora.replace(
-                    hour=hora_endividamentos, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
-                
-            # Agendar tarefas
-            task_ids = {}
-            
-            # Documentos
-            if proxima_execucao_documentos:
-                task = celery_tasks['processar_notificacoes_documentos'].apply_async(
-                    eta=proxima_execucao_documentos
-                )
-                task_ids['documentos'] = task.id
-                
-            # Endividamentos
-            if proxima_execucao_endividamentos:
-                task = celery_tasks['processar_notificacoes_endividamento'].apply_async(
-                    eta=proxima_execucao_endividamentos
-                )
-                task_ids['endividamentos'] = task.id
-                
-            # Limpeza semanal (domingo às 03:00)
-            if agora.weekday() == 6:  # Domingo
-                task = celery_tasks['limpar_notificacoes_antigas'].apply_async(
-                    kwargs={'dias': 90},
-                    eta=agora.replace(hour=3, minute=0, second=0, microsecond=0)
-                )
-                task_ids['limpeza'] = task.id
-                
-            logger.info(
-                f"Próximas execuções agendadas: "
-                f"Documentos: {proxima_execucao_documentos}, "
-                f"Endividamentos: {proxima_execucao_endividamentos}"
-            )
-                
-            return {
-                'status': 'success',
-                'proxima_execucao_documentos': proxima_execucao_documentos.isoformat() if proxima_execucao_documentos else None,
-                'proxima_execucao_endividamentos': proxima_execucao_endividamentos.isoformat() if proxima_execucao_endividamentos else None,
-                'task_ids': task_ids
-            }
-                
-        except Exception as e:
-            logger.error(f"Erro ao agendar próxima execução: {e}", exc_info=True)
-            return {'status': 'error', 'error': str(e)}
-            
-    except Exception as e:
-        logger.error(f"Erro geral ao agendar tarefas: {e}", exc_info=True)
-        return {'status': 'error', 'error': str(e)}
-
-
-def obter_status_banco_dados() -> Dict[str, Any]:
-    """
-    Obtém informações sobre o status do banco de dados
-    
-    Returns:
-        Dicionário com informações de status
-    """
-    try:
-        from src.models.db import db
-        from sqlalchemy import text
-        
-        status = {'tabelas': {}}
-        
-        # SQLite: Verifica espaço usado
-        try:
-            if 'sqlite' in db.engine.url.drivername:
-                result = db.session.execute(text("PRAGMA page_count, page_size")).fetchone()
-                if result:
-                    page_count, page_size = result
-                    size_bytes = page_count * page_size
-                    status['tamanho_db'] = size_bytes
-                    status['tamanho_mb'] = round(size_bytes / (1024 * 1024), 2)
-        except Exception as e:
-            logger.debug(f"Não foi possível obter tamanho do SQLite: {e}")
-        
-        # Contar registros nas tabelas principais
-        try:
-            tabelas = [
-                'documento',
-                'notificacao_endividamento',
-                'historico_notificacao',
-                'endividamento'
-            ]
-            
-            for tabela in tabelas:
-                try:
-                    result = db.session.execute(text(f"SELECT COUNT(*) FROM {tabela}")).scalar()
-                    status['tabelas'][tabela] = result
-                except Exception as e:
-                    status['tabelas'][tabela] = f"erro: {str(e)}"
-        except Exception as e:
-            logger.debug(f"Erro ao contar registros: {e}")
-        
-        return status
-        
-    except Exception as e:
-        logger.error(f"Erro ao obter status do banco: {e}")
-        return {'error': str(e)}
-
-
-def _registrar_metricas_inicio_processamento() -> None:
-    """Registra métricas no início do processamento de notificações"""
-    try:
-        from src.models.documento import Documento
-        from src.models.endividamento import Endividamento
-        from src.models.notificacao_endividamento import NotificacaoEndividamento
-        
-        hoje = datetime.now().date()
-        
-        # Contar notificações pendentes
-        pendentes = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.ativo == True,
-            NotificacaoEndividamento.enviado == False,
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).count()
-        
-        # Contar documentos vencendo em 7 dias
-        docs_7dias = Documento.query.filter(
-            Documento.data_vencimento.isnot(None),
-            Documento.data_vencimento <= hoje + timedelta(days=7),
-            Documento.data_vencimento >= hoje
-        ).count()
-        
-        # Contar endividamentos vencendo em 7 dias
-        endiv_7dias = Endividamento.query.filter(
-            Endividamento.data_vencimento_final <= hoje + timedelta(days=7),
-            Endividamento.data_vencimento_final >= hoje
-        ).count()
-        
-        logger.info(
-            f"MÉTRICAS INICIAIS: "
-            f"{pendentes} notificações pendentes, "
-            f"{docs_7dias} documentos vencendo em 7 dias, "
-            f"{endiv_7dias} endividamentos vencendo em 7 dias"
-        )
-    except Exception as e:
-        logger.error(f"Erro ao registrar métricas iniciais: {e}")
-
-
-def _registrar_metricas_conclusao_processamento(total_enviadas: int, duracao: float) -> None:
-    """
-    Registra métricas ao final do processamento
-    
-    Args:
-        total_enviadas: Total de notificações enviadas
-        duracao: Tempo total de processamento em segundos
-    """
-    try:
-        # Registrar no log
-        if total_enviadas > 0:
-            tempo_medio = duracao / total_enviadas if total_enviadas > 0 else 0
-            logger.info(
-                f"MÉTRICAS FINAIS: "
-                f"{total_enviadas} notificações enviadas, "
-                f"duração total: {duracao:.2f}s, "
-                f"tempo médio: {tempo_medio:.2f}s por notificação"
-            )
-        else:
-            logger.info(
-                f"MÉTRICAS FINAIS: "
-                f"Nenhuma notificação enviada, "
-                f"duração total: {duracao:.2f}s"
-            )
-    except Exception as e:
-        logger.error(f"Erro ao registrar métricas finais: {e}")
+def processar_notificacoes_documentos():
+    """Executa diretamente o serviço de notificações de documentos"""
+    from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
+    service = NotificacaoDocumentoService()
+    return service.verificar_e_enviar_notificacoes()

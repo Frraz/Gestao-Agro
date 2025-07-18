@@ -56,5 +56,5 @@ class EndividamentoArea(db.Model):
             "area_nome": self.area.nome if self.area else None,
             "hectares_utilizados": float(self.hectares_utilizados) if self.hectares_utilizados else None,
             "tipo": self.tipo,
-            "descricao": self.descricao,
+            "hectares_utilizados": float(self.hectares_utilizados) if self.hectares_utilizados else None
         }

@@ -38,6 +38,7 @@ class StatusProcessamento(enum.Enum):
     ERRO = "Erro"
 
 
+
 class Documento(db.Model):  # type: ignore
     """
     Modelo para cadastro de documentos associados às fazendas/áreas e/ou pessoas.
@@ -261,92 +262,3 @@ class Documento(db.Model):  # type: ignore
         if not entidades:
             return "Não definido"
         return " | ".join([e.nome for e in entidades])
-
-    @property
-    def dias_desde_ultima_notificacao(self) -> Optional[int]:
-        """Calcula dias desde a última notificação."""
-        if not self.ultima_notificacao:
-            return None
-        return (datetime.datetime.now() - self.ultima_notificacao).days
-
-    @property
-    def notificacoes_enviadas_lista(self) -> List[Dict[str, Any]]:
-        """Retorna o histórico de notificações enviadas em formato de lista."""
-        if not self.notificacoes_enviadas:
-            return []
-        try:
-            return json.loads(self.notificacoes_enviadas)
-        except json.JSONDecodeError:
-            return []
-
-    def registrar_notificacao(self, dias_restantes: int, emails: List[str]) -> None:
-        """
-        Registra uma notificação enviada.
-        
-        Args:
-            dias_restantes: Dias restantes para o vencimento
-            emails: Lista de emails para os quais a notificação foi enviada
-        """
-        self.ultima_notificacao = datetime.datetime.now()
-        
-        # Adicionar ao histórico de notificações enviadas
-        notificacoes = self.notificacoes_enviadas_lista
-        notificacoes.append({
-            "data": datetime.datetime.now().isoformat(),
-            "dias_restantes": dias_restantes,
-            "emails": emails
-        })
-        
-        # Limitar o histórico a últimas 10 notificações
-        if len(notificacoes) > 10:
-            notificacoes = notificacoes[-10:]
-        
-        self.notificacoes_enviadas = json.dumps(notificacoes)
-
-    def entidade_emails(self) -> Set[str]:
-        """
-        Coleta emails relacionados às entidades do documento (pessoas e fazendas).
-        
-        Returns:
-            Set de emails únicos relacionados ao documento
-        """
-        emails = set()
-        
-        # Emails da pessoa associada
-        if self.pessoa and hasattr(self.pessoa, 'email') and self.pessoa.email:
-            emails.add(self.pessoa.email)
-            
-        # Emails de pessoas relacionadas à fazenda
-        if self.fazenda and hasattr(self.fazenda, 'get_emails'):
-            fazenda_emails = self.fazenda.get_emails()
-            emails.update(fazenda_emails)
-            
-        # Email do responsável
-        if self.responsavel and hasattr(self.responsavel, 'email') and self.responsavel.email:
-            emails.add(self.responsavel.email)
-            
-        return emails
-        
-    @property
-    def extensao_arquivo(self) -> Optional[str]:
-        """Retorna a extensão do arquivo."""
-        if not self.caminho_arquivo:
-            return None
-        return os.path.splitext(self.caminho_arquivo)[1].lower()
-
-    @property
-    def tamanho_arquivo_formatado(self) -> str:
-        """Retorna o tamanho do arquivo em formato legível."""
-        if not self.tamanho_arquivo:
-            return "N/A"
-            
-        # Converter para KB, MB, GB conforme apropriado
-        size = self.tamanho_arquivo
-        if size < 1024:
-            return f"{size} bytes"
-        elif size < 1024 * 1024:
-            return f"{size / 1024:.2f} KB"
-        elif size < 1024 * 1024 * 1024:
-            return f"{size / (1024 * 1024):.2f} MB"
-        else:
-            return f"{size / (1024 * 1024 * 1024):.2f} GB"

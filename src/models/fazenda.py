@@ -18,12 +18,14 @@ from src.models.db import db
 
 from .pessoa import pessoa_fazenda
 
+
 class TipoPosse(enum.Enum):
     """Enumeração dos tipos de posse da fazenda."""
     PROPRIA = "Própria"
     ARRENDADA = "Arrendada"
     COMODATO = "Comodato"
     POSSE = "Posse"
+
 
 class Fazenda(db.Model):  # type: ignore
     """
@@ -142,7 +144,7 @@ class Fazenda(db.Model):  # type: ignore
                 total_usado += float(vinculo.hectares)
         return total_usado
 
-    @property 
+    @property
     def area_disponivel_credito(self) -> float:
         """Calcula a área disponível para novas operações de crédito."""
         return self.tamanho_disponivel - self.area_usada_credito

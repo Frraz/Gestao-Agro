@@ -128,35 +128,28 @@ class Config:
         ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx']
     )
 
-    # ========== CONFIGURAÇÕES DO CELERY ==========
-    
+    # ========== CONFIGURAÇÕES DO CELERY (CRÍTICO PARA NOTIFICAÇÕES) ==========
+
     # URLs do Celery
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
-    
-    # Serialização
+
+    # Configurações essenciais do Celery
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_TIMEZONE = CELERY_TIMEZONE
     CELERY_ENABLE_UTC = True
-    
-    # Performance e Limites
-    CELERY_RESULT_EXPIRES = parse_int_env("CELERY_RESULT_EXPIRES", 3600)  # 1 hora
-    CELERY_TASK_SOFT_TIME_LIMIT = parse_int_env("CELERY_TASK_SOFT_TIME_LIMIT", 300)  # 5 minutos
-    CELERY_TASK_TIME_LIMIT = parse_int_env("CELERY_TASK_TIME_LIMIT", 600)  # 10 minutos
-    CELERY_TASK_MAX_RETRIES = parse_int_env("CELERY_TASK_MAX_RETRIES", 3)
-    CELERY_TASK_DEFAULT_RETRY_DELAY = parse_int_env("CELERY_TASK_DEFAULT_RETRY_DELAY", 60)
-    
-    # Configurações de Worker
-    CELERY_WORKER_PREFETCH_MULTIPLIER = parse_int_env("CELERY_WORKER_PREFETCH_MULTIPLIER", 4)
-    CELERY_WORKER_MAX_TASKS_PER_CHILD = parse_int_env("CELERY_WORKER_MAX_TASKS_PER_CHILD", 1000)
-    CELERY_WORKER_DISABLE_RATE_LIMITS = False
-    
-    # Backend específico para Redis
-    CELERY_REDIS_MAX_CONNECTIONS = parse_int_env("CELERY_REDIS_MAX_CONNECTIONS", 20)
-    CELERY_BROKER_POOL_LIMIT = parse_int_env("CELERY_BROKER_POOL_LIMIT", 10)
-    
+
+    # Configuração de expiração de resultados
+    CELERY_RESULT_EXPIRES = 3600  # 1 hora
+
+    # Configuração de retry
+    CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutos
+    CELERY_TASK_TIME_LIMIT = 600  # 10 minutos
+    CELERY_TASK_MAX_RETRIES = 3
+    CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 1 minuto
+
     # ========== AGENDAMENTO DE TAREFAS (CELERY BEAT) ==========
     CELERY_BEAT_SCHEDULE = {
         # Verifica notificações a cada 5 minutos
@@ -168,7 +161,7 @@ class Config:
                 'priority': 5,
             }
         },
-        
+
         # Verificação diária às 8h da manhã (horário de Brasília)
         'verificacao-matinal-notificacoes': {
             'task': 'tasks.processar_todas_notificacoes',
@@ -178,7 +171,7 @@ class Config:
                 'priority': 10,
             }
         },
-        
+
         # Verificação adicional às 14h
         'verificacao-vespertina-notificacoes': {
             'task': 'tasks.processar_todas_notificacoes',
@@ -198,7 +191,7 @@ class Config:
                 'priority': 10,
             }
         },
-        
+
         # Limpeza de notificações antigas (diariamente às 2h da manhã)
         'limpar-notificacoes-antigas': {
             'task': 'tasks.limpar_notificacoes_antigas',
@@ -220,7 +213,7 @@ class Config:
             }
         },
     }
-    
+
     # ========== CONFIGURAÇÕES DE NOTIFICAÇÃO ==========
     NOTIFICATION_CHECK_INTERVAL = parse_int_env("NOTIFICATION_CHECK_INTERVAL", 300)  # 5 minutos
     NOTIFICATION_DAYS_BEFORE = parse_list_env(
@@ -228,18 +221,11 @@ class Config:
         [180, 90, 60, 30, 15, 7, 3, 1]
     )
     NOTIFICATION_EMAIL_ENABLED = str_to_bool(os.getenv("NOTIFICATION_EMAIL_ENABLED", "true"))
-    NOTIFICATION_BATCH_SIZE = parse_int_env("NOTIFICATION_BATCH_SIZE", 50)  # Emails por lote
-    NOTIFICATION_RETRY_ATTEMPTS = parse_int_env("NOTIFICATION_RETRY_ATTEMPTS", 3)
-    NOTIFICATION_ADMIN_EMAILS = parse_list_env("NOTIFICATION_ADMIN_EMAILS", [])
-    
+
     # ========== LOGGING ==========
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_TO_STDOUT = str_to_bool(os.getenv("LOG_TO_STDOUT", "false"))
-    LOG_FORMAT = os.getenv(
-        "LOG_FORMAT",
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-    
+
     # ========== CACHE ==========
     CACHE_TYPE = os.getenv("CACHE_TYPE", "RedisCache")
     CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", REDIS_URL)
@@ -270,8 +256,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Configurações para ambiente de desenvolvimento."""
     DEBUG = True
-    TESTING = False
-    
+
     # Em desenvolvimento, verificar notificações mais frequentemente
     CELERY_BEAT_SCHEDULE = {
         **Config.CELERY_BEAT_SCHEDULE,
@@ -319,30 +304,21 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Configurações para produção."""
     DEBUG = False
-    TESTING = False
-    
-    # Logs menos verbosos em produção
+
+    # Em produção, garantir que logs sejam mais detalhados
     LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
-    SQLALCHEMY_ECHO = False
-    
+
     # Forçar HTTPS em produção
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Strict'
-    
-    # Segurança adicional
-    WTF_CSRF_TIME_LIMIT = None  # CSRF tokens não expiram
-    
-    # Performance em produção
-    CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-    CELERY_BROKER_POOL_LIMIT = None  # Sem limite de conexões
-    
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
     # Configurações específicas do Railway
     if os.getenv("RAILWAY_ENVIRONMENT"):
         # Railway fornece PORT automaticamente
         PORT = int(os.getenv("PORT", 5000))
-        
-        # Ajustar URLs se fornecidos pelo Railway
+
+        # Ajustar Redis URL se fornecido pelo Railway
         if os.getenv("REDIS_URL"):
             REDIS_URL = os.getenv("REDIS_URL")
             CELERY_BROKER_URL = REDIS_URL
@@ -364,15 +340,8 @@ class ProductionConfig(Config):
             SQLALCHEMY_DATABASE_URI = db_url.replace("postgres://", "postgresql://", 1)
 
 
-# Mapeamento de configurações por nome
-config_by_name = {
-    'development': DevelopmentConfig,
-    'testing': TestingConfig,
-    'production': ProductionConfig,
-    'dev': DevelopmentConfig,
-    'test': TestingConfig,
-    'prod': ProductionConfig,
-}
-
-# Configuração padrão
-default_config = config_by_name[parse_str_env("FLASK_ENV", "development")]
+config_by_name = dict(
+    development=DevelopmentConfig,
+    testing=TestingConfig,
+    production=ProductionConfig,
+)

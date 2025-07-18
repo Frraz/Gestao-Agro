@@ -8,17 +8,6 @@ from wtforms.validators import DataRequired, Length, ValidationError
 import re
 
 
-class MultiCheckboxField(SelectMultipleField):
-    """
-    Campo customizado para múltiplos checkboxes.
-    
-    Permite selecionar múltiplas opções através de caixas de seleção
-    em vez da interface padrão de seleção múltipla.
-    """
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
-
-
 class NotificacaoEndividamentoForm(FlaskForm):
     """
     Formulário para configuração de notificações de endividamento.
@@ -81,43 +70,4 @@ class NotificacaoEndividamentoForm(FlaskForm):
         invalid_emails = []
         for email in emails:
             if not email_pattern.match(email):
-                invalid_emails.append(email)
-        
-        if invalid_emails:
-            raise ValidationError(f"E-mails inválidos: {', '.join(invalid_emails)}")
-        
-        # Verificar duplicados
-        if len(emails) != len(set(emails)):
-            raise ValidationError("Existem e-mails duplicados na lista.")
-    
-    def get_emails_list(self) -> List[str]:
-        """
-        Retorna lista de emails limpos.
-        
-        Returns:
-            Lista de endereços de email formatados
-        """
-        if self.emails.data:
-            return [email.strip() for email in self.emails.data.split("\n") if email.strip()]
-        return []
-    
-    def set_emails_from_list(self, emails_list: List[str]) -> None:
-        """
-        Define emails a partir de uma lista.
-        
-        Args:
-            emails_list: Lista de endereços de email
-        """
-        if emails_list:
-            self.emails.data = "\n".join(emails_list)
-    
-    def get_prazos_dias(self) -> List[int]:
-        """
-        Obtém os prazos selecionados em formato numérico.
-        
-        Returns:
-            Lista de prazos em dias (inteiros)
-        """
-        if hasattr(self, 'prazos') and self.prazos.data:
-            return [int(prazo) for prazo in self.prazos.data]
-        return [30, 15, 7, 3, 1]  # Valores padrão
+                raise ValidationError(f"E-mail inválido: {email}")

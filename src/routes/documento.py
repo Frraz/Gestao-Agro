@@ -34,16 +34,8 @@ documento_bp = Blueprint("documento", __name__, url_prefix="/api/documentos")
 admin_documentos_bp = Blueprint("admin_documentos", __name__, url_prefix="/admin/documentos")
 
 
-def data_valida(data_str: str) -> Optional[datetime.date]:
-    """
-    Valida e converte string de data para objeto date.
-    
-    Args:
-        data_str: String no formato YYYY-MM-DD
-    
-    Returns:
-        Objeto date se válido, None se inválido
-    """
+def data_valida(data_str):
+    """Valida e converte string de data para objeto date."""
     try:
         return datetime.datetime.strptime(data_str, "%Y-%m-%d").date()
     except (ValueError, TypeError):
@@ -1164,108 +1156,7 @@ def novo():
         current_app.logger.error(f"Erro ao buscar usuários: {str(e)}")
     
     return render_template(
-        "admin/documentos/form.html",
-        documento=None,
-        tipos_documento=tipos_documento,
-        pessoas=pessoas,
-        fazendas=fazendas,
-        responsaveis=responsaveis,
-        titulo="Novo Documento"
+        "admin/documentos/vencidos.html",
+        documentos_vencidos=documentos_vencidos,
+        documentos_proximos=documentos_proximos,
     )
-
-
-@admin_documentos_bp.route("/editar/<int:id>", methods=["GET", "POST"])
-def editar(id: int):
-    """
-    Rota HTML: Formulário para edição de documento.
-    
-    Args:
-        id: ID do documento a ser editado
-        
-    Returns:
-        Template HTML renderizado ou redirecionamento
-    """
-    try:
-        documento = Documento.query.get_or_404(id)
-        
-        if request.method == "POST":
-            try:
-                # Atualizar documento via API
-                result = atualizar_documento(id)
-                if isinstance(result, tuple) and result[1] != 200:
-                    # Erro
-                    flash(f"Erro ao atualizar documento: {result[0].json['erro']}", "danger")
-                    return redirect(request.url)
-                    
-                flash("Documento atualizado com sucesso!", "success")
-                return redirect(url_for("admin_documentos.listar"))
-            except Exception as e:
-                current_app.logger.error(f"Erro ao atualizar documento: {str(e)}")
-                flash(f"Erro ao atualizar documento: {str(e)}", "danger")
-                
-        # Preparar dados para o formulário
-        tipos_documento = [tipo.value for tipo in TipoDocumento]
-        pessoas = []
-        fazendas = []
-        responsaveis = []
-        
-        try:
-            from src.models.pessoa import Pessoa
-            pessoas = Pessoa.query.all()
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar pessoas: {str(e)}")
-            
-        try:
-            from src.models.fazenda import Fazenda
-            fazendas = Fazenda.query.all()
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar fazendas: {str(e)}")
-            
-        try:
-            from src.models.usuario import Usuario
-            responsaveis = Usuario.query.all()
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar usuários: {str(e)}")
-        
-        return render_template(
-            "admin/documentos/form.html",
-            documento=documento,
-            tipos_documento=tipos_documento,
-            pessoas=pessoas,
-            fazendas=fazendas,
-            responsaveis=responsaveis,
-            titulo=f"Editar Documento: {documento.nome}"
-        )
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao carregar documento para edição: {str(e)}")
-        flash(f"Erro ao carregar documento: {str(e)}", "danger")
-        return redirect(url_for("admin_documentos.listar"))
-
-
-@admin_documentos_bp.route("/notificacoes")
-@measure_performance()
-def notificacoes():
-    """
-    Rota HTML: Histórico de notificações de documentos.
-    
-    Returns:
-        Template HTML renderizado
-    """
-    try:
-        # Buscar histórico de notificações ordenadas por data de envio (mais recentes primeiro)
-        historico = HistoricoNotificacaoDocumento.query.order_by(
-            desc(HistoricoNotificacaoDocumento.data_envio)
-        ).limit(100).all()
-        
-        return render_template(
-            "admin/documentos/notificacoes.html",
-            notificacoes=historico
-        )
-    except Exception as e:
-        current_app.logger.error(f"Erro ao carregar histórico de notificações: {str(e)}")
-        flash(f"Erro ao carregar histórico de notificações: {str(e)}", "danger")
-        return render_template(
-            "admin/documentos/notificacoes.html",
-            notificacoes=[]
-        )

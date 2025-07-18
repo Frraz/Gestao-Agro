@@ -11,14 +11,12 @@ Inclui:
 - Parcela: Detalhes de cada parcela do endividamento.
 """
 
-from datetime import date, datetime, timedelta
-from typing import Optional, List, Dict, Any, Union
-
-from sqlalchemy.ext.hybrid import hybrid_property
+from datetime import datetime
 
 from src.models.db import db
 # Importar a classe EndividamentoArea em vez de redefini-la
 from src.models.endividamento_area import EndividamentoArea
+
 
 
 class Endividamento(db.Model):
@@ -322,24 +320,3 @@ class Parcela(db.Model):
             "valor_pago": float(self.valor_pago) if self.valor_pago else None,
             "observacoes": self.observacoes,
         }
-    
-    @hybrid_property
-    def esta_vencido(self) -> bool:
-        """
-        Verifica se a parcela está vencida.
-        
-        Returns:
-            True se a parcela está vencida e não paga
-        """
-        return not self.pago and self.data_vencimento < date.today()
-    
-    @hybrid_property
-    def dias_ate_vencimento(self) -> int:
-        """
-        Calcula quantos dias faltam para o vencimento da parcela.
-        
-        Returns:
-            Número de dias até o vencimento (negativo se vencida)
-        """
-        delta = self.data_vencimento - date.today()
-        return delta.days
