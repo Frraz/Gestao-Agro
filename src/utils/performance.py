@@ -21,7 +21,7 @@ class PerformanceOptimizer:
     def optimize_database_queries():
         """Otimiza configurações do banco de dados"""
         try:
-            engine = db.get_engine()
+            engine = db.engine
             backend = engine.url.get_backend_name()
             logger.info(f"Backend do banco detectado: {backend}")
             if "mysql" in backend:

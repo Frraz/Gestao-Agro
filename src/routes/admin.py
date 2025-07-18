@@ -1,8 +1,6 @@
 # /src/routes/admin.py
 
-import datetime
-from datetime import date
-from math import ceil
+from datetime import date, datetime
 
 from flask import (
     Blueprint, flash, jsonify, redirect, render_template,
@@ -10,6 +8,7 @@ from flask import (
 )
 from flask_login import login_required
 
+from src.utils.database import paginate_query, safe_count
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento
@@ -43,27 +42,28 @@ def dashboard():
     venc_page = int(request.args.get("venc_page", 1))
     per_page = 10
 
+    # Documentos próximos do vencimento
     docs_proximos_query = Documento.query.filter(
         Documento.data_vencimento >= hoje
     ).order_by(Documento.data_vencimento.asc())
-    total_proximos = docs_proximos_query.count()
-    docs_proximos = (
-        docs_proximos_query.offset((prox_page - 1) * per_page).limit(per_page).all()
-    )
-    total_pag_proximos = ceil(total_proximos / per_page) if total_proximos else 1
 
+    docs_proximos, total_proximos, total_pag_proximos = paginate_query(
+        docs_proximos_query, prox_page, per_page
+    )
+
+    # Documentos vencidos
     docs_vencidos_query = Documento.query.filter(
         Documento.data_vencimento < hoje
     ).order_by(Documento.data_vencimento.asc())
-    total_vencidos = docs_vencidos_query.count()
-    docs_vencidos = (
-        docs_vencidos_query.offset((venc_page - 1) * per_page).limit(per_page).all()
-    )
-    total_pag_vencidos = ceil(total_vencidos / per_page) if total_vencidos else 1
 
-    total_pessoas = Pessoa.query.count()
-    total_fazendas = Fazenda.query.count()
-    total_documentos = Documento.query.count()
+    docs_vencidos, total_vencidos, total_pag_vencidos = paginate_query(
+        docs_vencidos_query, venc_page, per_page
+    )
+
+    # Contadores gerais usando função segura
+    total_pessoas = safe_count(Pessoa)
+    total_fazendas = safe_count(Fazenda)
+    total_documentos = safe_count(Documento)
 
     return render_template(
         "admin/index.html",
