@@ -18,6 +18,7 @@ from sqlalchemy.orm import relationship
 
 from src.models.db import db
 
+
 class TipoDocumento(enum.Enum):
     """Enumeração dos tipos de documentos possíveis."""
     CERTIDOES = "Certidões"
@@ -27,6 +28,7 @@ class TipoDocumento(enum.Enum):
 
 # REMOVA O TipoEntidade e a coluna tipo_entidade,
 # pois agora um documento pode ser associado a fazenda, pessoa, ambos ou nenhum.
+
 
 class Documento(db.Model):  # type: ignore
     """

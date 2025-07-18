@@ -17,7 +17,7 @@ class NotificacaoDocumentoService:
     """
     Serviço para gerenciar notificações automáticas de vencimento de documentos.
     """
-    
+
     # Prazos padrão de notificação em dias
     PRAZOS_PADRAO = [90, 60, 30, 15, 7, 3, 1]
 
@@ -45,10 +45,10 @@ class NotificacaoDocumentoService:
             for documento in documentos:
                 # Calcula dias restantes para o vencimento
                 dias_restantes = (documento.data_vencimento - hoje).days
-                
+
                 # Determina os prazos de notificação para este documento
                 prazos = self._obter_prazos_notificacao(documento)
-                
+
                 # Verifica se deve enviar notificação hoje
                 if dias_restantes in prazos:
                     # Evita enviar múltiplas notificações para o mesmo documento no mesmo dia
@@ -72,15 +72,15 @@ class NotificacaoDocumentoService:
             if isinstance(documento.prazos_notificacao, str):
                 try:
                     return json.loads(documento.prazos_notificacao)
-                except:
+                except (json.JSONDecodeError, TypeError):
                     pass
             elif isinstance(documento.prazos_notificacao, list):
                 return documento.prazos_notificacao
-        
+
         # Se não houver prazos específicos, usa os padrões baseados no tipo
         if hasattr(documento, 'tipo') and documento.tipo:
             tipo_value = documento.tipo.value if hasattr(documento.tipo, 'value') else str(documento.tipo)
-            
+
             # Prazos específicos por tipo de documento
             if 'licença' in tipo_value.lower() or 'ambiental' in tipo_value.lower():
                 return [180, 120, 90, 60, 30, 15, 7]  # Licenças precisam mais antecedência
@@ -88,7 +88,7 @@ class NotificacaoDocumentoService:
                 return [90, 60, 30, 15, 7]
             elif 'certidão' in tipo_value.lower():
                 return [60, 30, 15, 7, 3]
-        
+
         # Retorna prazos padrão
         return self.PRAZOS_PADRAO
 
@@ -97,14 +97,14 @@ class NotificacaoDocumentoService:
         try:
             # Determina destinatários
             destinatarios = self._obter_destinatarios(documento)
-            
+
             if not destinatarios:
                 logger.warning(f"Documento {documento.id} sem destinatário para notificação")
                 return False
 
             # Obtém nome do responsável
             responsavel_nome = self._obter_nome_responsavel(documento)
-            
+
             # Link para visualização do documento
             link_documento = getattr(documento, 'link_visualizacao', None) or f"/documento/{documento.id}"
 
@@ -115,17 +115,17 @@ class NotificacaoDocumentoService:
                 responsavel=responsavel_nome,
                 link_documento=link_documento,
             )
-            
+
             enviado = self.email_service.send_email(
                 destinatarios, assunto, corpo_html, html=True
             )
-            
+
             if enviado:
                 logger.info(
                     f"Notificação enviada - Documento: {documento.id} ({documento.nome}), "
                     f"Dias restantes: {dias_restantes}, Destinatários: {destinatarios}"
                 )
-                
+
                 # Registrar o envio (se houver modelo de histórico)
                 self._registrar_envio(documento, destinatarios, dias_restantes)
             else:
@@ -146,12 +146,12 @@ class NotificacaoDocumentoService:
     def _obter_destinatarios(self, documento):
         """Obtém lista de e-mails para notificação"""
         destinatarios = []
-        
+
         # Tenta obter do responsável
         responsavel = getattr(documento, "responsavel", None)
         if responsavel and getattr(responsavel, "email", None):
             destinatarios.append(responsavel.email)
-        
+
         # Tenta obter de emails_notificacao
         if hasattr(documento, "emails_notificacao") and documento.emails_notificacao:
             if isinstance(documento.emails_notificacao, str):
@@ -159,15 +159,15 @@ class NotificacaoDocumentoService:
                     emails = json.loads(documento.emails_notificacao)
                     if isinstance(emails, list):
                         destinatarios.extend(emails)
-                except:
+                except (json.JSONDecodeError, TypeError):
                     # Se não for JSON, tenta split por vírgula
                     destinatarios.extend([e.strip() for e in documento.emails_notificacao.split(',')])
             elif isinstance(documento.emails_notificacao, list):
                 destinatarios.extend(documento.emails_notificacao)
-        
+
         # Remove duplicatas e emails vazios
         destinatarios = list(set(e for e in destinatarios if e and '@' in e))
-        
+
         return destinatarios
 
     def _obter_nome_responsavel(self, documento):

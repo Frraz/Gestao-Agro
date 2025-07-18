@@ -4,6 +4,7 @@ from .admin import admin_bp
 from .endividamento import endividamento_bp
 from .fazenda import fazenda_bp  # Registra o blueprint de API de fazenda
 
+
 def register_blueprints(app):
     """Registra todos os blueprints das rotas principais do sistema."""
     app.register_blueprint(admin_bp)

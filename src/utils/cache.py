@@ -2,7 +2,6 @@
 
 # Configuração de cache com Redis
 import pickle
-from datetime import timedelta
 
 import redis
 from flask import current_app
@@ -87,7 +86,10 @@ cache = CacheManager()
 def cached(timeout=300, key_prefix=""):
     """Decorator para cache de funções"""
 
+
     def decorator(f):
+
+
         def wrapper(*args, **kwargs):
             # Gerar chave do cache
             cache_key = f"{key_prefix}:{f.__name__}:{hash(str(args) + str(kwargs))}"

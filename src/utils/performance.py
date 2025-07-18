@@ -101,6 +101,7 @@ class PerformanceOptimizer:
 def rate_limit(max_requests=100, window=3600):
     """Decorator para rate limiting"""
 
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -271,7 +272,7 @@ class DatabaseOptimizer:
             )
             .filter(
                 Parcela.data_vencimento.between(hoje, data_limite),
-                Parcela.pago == False,
+                ~Parcela.pago,
             )
             .order_by(Parcela.data_vencimento)
             .all()
@@ -324,6 +325,7 @@ def init_performance_optimizations(app):
 
 
 class PerformanceMiddleware:
+
     def __init__(self, app):
         self.app = app
         self.init_app(app)
@@ -343,4 +345,3 @@ class PerformanceMiddleware:
                     f"Requisição lenta: {request.method} {request.path} - {duration:.2f}s"
                 )
         return response
-    

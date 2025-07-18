@@ -2,6 +2,7 @@
 
 from src.models.db import db
 
+
 class EndividamentoArea(db.Model):
     __tablename__ = "endividamento_area"
     id = db.Column(db.Integer, primary_key=True)
@@ -25,4 +26,3 @@ class EndividamentoArea(db.Model):
             "tipo": self.tipo,
             "hectares_utilizados": float(self.hectares_utilizados) if self.hectares_utilizados else None
         }
-        

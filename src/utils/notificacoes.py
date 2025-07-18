@@ -1,7 +1,5 @@
 # /src/uils/notificacoes.py
 
-import datetime
-
 from flask import current_app, flash
 
 from src.models.documento import Documento

@@ -9,6 +9,8 @@ test_bp = Blueprint("test", __name__, url_prefix="/test")
 
 @test_bp.route("/enviar-email-real")
 def enviar_email_real():
+
+
     class DummyDoc:
         nome = "Licença Ambiental"
         tipo = type("Tipo", (), {"value": "Certidão"})

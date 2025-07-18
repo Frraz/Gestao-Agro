@@ -102,13 +102,18 @@ def test_celery():
     return f"Celery está funcionando! Timestamp: {datetime.now()}"
 
 # Para integração com Flask, use make_celery(app) no seu main.py (não afeta uso standalone do celery)
+
+
 def make_celery(app):
     """Integra Celery com contexto Flask se necessário."""
     celery.conf.update(
         result_backend=app.config.get("CELERY_RESULT_BACKEND", CELERY_RESULT_BACKEND),
         broker_url=app.config.get("CELERY_BROKER_URL", CELERY_BROKER_URL),
     )
+
+
     class ContextTask(celery.Task):
+
         def __call__(self, *args, **kwargs):
             with app.app_context():
                 return self.run(*args, **kwargs)

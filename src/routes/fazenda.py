@@ -465,4 +465,3 @@ def listar_documentos_fazenda(id):
             ),
             500,
         )
-    

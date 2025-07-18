@@ -23,6 +23,8 @@ def url_for_other_page(page):
 
 @auditoria_bp.route("/admin/auditoria")
 @login_required
+
+
 def painel_auditoria():
     # Filtros
     query = Auditoria.query
@@ -95,6 +97,7 @@ def painel_auditoria():
     fazendas = {f.id: f.nome for f in Fazenda.query.all()}
     pessoas = {p.id: p.nome for p in Pessoa.query.all()}
 
+
     def extrair_identificacao(log):
         try:
             valor = json.loads(log.valor_novo or log.valor_anterior or "{}")
@@ -107,6 +110,7 @@ def painel_auditoria():
         if log.entidade == "Fazenda":
             return valor.get("nome", f"ID {valor.get('id', '-')}")
         return "-"
+
 
     def extrair_associado(log):
         try:

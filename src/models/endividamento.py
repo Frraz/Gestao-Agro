@@ -10,10 +10,10 @@ Inclui:
 - Parcela: Detalhes de cada parcela do endividamento.
 """
 
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
 from src.models.db import db
+
 
 class Endividamento(db.Model):
     __tablename__ = "endividamento"

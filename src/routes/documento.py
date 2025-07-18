@@ -17,6 +17,7 @@ from src.utils.notificacao_utils import calcular_proximas_notificacoes_programad
 documento_bp = Blueprint("documento", __name__, url_prefix="/api/documentos")
 admin_documentos_bp = Blueprint("admin_documentos", __name__, url_prefix="/admin/documentos")
 
+
 def data_valida(data_str):
     """Valida e converte string de data para objeto date."""
     try:

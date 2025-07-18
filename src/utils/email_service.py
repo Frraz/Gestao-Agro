@@ -92,7 +92,7 @@ class EmailService:
                         <h3>Teste realizado com sucesso!</h3>
                         <p>Este é um e-mail de teste do Sistema de Gestão Agrícola.</p>
                     </div>
-                    
+
                     <p>Se você recebeu este e-mail, significa que a configuração de notificações está funcionando corretamente.</p>
                     <p>Você receberá notificações automáticas quando documentos estiverem próximos do vencimento.</p>
                 </div>

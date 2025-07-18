@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, time
 
+
 def calcular_proximas_notificacoes_programadas(data_vencimento, prazos, enviados=None):
     """
     Retorna uma lista ordenada de próximas notificações programadas.

@@ -3,7 +3,7 @@
 # Serviço de Notificações para Endividamentos
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from sqlalchemy import and_
 
@@ -44,7 +44,7 @@ class NotificacaoEndividamentoService:
                 db.session.query(Endividamento)
                 .join(NotificacaoEndividamento)
                 .filter(
-                    NotificacaoEndividamento.ativo == True,
+                    NotificacaoEndividamento.ativo,
                     Endividamento.data_vencimento_final > hoje,
                 )
                 .all()
@@ -85,7 +85,7 @@ class NotificacaoEndividamentoService:
                 and_(
                     HistoricoNotificacao.endividamento_id == endividamento_id,
                     HistoricoNotificacao.tipo_notificacao == tipo_notificacao,
-                    HistoricoNotificacao.sucesso == True,
+                    HistoricoNotificacao.sucesso,
                 )
             )
             .first()
@@ -162,9 +162,9 @@ class NotificacaoEndividamentoService:
                 <h2 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 10px;">
                     🚨 Lembrete de Vencimento de Endividamento
                 </h2>
-                
+
                 <p>Este é um lembrete automático sobre um endividamento que vencerá em <strong>{periodo}</strong>.</p>
-                
+
                 <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <h3 style="margin-top: 0; color: #1976d2;">Detalhes do Endividamento:</h3>
                     <ul style="list-style: none; padding: 0;">
@@ -177,13 +177,13 @@ class NotificacaoEndividamentoService:
                         <li><strong>Pessoas Vinculadas:</strong> {', '.join(pessoas_nomes)}</li>
                     </ul>
                 </div>
-                
+
                 <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p style="margin: 0;"><strong>⚠️ Atenção:</strong> Certifique-se de que todas as providências necessárias foram tomadas para o cumprimento das obrigações dentro do prazo.</p>
                 </div>
-                
+
                 <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                
+
                 <p style="font-size: 12px; color: #666;">
                     Este é um e-mail automático do Sistema de Gestão Agrícola. Não responda a este e-mail.
                     <br>Data de envio: {datetime.now().strftime('%d/%m/%Y às %H:%M')}

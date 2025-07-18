@@ -6,6 +6,7 @@ from wtforms import BooleanField, TextAreaField
 from wtforms.validators import DataRequired, Length, ValidationError
 import re
 
+
 class NotificacaoEndividamentoForm(FlaskForm):
     """Formulário para configuração de notificações de endividamento"""
 
