@@ -30,10 +30,20 @@ class NotificacaoDocumentoService:
         Verifica todos os documentos com prazos de notificação e envia e-mails quando necessário.
         Retorna o número total de notificações enviadas.
         """
+        from flask import current_app
+        
         hoje = datetime.date.today()
         total_enviadas = 0
 
         try:
+            # Verificar se estamos em contexto Flask
+            try:
+                current_app._get_current_object()
+                logger.info(f"Verificando {len([])} documentos para notificações - contexto Flask ativo")
+            except RuntimeError:
+                logger.warning("Executando fora do contexto Flask - funcionalidade limitada")
+                return 0
+
             # Buscar todos os documentos com data de vencimento
             documentos = Documento.query.filter(
                 Documento.data_vencimento.isnot(None),

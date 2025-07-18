@@ -35,10 +35,20 @@ class NotificacaoEndividamentoService:
 
     def verificar_e_enviar_notificacoes(self):
         """Verifica todos os endividamentos e envia notificações quando necessário"""
+        from flask import current_app
+        
         hoje = date.today()
         notificacoes_enviadas = 0
 
         try:
+            # Verificar se estamos em contexto Flask
+            try:
+                current_app._get_current_object()
+                logger.info(f"Processando notificações de endividamentos - contexto Flask ativo")
+            except RuntimeError:
+                logger.warning("Executando fora do contexto Flask - funcionalidade limitada")
+                return 0
+
             # Buscar todos os endividamentos ativos com notificações configuradas
             endividamentos = (
                 db.session.query(Endividamento)
