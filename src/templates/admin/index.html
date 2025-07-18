@@ -1,10 +1,23 @@
+<!-- src/templates/admin/index.html -->
+
 {% extends 'layouts/base.html' %}
 
-{% block title %}Dashboard - Sistema de Gestão de Fazendas{% endblock %}
+{% block title %}Dashboard - Sistema de Gestão Agrícola{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800">Dashboard</h1>
+    <!-- Page Heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshDashboard">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+            <span class="text-muted ms-2 small" id="lastUpdated">Última atualização: {{ now.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
+    </div>
+
+    <!-- Estatísticas Principais -->
     <div class="row">
         <!-- Card Pessoas -->
         <div class="col-xl-3 col-md-6 mb-4">
@@ -25,6 +38,7 @@
                 </div>
             </div>
         </div>
+        
         <!-- Card Fazendas -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow h-100 py-2 card-dashboard card-fazendas">
@@ -44,6 +58,7 @@
                 </div>
             </div>
         </div>
+        
         <!-- Card Documentos -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow h-100 py-2 card-dashboard card-documentos">
@@ -63,38 +78,139 @@
                 </div>
             </div>
         </div>
-        <!-- Card Documentos Vencidos -->
+        
+        <!-- Card Endividamentos -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow h-100 py-2 card-dashboard card-vencidos">
+            <div class="card border-0 shadow h-100 py-2 card-dashboard card-endividamentos">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Documentos Vencidos</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ documentos_vencidos|length }}</div>
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Endividamentos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_endividamentos }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                            <i class="fas fa-credit-card fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                    <a href="{{ url_for('admin.listar_documentos_vencidos') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                    <a href="{{ url_for('endividamento.listar') }}" class="text-decoration-none">Ver detalhes <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status de Vencimentos e Notificações -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Resumo de Vencimentos</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.listar_documentos_vencidos') }}">Todos os Documentos Vencidos</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('endividamento.vencimentos') }}">Todos os Endividamentos</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#configurarNotificacoesModal">Configurar Notificações</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-container" style="position: relative; height:250px;">
+                                <canvas id="documentosChart"></canvas>
+                            </div>
+                            <div class="text-center mt-3">
+                                <h6>Documentos</h6>
+                                <div class="d-flex justify-content-center">
+                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ total_documentos - documentos_proximos|length - documentos_vencidos|length }})</span>
+                                    <span class="me-3"><i class="fas fa-circle text-warning me-1"></i> Próximos ({{ documentos_proximos|length }})</span>
+                                    <span><i class="fas fa-circle text-danger me-1"></i> Vencidos ({{ documentos_vencidos|length }})</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container" style="position: relative; height:250px;">
+                                <canvas id="endividamentosChart"></canvas>
+                            </div>
+                            <div class="text-center mt-3">
+                                <h6>Endividamentos</h6>
+                                <div class="d-flex justify-content-center">
+                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ endividamentos_em_dia }})</span>
+                                    <span class="me-3"><i class="fas fa-circle text-warning me-1"></i> Próximos ({{ endividamentos_proximos|length }})</span>
+                                    <span><i class="fas fa-circle text-danger me-1"></i> Vencidos ({{ endividamentos_vencidos|length }})</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Notificações Pendentes</h6>
+                </div>
+                <div class="card-body">
+                    {% if notificacoes_pendentes %}
+                        <div class="list-group list-group-flush">
+                            {% for notif in notificacoes_pendentes[:5] %}
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">
+                                            {% if notif.tipo == 'documento' %}
+                                                <i class="fas fa-file-alt text-info me-1"></i>
+                                            {% else %}
+                                                <i class="fas fa-credit-card text-warning me-1"></i>
+                                            {% endif %}
+                                            {{ notif.nome|truncate(25) }}
+                                        </h6>
+                                        <small class="text-muted">{{ notif.dias_restantes }} dias</small>
+                                    </div>
+                                    <p class="mb-1 small">{{ notif.mensagem }}</p>
+                                    <small>
+                                        <a href="{{ notif.url }}" class="text-primary">Ver detalhes</a>
+                                    </small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if notificacoes_pendentes|length > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="{{ url_for('endividamento.dashboard_notificacoes') }}" class="btn btn-outline-primary btn-sm">
+                                    Ver todas ({{ notificacoes_pendentes|length }})
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="mb-0">Não há notificações pendentes</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Documentos Próximos do Vencimento -->
-    <div class="row mt-4">
+    <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Documentos Próximos do Vencimento</h6>
+                    <a href="{{ url_for('admin.notificacoes_documentos') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i> Enviar Notificações
+                    </a>
                 </div>
                 <div class="card-body">
                     {% if documentos_proximos %}
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                            <table class="table table-bordered table-hover datatable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Nome</th>
@@ -102,6 +218,7 @@
                                         <th>Fazenda</th>
                                         <th>Data de Vencimento</th>
                                         <th>Dias Restantes</th>
+                                        <th>Notificação</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -115,32 +232,32 @@
                                             <td>
                                                 <span class="badge bg-warning">{{ documento.proximo_vencimento }} dias</span>
                                             </td>
-                                            <td>
-                                                <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                {% if documento.caminho_arquivo %}
-                                                    <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
-                                                        <i class="fas fa-download"></i>
-                                                    </a>
+                                            <td class="text-center">
+                                                {% if documento.tem_notificacoes %}
+                                                    <i class="fas fa-bell text-success" title="Notificações configuradas"></i>
+                                                {% else %}
+                                                    <i class="fas fa-bell-slash text-muted" title="Sem notificações"></i>
                                                 {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    {% if documento.caminho_arquivo %}
+                                                        <a href="{{ url_for('documento.download_arquivo', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-bell"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
-                        </div>
-                        <!-- Paginação Próximos -->
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span>Página {{ prox_page }} de {{ total_pag_proximos }}</span>
-                            <div>
-                                {% if prox_page > 1 %}
-                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page-1, venc_page=venc_page) }}" class="btn btn-sm btn-secondary">Anterior</a>
-                                {% endif %}
-                                {% if prox_page < total_pag_proximos %}
-                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page+1, venc_page=venc_page) }}" class="btn btn-sm btn-secondary">Próxima</a>
-                                {% endif %}
-                            </div>
                         </div>
                     {% else %}
                         <div class="text-center py-4">
@@ -153,17 +270,91 @@
         </div>
     </div>
 
+    <!-- Endividamentos Próximos ao Vencimento -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-warning">Endividamentos Próximos ao Vencimento</h6>
+                </div>
+                <div class="card-body">
+                    {% if endividamentos_proximos %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover datatable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Banco</th>
+                                        <th>Proposta</th>
+                                        <th>Vencimento</th>
+                                        <th>Dias Restantes</th>
+                                        <th>Valor</th>
+                                        <th>Notificação</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for endividamento in endividamentos_proximos %}
+                                        <tr>
+                                            <td>{{ endividamento.banco }}</td>
+                                            <td>{{ endividamento.numero_proposta }}</td>
+                                            <td>{{ endividamento.data_vencimento_final.strftime('%d/%m/%Y') }}</td>
+                                            <td>
+                                                <span class="badge bg-warning">{{ endividamento.dias_ate_vencimento }} dias</span>
+                                            </td>
+                                            <td>
+                                                {% if endividamento.valor_operacao %}
+                                                    R$ {{ "{:,.2f}".format(endividamento.valor_operacao).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% if endividamento.tem_notificacoes_ativas() %}
+                                                    <i class="fas fa-bell text-success" title="Notificações configuradas"></i>
+                                                {% else %}
+                                                    <i class="fas fa-bell-slash text-muted" title="Sem notificações"></i>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <a href="{{ url_for('endividamento.visualizar', id=endividamento.id) }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('endividamento.configurar_notificacoes', id=endividamento.id) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-bell"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="mb-0">Não há endividamentos próximos do vencimento.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Documentos Vencidos -->
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-danger">Documentos Vencidos</h6>
+                    <a href="{{ url_for('admin.listar_documentos_vencidos') }}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Ver Todos
+                    </a>
                 </div>
                 <div class="card-body">
                     {% if documentos_vencidos %}
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                            <table class="table table-bordered table-hover datatable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Nome</th>
@@ -171,6 +362,7 @@
                                         <th>Fazenda</th>
                                         <th>Data de Vencimento</th>
                                         <th>Status</th>
+                                        <th>Notificação</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -182,34 +374,34 @@
                                             <td>{{ documento.fazenda.nome }}</td>
                                             <td>{{ documento.data_vencimento.strftime('%d/%m/%Y') }}</td>
                                             <td>
-                                                <span class="badge bg-danger">Vencido</span>
+                                                <span class="badge bg-danger">Vencido há {{ documento.dias_vencido }} dias</span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% if documento.tem_notificacoes %}
+                                                    <i class="fas fa-bell text-success" title="Notificações configuradas"></i>
+                                                {% else %}
+                                                    <i class="fas fa-bell-slash text-muted" title="Sem notificações"></i>
+                                                {% endif %}
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                {% if documento.caminho_arquivo %}
-                                                    <a href="{{ url_for('admin.download_documento', id=documento.id) }}" class="btn btn-sm btn-info">
-                                                        <i class="fas fa-download"></i>
+                                                <div class="btn-group">
+                                                    <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-edit"></i>
                                                     </a>
-                                                {% endif %}
+                                                    {% if documento.caminho_arquivo %}
+                                                        <a href="{{ url_for('documento.download_arquivo', id=documento.id) }}" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-download"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    <a href="{{ url_for('admin.editar_documento', id=documento.id) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-bell"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
-                        </div>
-                        <!-- Paginação Vencidos -->
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span>Página {{ venc_page }} de {{ total_pag_vencidos }}</span>
-                            <div>
-                                {% if venc_page > 1 %}
-                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page, venc_page=venc_page-1) }}" class="btn btn-sm btn-secondary">Anterior</a>
-                                {% endif %}
-                                {% if venc_page < total_pag_vencidos %}
-                                    <a href="{{ url_for('admin.dashboard', prox_page=prox_page, venc_page=venc_page+1) }}" class="btn btn-sm btn-secondary">Próxima</a>
-                                {% endif %}
-                            </div>
                         </div>
                     {% else %}
                         <div class="text-center py-4">
@@ -222,4 +414,203 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de configuração de notificações -->
+<div class="modal fade" id="configurarNotificacoesModal" tabindex="-1" aria-labelledby="configurarNotificacoesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="configurarNotificacoesModalLabel">Configurar Notificações</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="notificacoesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos-tab-pane" type="button">Documentos</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="endividamentos-tab" data-bs-toggle="tab" data-bs-target="#endividamentos-tab-pane" type="button">Endividamentos</button>
+                    </li>
+                </ul>
+                <div class="tab-content pt-3" id="notificacoesTabContent">
+                    <div class="tab-pane fade show active" id="documentos-tab-pane" role="tabpanel" aria-labelledby="documentos-tab" tabindex="0">
+                        <p class="lead">Configurações para notificações de documentos</p>
+                        <div class="mb-3">
+                            <label class="form-label">Prazos padrão para notificações (dias antes do vencimento)</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="docPrazo30" checked>
+                                    <label class="form-check-label" for="docPrazo30">30</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="docPrazo15" checked>
+                                    <label class="form-check-label" for="docPrazo15">15</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="docPrazo7" checked>
+                                    <label class="form-check-label" for="docPrazo7">7</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="docPrazo3" checked>
+                                    <label class="form-check-label" for="docPrazo3">3</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="docPrazo1" checked>
+                                    <label class="form-check-label" for="docPrazo1">1</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="emailPadraoDocumentos" class="form-label">Email padrão para notificações</label>
+                            <input type="email" class="form-control" id="emailPadraoDocumentos" placeholder="email@exemplo.com">
+                            <div class="form-text">Este email será usado por padrão para novos documentos.</div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="endividamentos-tab-pane" role="tabpanel" aria-labelledby="endividamentos-tab" tabindex="0">
+                        <p class="lead">Configurações para notificações de endividamentos</p>
+                        <div class="mb-3">
+                            <label class="form-label">Prazos padrão para notificações (dias antes do vencimento)</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="endPrazo180" checked>
+                                    <label class="form-check-label" for="endPrazo180">180</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="endPrazo90" checked>
+                                    <label class="form-check-label" for="endPrazo90">90</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="endPrazo30" checked>
+                                    <label class="form-check-label" for="endPrazo30">30</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="endPrazo15" checked>
+                                    <label class="form-check-label" for="endPrazo15">15</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="endPrazo7" checked>
+                                    <label class="form-check-label" for="endPrazo7">7</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="emailPadraoEndividamentos" class="form-label">Email padrão para notificações</label>
+                            <input type="email" class="form-control" id="emailPadraoEndividamentos" placeholder="email@exemplo.com">
+                            <div class="form-text">Este email será usado por padrão para novos endividamentos.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary">Salvar Configurações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Elemento para passar dados do backend para JavaScript -->
+<div id="dashboard-data" 
+     data-docs-em-dia="{{ total_documentos - documentos_proximos|length - documentos_vencidos|length }}"
+     data-docs-proximos="{{ documentos_proximos|length }}"
+     data-docs-vencidos="{{ documentos_vencidos|length }}"
+     data-end-em-dia="{{ endividamentos_em_dia }}"
+     data-end-proximos="{{ endividamentos_proximos|length }}"
+     data-end-vencidos="{{ endividamentos_vencidos|length }}"
+     style="display: none;">
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar DataTables
+        const tables = document.querySelectorAll('.datatable');
+        tables.forEach(table => {
+            new DataTable(table, {
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json'
+                },
+                pageLength: 5,
+                lengthMenu: [5, 10, 25],
+                ordering: true,
+                responsive: true
+            });
+        });
+        
+        // Obter dados do elemento HTML (evitando problemas com expressões Jinja no JavaScript)
+        const dashData = document.getElementById('dashboard-data').dataset;
+        
+        // Extrair dados para os gráficos
+        const docsEmDia = parseInt(dashData.docsEmDia) || 0;
+        const docsProximos = parseInt(dashData.docsProximos) || 0;
+        const docsVencidos = parseInt(dashData.docsVencidos) || 0;
+        
+        const endEmDia = parseInt(dashData.endEmDia) || 0;
+        const endProximos = parseInt(dashData.endProximos) || 0;
+        const endVencidos = parseInt(dashData.endVencidos) || 0;
+        
+        // Gráfico de Documentos
+        const docCtx = document.getElementById('documentosChart').getContext('2d');
+        const documentosChart = new Chart(docCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Em dia', 'Próximos ao vencimento', 'Vencidos'],
+                datasets: [{
+                    data: [docsEmDia, docsProximos, docsVencidos],
+                    backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+        
+        // Gráfico de Endividamentos
+        const endCtx = document.getElementById('endividamentosChart').getContext('2d');
+        const endividamentosChart = new Chart(endCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Em dia', 'Próximos ao vencimento', 'Vencidos'],
+                datasets: [{
+                    data: [endEmDia, endProximos, endVencidos],
+                    backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+        
+        // Botão de atualização
+        document.getElementById('refreshDashboard').addEventListener('click', function() {
+            const button = this;
+            const originalHtml = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Atualizando...';
+            
+            // Simular atualização
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        });
+    });
+</script>
 {% endblock %}

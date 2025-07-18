@@ -19,6 +19,8 @@ from src.utils.auditoria import registrar_auditoria
 from src.utils.email_service import (
     EmailService, formatar_email_notificacao, verificar_documentos_vencendo
 )
+from flask import render_template, request, flash, current_app
+from sqlalchemy import func
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -35,45 +37,66 @@ def index():
 def dashboard():
     hoje = date.today()
 
+    # Obter parâmetros de paginação
     prox_page = int(request.args.get("prox_page", 1))
     venc_page = int(request.args.get("venc_page", 1))
     per_page = 10
 
-    docs_proximos_query = Documento.query.filter(
-        Documento.data_vencimento >= hoje
-    ).order_by(Documento.data_vencimento.asc())
-    total_proximos = docs_proximos_query.count()
-    docs_proximos = (
-        docs_proximos_query.offset((prox_page - 1) * per_page).limit(per_page).all()
-    )
-    total_pag_proximos = ceil(total_proximos / per_page) if total_proximos else 1
+    try:
+        # Consultar documentos próximos incluindo todas as colunas necessárias
+        docs_proximos_query = Documento.query.filter(
+            Documento.data_vencimento >= hoje
+        ).order_by(Documento.data_vencimento.asc())
+        
+        total_proximos = docs_proximos_query.count()
+        docs_proximos = (
+            docs_proximos_query.offset((prox_page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        total_pag_proximos = ceil(total_proximos / per_page) if total_proximos else 1
 
-    docs_vencidos_query = Documento.query.filter(
-        Documento.data_vencimento < hoje
-    ).order_by(Documento.data_vencimento.asc())
-    total_vencidos = docs_vencidos_query.count()
-    docs_vencidos = (
-        docs_vencidos_query.offset((venc_page - 1) * per_page).limit(per_page).all()
-    )
-    total_pag_vencidos = ceil(total_vencidos / per_page) if total_vencidos else 1
+        # Consultar documentos vencidos incluindo todas as colunas necessárias
+        docs_vencidos_query = Documento.query.filter(
+            Documento.data_vencimento < hoje
+        ).order_by(Documento.data_vencimento.asc())
+        
+        total_vencidos = docs_vencidos_query.count()
+        docs_vencidos = (
+            docs_vencidos_query.offset((venc_page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        total_pag_vencidos = ceil(total_vencidos / per_page) if total_vencidos else 1
 
-    total_pessoas = Pessoa.query.count()
-    total_fazendas = Fazenda.query.count()
-    total_documentos = Documento.query.count()
+        # Consultas para totais
+        total_pessoas = db.session.query(func.count(Pessoa.id)).scalar()
+        total_fazendas = db.session.query(func.count(Fazenda.id)).scalar()
+        total_documentos = db.session.query(func.count(Documento.id)).scalar()
 
-    return render_template(
-        "admin/index.html",
-        total_pessoas=total_pessoas,
-        total_fazendas=total_fazendas,
-        total_documentos=total_documentos,
-        documentos_proximos=docs_proximos,
-        documentos_vencidos=docs_vencidos,
-        prox_page=prox_page,
-        total_pag_proximos=total_pag_proximos,
-        venc_page=venc_page,
-        total_pag_vencidos=total_pag_vencidos,
-    )
-
+        return render_template(
+            "admin/index.html",
+            total_pessoas=total_pessoas,
+            total_fazendas=total_fazendas,
+            total_documentos=total_documentos,
+            documentos_proximos=docs_proximos,
+            documentos_vencidos=docs_vencidos,
+            prox_page=prox_page,
+            total_pag_proximos=total_pag_proximos,
+            venc_page=venc_page,
+            total_pag_vencidos=total_pag_vencidos,
+            now=datetime.datetime.now()  # Adicionando a variável now aqui
+        )
+    
+    except Exception as e:
+        current_app.logger.error(f"Erro no dashboard: {e}", exc_info=True)
+        flash("Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.", "danger")
+        # Retornar um template alternativo ou versão simplificada do dashboard
+        return render_template(
+            "admin/dashboard_error.html",
+            error=str(e),
+            now=datetime.datetime.now()  # Adicionando now também para o template de erro
+        )
 
 # --- Rotas para Pessoas ---
 @admin_bp.route("/pessoas")

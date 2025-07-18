@@ -1,0 +1,17 @@
+
+{% extends "layouts/base.html" %}
+
+{% block title %}Erro no Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">Erro ao carregar o dashboard!</h4>
+        <p>Ocorreu um erro ao processar sua solicitação:</p>
+        <pre>{{ error }}</pre>
+        <hr>
+        <p class="mb-0">Por favor, tente novamente mais tarde ou contate o administrador do sistema.</p>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">Tentar novamente</a>
+</div>
+{% endblock %}
