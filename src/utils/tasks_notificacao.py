@@ -175,14 +175,12 @@ def criar_tarefas_notificacao(celery):
 
 
 # Funções auxiliares para execução direta (sem Celery)
-def processar_notificacoes_endividamento():
+def verificar_notificacoes_endividamento():
     """Executa diretamente o serviço de notificações de endividamento"""
-    from src.utils.notificacao_endividamento_service import NotificacaoEndividamentoService
-    service = NotificacaoEndividamentoService()
-    return service.verificar_e_enviar_notificacoes()
+    from src.utils.notificacao_endividamento_service import notificacao_endividamento_service
+    return notificacao_endividamento_service.verificar_e_enviar_notificacoes()
 
-def processar_notificacoes_documentos():
+def verificar_notificacoes_documentos():
     """Executa diretamente o serviço de notificações de documentos"""
-    from src.utils.notificacao_documentos_service import NotificacaoDocumentoService
-    service = NotificacaoDocumentoService()
-    return service.verificar_e_enviar_notificacoes()
+    from src.utils.notificacao_documentos_service import notificacao_documento_service
+    return notificacao_documento_service.verificar_e_enviar_notificacoes()

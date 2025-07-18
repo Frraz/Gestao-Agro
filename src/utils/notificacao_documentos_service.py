@@ -204,6 +204,17 @@ class NotificacaoDocumentoService:
 notificacao_documento_service = NotificacaoDocumentoService()
 
 
+# Task decorators para integração com Celery
+def criar_task_verificar_documentos(celery_instance):
+    """Cria a task do Celery para verificação de documentos"""
+    @celery_instance.task(name='src.utils.notificacao_documentos_service.verificar_e_enviar_notificacoes_task')
+    def verificar_e_enviar_notificacoes_task():
+        """Task do Celery para verificar e enviar notificações de documentos"""
+        return notificacao_documento_service.verificar_e_enviar_notificacoes()
+    
+    return verificar_e_enviar_notificacoes_task
+
+
 def processar_notificacoes_documentos():
     """
     Função utilitária para ser usada em agendadores (Celery, cron, etc).

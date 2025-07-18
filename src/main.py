@@ -111,6 +111,16 @@ def create_app(test_config=None):
     # Registrar tarefas de notificação
     criar_tarefas_notificacao(celery)
     
+    # Registrar tasks dos serviços de notificação
+    try:
+        from src.utils.notificacao_documentos_service import criar_task_verificar_documentos
+        from src.utils.notificacao_endividamento_service import criar_task_verificar_endividamentos
+        
+        criar_task_verificar_documentos(celery)
+        criar_task_verificar_endividamentos(celery)
+    except Exception as e:
+        app.logger.warning(f"Erro ao registrar tasks de serviços: {e}")
+    
     # Log de confirmação
     app.logger.info(f"Celery inicializado com broker: {app.config.get('CELERY_BROKER_URL')}")
 

@@ -268,3 +268,25 @@ class NotificacaoEndividamentoService:
         )
 
         return [historico.to_dict() for historico in historicos]
+
+
+# Instância pronta para uso em tasks agendadas
+notificacao_endividamento_service = NotificacaoEndividamentoService()
+
+
+# Task decorators para integração com Celery
+def criar_task_verificar_endividamentos(celery_instance):
+    """Cria a task do Celery para verificação de endividamentos"""
+    @celery_instance.task(name='src.utils.notificacao_endividamento_service.verificar_e_enviar_notificacoes_task')
+    def verificar_e_enviar_notificacoes_task():
+        """Task do Celery para verificar e enviar notificações de endividamentos"""
+        return notificacao_endividamento_service.verificar_e_enviar_notificacoes()
+    
+    return verificar_e_enviar_notificacoes_task
+
+
+def processar_notificacoes_endividamentos():
+    """
+    Função utilitária para ser usada em agendadores (Celery, cron, etc).
+    """
+    return notificacao_endividamento_service.verificar_e_enviar_notificacoes()

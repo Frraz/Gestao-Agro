@@ -16,17 +16,31 @@ from src.main import celery  # Importa APENAS o celery, não a app
 
 # Configuração de timezone
 celery.conf.timezone = "America/Sao_Paulo"
-celery.conf.enable_utc = False
+celery.conf.enable_utc = True  # Usar UTC internamente, mas converter para timezone local
 
 # Agendamento das notificações para 08:00 da manhã todos os dias
 celery.conf.beat_schedule = {
     "verificar-notificacoes-documentos": {
-        "task": "src.utils.notificacao_documentos_service.verificar_e_enviar_notificacoes_task",
+        "task": "tasks.processar_notificacoes_documentos",
         "schedule": crontab(hour=8, minute=0),
     },
     "verificar-notificacoes-endividamento": {
-        "task": "src.utils.notificacao_endividamento_service.verificar_e_enviar_notificacoes_task",
+        "task": "tasks.processar_notificacoes_endividamento",
         "schedule": crontab(hour=8, minute=0),
+    },
+    "verificar-todas-notificacoes": {
+        "task": "tasks.processar_todas_notificacoes",
+        "schedule": crontab(hour=8, minute=0),
+    },
+    # Verificação adicional às 14h
+    "verificar-todas-notificacoes-vespertino": {
+        "task": "tasks.processar_todas_notificacoes",
+        "schedule": crontab(hour=14, minute=0),
+    },
+    # Teste de conectividade a cada 5 minutos (apenas em desenvolvimento)
+    "teste-sistema-notificacoes": {
+        "task": "tasks.test_notificacoes",
+        "schedule": crontab(minute="*/5"),  # A cada 5 minutos
     },
     # Adicione outras tasks recorrentes aqui, se necessário
 }
