@@ -1,139 +1,183 @@
+<!-- src/templates/admin/endividamentos/notificacoes.html -->
+
 {% extends "layouts/base.html" %}
 
 {% block title %}Notificações - {{ endividamento.banco }} - {{ endividamento.numero_proposta }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.index') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('endividamento.listar') }}">Endividamentos</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('endividamento.visualizar', id=endividamento.id) }}">{{ endividamento.banco }}</a></li>
+            <li class="breadcrumb-item active">Notificações</li>
+        </ol>
+    </nav>
+
     <div class="row">
-        <div class="col-12">
+        <!-- Coluna Principal -->
+        <div class="col-lg-8">
+            <!-- Card de Configuração -->
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Configurar Notificações de Endividamento</h3>
-                    <div class="card-tools">
-                        <a href="{{ url_for('endividamento.visualizar', id=endividamento.id) }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Voltar
-                        </a>
-                    </div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-bell"></i> Configurar Notificações
+                    </h3>
+                    <a href="{{ url_for('endividamento.visualizar', id=endividamento.id) }}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
                 </div>
                 
                 <div class="card-body">
-                    <!-- Informações do endividamento -->
-                    <div class="alert alert-info">
-                        <h5><i class="fas fa-info-circle"></i> Endividamento</h5>
-                        <p class="mb-1"><strong>Banco:</strong> {{ endividamento.banco }}</p>
-                        <p class="mb-1"><strong>Número da Proposta:</strong> {{ endividamento.numero_proposta }}</p>
-                        <p class="mb-1"><strong>Data de Vencimento:</strong> {{ endividamento.data_vencimento_final.strftime('%d/%m/%Y') }}</p>
-                        {% if endividamento.valor_operacao %}
-                        <p class="mb-0"><strong>Valor da Operação:</strong> R$ {{ "{:,.2f}".format(endividamento.valor_operacao).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
-                        {% endif %}
+                    <!-- Alerta Informativo -->
+                    <div class="alert alert-info alert-dismissible fade show">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle"></i> Sistema de Notificações Automáticas
+                        </h5>
+                        <p class="mb-2">
+                            As notificações serão enviadas automaticamente nos seguintes prazos antes do vencimento:
+                            <strong>180, 90, 60, 30, 15, 7, 3 e 1 dia(s)</strong>.
+                        </p>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Vencimento:</strong> {{ endividamento.data_vencimento_final.strftime('%d/%m/%Y') }}
+                            {% set dias_restantes = (endividamento.data_vencimento_final - hoje).days %}
+                            {% if dias_restantes > 0 %}
+                                <span class="badge bg-info ms-2">{{ dias_restantes }} dias restantes</span>
+                            {% elif dias_restantes == 0 %}
+                                <span class="badge bg-warning ms-2">Vence hoje!</span>
+                            {% else %}
+                                <span class="badge bg-danger ms-2">Vencido há {{ -dias_restantes }} dias</span>
+                            {% endif %}
+                        </p>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     
-                    <!-- Formulário de configuração -->
-                    <form method="POST">
+                    <!-- Formulário -->
+                    <form method="POST" id="formNotificacoes">
                         {{ form.hidden_tag() }}
                         
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    {{ form.emails.label(class="form-label") }}
-                                    {{ form.emails(class="form-control", rows="6") }}
-                                    {% if form.emails.errors %}
-                                        <div class="text-danger">{{ form.emails.errors[0] }}</div>
-                                    {% endif %}
-                                    <div class="form-text">{{ form.emails.description }}</div>
+                        <div class="mb-4">
+                            {{ form.emails.label(class="form-label fw-bold") }}
+                            {{ form.emails(class="form-control", rows="6", placeholder="exemplo@email.com\noutro@email.com") }}
+                            {% if form.emails.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.emails.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">{{ form.emails.description }}</div>
+                            
+                            <!-- Emails sugeridos -->
+                            {% if endividamento.pessoas %}
+                            <div class="mt-2">
+                                <small class="text-muted">Emails das pessoas vinculadas:</small>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    {% for pessoa in endividamento.pessoas %}
+                                        {% if pessoa.email %}
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                                onclick="adicionarEmail('{{ pessoa.email }}')">
+                                            <i class="fas fa-plus"></i> {{ pessoa.email }}
+                                        </button>
+                                        {% endif %}
+                                    {% endfor %}
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Intervalos de Notificação</label>
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <ul class="list-unstyled mb-0">
-                                                <li><i class="fas fa-clock text-primary"></i> 6 meses antes</li>
-                                                <li><i class="fas fa-clock text-primary"></i> 3 meses antes</li>
-                                                <li><i class="fas fa-clock text-warning"></i> 30 dias antes</li>
-                                                <li><i class="fas fa-clock text-warning"></i> 15 dias antes</li>
-                                                <li><i class="fas fa-clock text-danger"></i> 7 dias antes</li>
-                                                <li><i class="fas fa-clock text-danger"></i> 3 dias antes</li>
-                                                <li><i class="fas fa-clock text-danger"></i> 1 dia antes</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            {% endif %}
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check mb-3">
-                                    {{ form.ativo(class="form-check-input") }}
-                                    {{ form.ativo.label(class="form-check-label") }}
-                                    <div class="form-text">{{ form.ativo.description }}</div>
-                                </div>
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.ativo(class="form-check-input") }}
+                                {{ form.ativo.label(class="form-check-label fw-bold") }}
                             </div>
+                            <div class="form-text">{{ form.ativo.description }}</div>
                         </div>
                         
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Salvar Configurações
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="testarNotificacoes()">
-                                <i class="fas fa-paper-plane"></i> Testar Notificações
+                            <button type="button" class="btn btn-outline-info" onclick="testarEmail()">
+                                <i class="fas fa-envelope"></i> Enviar Email de Teste
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="atualizarStatus()">
+                                <i class="fas fa-sync"></i> Atualizar Status
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
             
-            <!-- Histórico de notificações -->
+            <!-- Card de Histórico -->
             {% if historico %}
             <div class="card mt-4">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Histórico de Notificações</h5>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history"></i> Histórico de Notificações Enviadas
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-sm table-hover">
                             <thead>
                                 <tr>
                                     <th>Data/Hora</th>
                                     <th>Tipo</th>
-                                    <th>E-mails</th>
+                                    <th>Destinatários</th>
                                     <th>Status</th>
-                                    <th>Observações</th>
+                                    <th>Detalhes</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in historico %}
+                                {% for item in historico[:20] %}
                                 <tr>
-                                    <td>{{ item.data_envio[:19].replace('T', ' ') if item.data_envio else '-' }}</td>
                                     <td>
-                                        {% set tipo_map = {
-                                            '6_meses': '6 meses antes',
-                                            '3_meses': '3 meses antes',
-                                            '30_dias': '30 dias antes',
-                                            '15_dias': '15 dias antes',
-                                            '7_dias': '7 dias antes',
-                                            '3_dias': '3 dias antes',
-                                            '1_dia': '1 dia antes'
-                                        } %}
-                                        {{ tipo_map.get(item.tipo_notificacao, item.tipo_notificacao) }}
+                                        <small>{{ item.data_envio.strftime('%d/%m/%Y %H:%M') if item.data_envio else '-' }}</small>
                                     </td>
                                     <td>
-                                        {% for email in item.emails_enviados %}
-                                            <span class="badge bg-secondary">{{ email }}</span>
-                                        {% endfor %}
+                                        {% set tipo_map = {
+                                            '180_dias': '6 meses',
+                                            '90_dias': '3 meses',
+                                            '60_dias': '2 meses',
+                                            '30_dias': '30 dias',
+                                            '15_dias': '15 dias',
+                                            '7_dias': '7 dias',
+                                            '3_dias': '3 dias',
+                                            '1_dia': '1 dia'
+                                        } %}
+                                        <span class="badge bg-secondary">
+                                            {{ tipo_map.get(item.tipo_notificacao, item.tipo_notificacao) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% set emails = item.emails_enviados %}
+                                            {% if emails|length > 2 %}
+                                                {{ emails[0] }} <span class="text-muted">+{{ emails|length - 1 }}</span>
+                                            {% else %}
+                                                {{ ', '.join(emails) }}
+                                            {% endif %}
+                                        </small>
                                     </td>
                                     <td>
                                         {% if item.sucesso %}
-                                            <span class="badge bg-success">Enviado</span>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Enviado
+                                            </span>
                                         {% else %}
-                                            <span class="badge bg-danger">Erro</span>
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times"></i> Falha
+                                            </span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if item.erro_mensagem %}
-                                            <small class="text-danger">{{ item.erro_mensagem }}</small>
+                                            <small class="text-danger" title="{{ item.erro_mensagem }}">
+                                                <i class="fas fa-exclamation-circle"></i> Ver erro
+                                            </small>
                                         {% else %}
                                             <small class="text-muted">-</small>
                                         {% endif %}
@@ -147,34 +191,341 @@
             </div>
             {% endif %}
         </div>
+        
+        <!-- Coluna Lateral -->
+        <div class="col-lg-4">
+            <!-- Card de Status -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line"></i> Status das Notificações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="fw-bold text-primary display-6" data-status="agendadas">
+                                {{ stats.total_agendadas }}
+                            </div>
+                            <small class="text-muted">Agendadas</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="fw-bold text-success display-6" data-status="enviadas">
+                                {{ stats.total_enviadas }}
+                            </div>
+                            <small class="text-muted">Enviadas</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="fw-bold text-warning display-6" data-status="pendentes">
+                                {{ notificacoes_pendentes|length }}
+                            </div>
+                            <small class="text-muted">Pendentes</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="fw-bold text-danger display-6" data-status="falhas">
+                                {{ stats.total_falhas }}
+                            </div>
+                            <small class="text-muted">Com Falha</small>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <a href="{{ url_for('endividamento.status_notificacoes', id=endividamento.id) }}" 
+                       class="btn btn-sm btn-outline-primary w-100" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Ver Status Detalhado (JSON)
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Card de Próximas Notificações -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock"></i> Próximas Notificações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if proximas_notificacoes %}
+                        <ul class="list-unstyled mb-0">
+                            {% for notif in proximas_notificacoes[:5] %}
+                            <li class="mb-3 pb-3 border-bottom">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="text-primary">{{ notif.prazo }} dias antes</strong><br>
+                                        <small class="text-muted">
+                                            {{ notif.envio.strftime('%d/%m/%Y %H:%M') }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted">
+                                            {{ notif.restante_texto }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">Nenhuma notificação programada</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Card de Notificações com Falha -->
+            {% if notificacoes_falhas %}
+            <div class="card mb-3 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Notificações com Falha
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        {% for notif in notificacoes_falhas[:3] %}
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small>
+                                    <strong>{{ notif.tipo_notificacao }}</strong><br>
+                                    Tentativas: {{ notif.tentativas }}/3
+                                </small>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="reenviarNotificacao({{ notif.id }})">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </div>
+                            {% if notif.erro_mensagem %}
+                            <small class="text-danger">{{ notif.erro_mensagem[:50] }}...</small>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Card de Informações -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> Informações do Endividamento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt>Banco</dt>
+                        <dd>{{ endividamento.banco }}</dd>
+                        
+                        <dt>Proposta</dt>
+                        <dd>{{ endividamento.numero_proposta }}</dd>
+                        
+                        <dt>Valor</dt>
+                        <dd>
+                            {% if endividamento.valor_operacao %}
+                                R$ {{ "{:,.2f}".format(endividamento.valor_operacao).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            {% else %}
+                                <span class="text-muted">Não informado</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt>Taxa de Juros</dt>
+                        <dd>{{ endividamento.taxa_juros }}% {{ 'a.a.' if endividamento.tipo_taxa_juros == 'ano' else 'a.m.' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
+
+<!-- Modal de Erro -->
+<div class="modal fade" id="modalErro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Erro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="textoErro"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dados para JavaScript -->
+<div id="notificacao-data" 
+     data-endividamento-id="{{ endividamento.id }}"
+     data-csrf-token="{{ csrf_token() if csrf_token is defined else '' }}"
+     style="display: none;">
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function testarNotificacoes() {
-    if (confirm('Deseja processar todas as notificações pendentes do sistema? Esta ação enviará e-mails reais.')) {
-        fetch('/endividamentos/api/processar-notificacoes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.sucesso) {
-                alert('Sucesso: ' + data.mensagem);
-                location.reload();
-            } else {
-                alert('Erro: ' + data.erro);
-            }
-        })
-        .catch(error => {
-            alert('Erro ao processar notificações: ' + error);
-        });
+// Adicionar email ao textarea
+function adicionarEmail(email) {
+    const textarea = document.getElementById('emails');
+    const emails = textarea.value.trim().split('\n').filter(e => e);
+    
+    if (!emails.includes(email)) {
+        emails.push(email);
+        textarea.value = emails.join('\n');
+        
+        // Feedback visual
+        const btn = event.target;
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        btn.innerHTML = '<i class="fas fa-check"></i> Adicionado';
+        
+        setTimeout(() => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+            btn.innerHTML = '<i class="fas fa-plus"></i> ' + email;
+        }, 2000);
     }
 }
+
+// Obter dados do elemento oculto para evitar problemas com Jinja no JS
+const notifData = document.getElementById('notificacao-data').dataset;
+const endividamentoId = notifData.endividamentoId;
+const csrfToken = notifData.csrfToken;
+
+// Testar envio de email
+function testarEmail() {
+    const emails = document.getElementById('emails').value.trim();
+    
+    if (!emails) {
+        alert('Por favor, configure pelo menos um email antes de testar.');
+        return;
+    }
+    
+    if (!confirm('Deseja enviar um email de teste para os endereços configurados?')) {
+        return;
+    }
+    
+    // Mostrar loading
+    const btn = event.target;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+    
+    fetch(`/endividamentos/api/teste-email/${endividamentoId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            alert('Email de teste enviado com sucesso!\n\nDestinatários: ' + data.destinatarios.join(', '));
+        } else {
+            alert('Erro ao enviar email de teste:\n' + data.erro);
+        }
+    })
+    .catch(error => {
+        alert('Erro ao processar requisição: ' + error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    });
+}
+
+// Atualizar status das notificações
+function atualizarStatus() {
+    fetch(`/endividamentos/${endividamentoId}/notificacoes/status`)
+        .then(response => response.json())
+        .then(data => {
+            // Atualizar contadores
+            document.querySelector('[data-status="pendentes"]').textContent = 
+                data.notificacoes.pendentes.length;
+            document.querySelector('[data-status="enviadas"]').textContent = 
+                data.notificacoes.enviadas.length;
+            document.querySelector('[data-status="falhas"]').textContent = 
+                data.notificacoes.falhas.length;
+            
+            // Feedback visual
+            const btn = event.target;
+            btn.classList.add('btn-success');
+            btn.innerHTML = '<i class="fas fa-check"></i> Atualizado';
+            
+            setTimeout(() => {
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-secondary');
+                btn.innerHTML = '<i class="fas fa-sync"></i> Atualizar Status';
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar status:', error);
+        });
+}
+
+// Reenviar notificação com falha
+function reenviarNotificacao(notifId) {
+    if (!confirm('Deseja tentar reenviar esta notificação?')) {
+        return;
+    }
+    
+    fetch(`/endividamentos/${endividamentoId}/notificacoes/reenviar/${notifId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            alert('Notificação reenviada com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro ao reenviar notificação:\n' + data.erro);
+        }
+    })
+    .catch(error => {
+        alert('Erro ao processar requisição: ' + error);
+    });
+}
+
+// Auto-atualizar status a cada 30 segundos se a página estiver visível
+let intervalId;
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(intervalId);
+    } else {
+        atualizarStatus();
+        intervalId = setInterval(atualizarStatus, 30000);
+    }
+});
+
+// Atualizar ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar se há emails para sugerir
+    const textarea = document.getElementById('emails');
+    if (textarea && !textarea.value.trim()) {
+        const emailsSugeridos = document.querySelectorAll('[onclick^="adicionarEmail"]');
+        if (emailsSugeridos.length > 0) {
+            const toast = document.createElement('div');
+            toast.className = 'toast show position-fixed bottom-0 end-0 m-3';
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <strong class="me-auto">Dica</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    Clique nos emails acima para adicioná-los à lista de notificação.
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 5000);
+        }
+    }
+});
 </script>
 {% endblock %}
-

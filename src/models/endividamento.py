@@ -1,21 +1,32 @@
 # /src/models/endividamento.py
 
+# /src/models/endividamento.py
+
 """
 Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda, vínculo com área e parcelas.
 
 Inclui:
 - Endividamento: Operação financeira atrelada a pessoas, fazendas e áreas, com parcelas e notificações.
 - EndividamentoFazenda: Associação entre endividamento e fazenda (opcional, caso use toda a fazenda).
-- EndividamentoArea: Associação entre endividamento e áreas específicas da fazenda.
 - Parcela: Detalhes de cada parcela do endividamento.
 """
 
-from datetime import date, datetime
-from typing import Optional
+from datetime import date, datetime, timedelta
+from typing import Optional, List, Dict, Any, Union
+
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from src.models.db import db
+# Importar a classe EndividamentoArea em vez de redefini-la
+from src.models.endividamento_area import EndividamentoArea
+
 
 class Endividamento(db.Model):
+    """
+    Modelo de endividamento financeiro.
+    
+    Representa uma operação de crédito/endividamento com banco, parcelas e notificações.
+    """
     __tablename__ = "endividamento"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -58,7 +69,13 @@ class Endividamento(db.Model):
     def __repr__(self) -> str:
         return f"<Endividamento {self.banco} - {self.numero_proposta}>"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converte o endividamento para um dicionário.
+        
+        Returns:
+            Dicionário com os dados do endividamento
+        """
         return {
             "id": self.id,
             "banco": self.banco,
@@ -81,6 +98,124 @@ class Endividamento(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
+    @hybrid_property
+    def esta_vencido(self) -> bool:
+        """
+        Verifica se o endividamento está vencido.
+        
+        Returns:
+            True se a data de vencimento é anterior à data atual
+        """
+        return self.data_vencimento_final < date.today() if self.data_vencimento_final else False
+
+    @hybrid_property
+    def dias_ate_vencimento(self) -> Optional[int]:
+        """
+        Calcula quantos dias faltam para o vencimento.
+        
+        Returns:
+            Número de dias até o vencimento ou None se não houver data de vencimento
+        """
+        if not self.data_vencimento_final:
+            return None
+        
+        delta = self.data_vencimento_final - date.today()
+        return delta.days
+    
+    @hybrid_property
+    def parcelas_pendentes(self) -> List["Parcela"]:
+        """
+        Obtém as parcelas pendentes (não pagas).
+        
+        Returns:
+            Lista de parcelas não pagas
+        """
+        return [p for p in self.parcelas if not p.pago]
+    
+    @hybrid_property
+    def parcelas_pagas(self) -> List["Parcela"]:
+        """
+        Obtém as parcelas já pagas.
+        
+        Returns:
+            Lista de parcelas pagas
+        """
+        return [p for p in self.parcelas if p.pago]
+
+    @hybrid_property
+    def proxima_parcela(self) -> Optional["Parcela"]:
+        """
+        Obtém a próxima parcela a vencer.
+        
+        Returns:
+            Próxima parcela a vencer ou None se não houver
+        """
+        hoje = date.today()
+        parcelas_futuras = [p for p in self.parcelas if not p.pago and p.data_vencimento >= hoje]
+        return min(parcelas_futuras, key=lambda p: p.data_vencimento) if parcelas_futuras else None
+    
+    @hybrid_property
+    def valor_pendente(self) -> float:
+        """
+        Calcula o valor total ainda pendente de pagamento.
+        
+        Returns:
+            Soma dos valores das parcelas não pagas
+        """
+        return sum(float(p.valor) for p in self.parcelas_pendentes)
+
+    @hybrid_property
+    def valor_pago(self) -> float:
+        """
+        Calcula o valor total já pago.
+        
+        Returns:
+            Soma dos valores das parcelas pagas
+        """
+        return sum(float(p.valor_pago or p.valor) for p in self.parcelas_pagas)
+
+    def obter_config_notificacao(self) -> Dict[str, Any]:
+        """
+        Obtém a configuração de notificação atual.
+        
+        Returns:
+            Dicionário com a configuração de notificação
+        """
+        config = next((n for n in self.notificacoes if n.tipo_notificacao == 'config' and n.ativo), None)
+        
+        if not config:
+            return {
+                "ativo": False,
+                "emails": [],
+                "ultima_atualizacao": None
+            }
+        
+        emails = []
+        try:
+            if config.emails:
+                if isinstance(config.emails, str):
+                    import json
+                    emails = json.loads(config.emails)
+                else:
+                    emails = config.emails
+        except Exception:
+            emails = []
+            
+        return {
+            "ativo": config.ativo,
+            "emails": emails,
+            "ultima_atualizacao": config.updated_at
+        }
+        
+    def tem_notificacoes_ativas(self) -> bool:
+        """
+        Verifica se o endividamento possui notificações ativas.
+        
+        Returns:
+            True se existem notificações ativas configuradas
+        """
+        return any(n for n in self.notificacoes if n.ativo and n.tipo_notificacao == 'config')
+
 
 # Tabela de associação para relacionamento many-to-many entre Endividamento e Pessoa
 endividamento_pessoa = db.Table(
@@ -96,6 +231,12 @@ endividamento_pessoa = db.Table(
 
 
 class EndividamentoFazenda(db.Model):
+    """
+    Modelo de vínculo entre endividamento e fazenda.
+    
+    Representa uma associação entre um endividamento e uma fazenda,
+    podendo ser do tipo 'objeto_credito' (área financiada) ou 'garantia'.
+    """
     __tablename__ = "endividamento_fazenda"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -117,7 +258,13 @@ class EndividamentoFazenda(db.Model):
     def __repr__(self) -> str:
         return f'<EndividamentoFazenda {self.tipo} - {self.fazenda.nome if self.fazenda else "Descrição livre"}>'
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converte o vínculo de fazenda para um dicionário.
+        
+        Returns:
+            Dicionário com os dados do vínculo
+        """
         return {
             "id": self.id,
             "endividamento_id": self.endividamento_id,
@@ -130,6 +277,12 @@ class EndividamentoFazenda(db.Model):
 
 
 class Parcela(db.Model):
+    """
+    Modelo de parcela de endividamento.
+    
+    Representa uma parcela a ser paga de um endividamento,
+    contendo data de vencimento, valor, status de pagamento e observações.
+    """
     __tablename__ = "parcela"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -148,7 +301,13 @@ class Parcela(db.Model):
     def __repr__(self) -> str:
         return f"<Parcela {self.data_vencimento} - R$ {self.valor}>"
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converte a parcela para um dicionário.
+        
+        Returns:
+            Dicionário com os dados da parcela
+        """
         return {
             "id": self.id,
             "endividamento_id": self.endividamento_id,
@@ -163,3 +322,24 @@ class Parcela(db.Model):
             "valor_pago": float(self.valor_pago) if self.valor_pago else None,
             "observacoes": self.observacoes,
         }
+    
+    @hybrid_property
+    def esta_vencido(self) -> bool:
+        """
+        Verifica se a parcela está vencida.
+        
+        Returns:
+            True se a parcela está vencida e não paga
+        """
+        return not self.pago and self.data_vencimento < date.today()
+    
+    @hybrid_property
+    def dias_ate_vencimento(self) -> int:
+        """
+        Calcula quantos dias faltam para o vencimento da parcela.
+        
+        Returns:
+            Número de dias até o vencimento (negativo se vencida)
+        """
+        delta = self.data_vencimento - date.today()
+        return delta.days

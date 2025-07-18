@@ -2,21 +2,35 @@
 {% set alerta_borda = {'danger': '#f5c2c7', 'warning': '#ffecb5', 'info': '#bee5eb'}[classe_alerta] %}
 {% set alerta_texto = {'danger': '#842029', 'warning': '#664d03', 'info': '#055160'}[classe_alerta] %}
 {% set icone = {'danger': '🚨', 'warning': '⚠️', 'info': '🔔'}[classe_alerta] %}
+<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="x-apple-disable-message-reformatting">
     <title>Notificação de Vencimento</title>
     <style>
-      body { font-family: Arial, sans-serif; background: #f6f8fa; margin: 0; padding: 0; }
-      .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; overflow: hidden; }
+      body { font-family: Arial, Helvetica, sans-serif; background: #f6f8fa; margin: 0; padding: 0; -webkit-text-size-adjust: none; -ms-text-size-adjust: none; }
+      .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden; }
       .header { background: #128C7E; color: #fff; padding: 22px 20px 12px 20px; text-align: center; border-radius: 8px 8px 0 0; }
       .content { padding: 24px 20px 12px 20px; color: #333; }
-      .alert { background: {{ alerta_cor }}; color: {{ alerta_texto }}; border: 1px solid {{ alerta_borda }}; padding: 16px; border-radius: 4px; margin-bottom: 20px; text-align:center;}
+      .alert { padding: 16px; border-radius: 4px; margin-bottom: 20px; text-align: center; }
       .footer { background: #f8f9fa; font-size: 12px; color: #888; text-align: center; padding: 16px 20px; border-top: 1px solid #eee; border-radius: 0 0 8px 8px; }
-      ul { padding-left: 18px; }
-      li { margin-bottom: 4px; }
+      .action-button { display: inline-block; background: #128C7E; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 15px; font-weight: bold; }
+      .details-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+      .details-table td { padding: 8px; border-bottom: 1px solid #eee; }
+      .details-table tr:last-child td { border-bottom: none; }
+      .details-table td:first-child { font-weight: bold; width: 40%; }
+      ul { padding-left: 18px; margin: 12px 0; }
+      li { margin-bottom: 8px; line-height: 1.4; }
       h2 { margin: 0 0 12px 0; }
       h4 { margin: 22px 0 12px 0;}
+      
+      /* Para clientes de email com suporte limitado */
+      @media only screen and (max-width: 480px) {
+        .container { width: 100% !important; margin: 0 !important; border-radius: 0 !important; }
+        .header, .footer { border-radius: 0 !important; }
+      }
     </style>
   </head>
   <body>
@@ -25,7 +39,7 @@
         <h2>Sistema de Gestão Agrícola</h2>
       </div>
       <div class="content">
-        <div class="alert">
+        <div class="alert" style="background-color: {{ alerta_cor }}; color: {{ alerta_texto }}; border: 1px solid {{ alerta_borda }};">
           <h3 style="margin-top:0;">{{ icone }} {{ nivel_urgencia }}: {{ tipo_objeto|default("Documento") }} prestes a vencer</h3>
           <p>
             {% if responsavel %}Olá, <b>{{ responsavel }}</b>!<br>{% endif %}
@@ -35,20 +49,68 @@
           <p style="font-size: 15px; color: #555;"><em>Você optou por ser avisado com <b>{{ dias_configurados }}</b> dias de antecedência.</em></p>
           {% endif %}
         </div>
+        
         <h4>Detalhes:</h4>
-        <ul>
-          <li><b>Nome:</b> {{ nome_documento }}</li>
-          <li><b>Tipo:</b> {{ tipo_documento }}</li>
-          <li><b>Data de Emissão:</b> {{ data_emissao }}</li>
-          <li><b>Data de Vencimento:</b> {{ data_vencimento }}</li>
-          <li><b>{{ tipo_entidade }} Relacionada:</b> {{ nome_entidade }}</li>
-        </ul>
+        <table class="details-table">
+          <tr>
+            <td>Nome:</td>
+            <td>{{ nome_documento }}</td>
+          </tr>
+          <tr>
+            <td>Tipo:</td>
+            <td>{{ tipo_documento }}</td>
+          </tr>
+          <tr>
+            <td>Data de Emissão:</td>
+            <td>{{ data_emissao }}</td>
+          </tr>
+          <tr>
+            <td>Data de Vencimento:</td>
+            <td><strong>{{ data_vencimento }}</strong></td>
+          </tr>
+          <tr>
+            <td>{{ tipo_entidade }} Relacionada:</td>
+            <td>{{ nome_entidade }}</td>
+          </tr>
+          {% if valor %}
+          <tr>
+            <td>Valor:</td>
+            <td>R$ {{ valor }}</td>
+          </tr>
+          {% endif %}
+          {% if observacoes %}
+          <tr>
+            <td>Observações:</td>
+            <td>{{ observacoes }}</td>
+          </tr>
+          {% endif %}
+        </table>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          {% if url_acesso %}
+          <a href="{{ url_acesso }}" class="action-button" style="color: white;">Acessar no Sistema</a>
+          {% endif %}
+        </div>
+        
+        <div style="margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #128C7E; font-size: 14px;">
+          <p style="margin: 0;"><strong>Próximas notificações:</strong></p>
+          {% if proximas_notificacoes %}
+            <ul style="margin-top: 5px; padding-left: 20px;">
+            {% for notif in proximas_notificacoes %}
+              <li>{{ notif.dias_restantes }} dias antes ({{ notif.data }})</li>
+            {% endfor %}
+            </ul>
+          {% else %}
+            <p style="margin-top: 5px;">Não há mais notificações programadas para este item.</p>
+          {% endif %}
+        </div>
       </div>
+      
       <div class="footer">
-        Esta é uma mensagem automática do Sistema de Gestão Agrícola.<br>
-        Não responda a este e-mail.<br>
-        Dúvidas? Contate o suporte: <a href="mailto:ferzion.dev@gmail.com">ferzion.dev@gmail.com</a><br>
-        © {{ ano_atual }} ferzion. Todos os direitos reservados.
+        <p>Esta é uma mensagem automática do Sistema de Gestão Agrícola.</p>
+        <p>Não responda a este e-mail.</p>
+        <p>Dúvidas? Contate o suporte: <a href="mailto:ferzion.dev@gmail.com">ferzion.dev@gmail.com</a></p>
+        <p>© {{ ano_atual|default(2023) }} ferzion. Todos os direitos reservados.</p>
       </div>
     </div>
   </body>
