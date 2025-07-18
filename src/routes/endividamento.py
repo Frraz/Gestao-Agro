@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple, Union
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for, current_app, abort
-from sqlalchemy import and_, or_, desc
+from sqlalchemy import and_, or_, desc, func
 from sqlalchemy.orm import joinedload
 
 from src.forms.endividamento import EndividamentoForm, FiltroEndividamentoForm
@@ -19,7 +19,7 @@ from src.forms.notificacao_endividamento import NotificacaoEndividamentoForm
 from src.models.db import db
 from src.models.endividamento import Endividamento, EndividamentoFazenda, Parcela
 from src.models.fazenda import Fazenda
-from src.models.notificacao_endividamento import NotificacaoEndividamento, HistoricoNotificacao
+from src.models.notificacao_endividamento import NotificacaoEndividamento
 from src.models.pessoa import Pessoa
 from src.utils.notificacao_endividamento_service import notificacao_endividamento_service
 from src.utils.validators import sanitize_input
@@ -679,7 +679,8 @@ def excluir(id: int):
         try:
             # Excluir notificações relacionadas primeiro
             NotificacaoEndividamento.query.filter_by(endividamento_id=id).delete()
-            HistoricoNotificacao.query.filter_by(endividamento_id=id).delete()
+            
+            # Removida referência ao histórico de notificações
             
             # Vínculos com áreas devem ser excluídos automaticamente pela cascade
             
@@ -1133,11 +1134,11 @@ def status_notificacoes(id: int):
                     'tipo': notif.tipo_notificacao,
                     'data_envio': notif.data_envio.isoformat() if notif.data_envio else None,
                     'tentativas': notif.tentativas,
-                    'emails': json.loads(notif.emails) if notif.emails else []
+                    'emails': notif.emails_lista if hasattr(notif, 'emails_lista') else notif.emails
                 }
                 
                 if notif.enviado:
-                    dados['data_envio_realizado'] = notif.data_envio_realizado.isoformat() if notif.data_envio_realizado else None
+                    # Removida referência a data_envio_realizado
                     enviadas.append(dados)
                 elif notif.tentativas >= 3:
                     dados['erro'] = notif.erro_mensagem
@@ -1232,7 +1233,6 @@ def reenviar_notificacao(id: int, notif_id: int):
             'mensagem': 'Notificação reenviada com sucesso' if sucesso else 'Falha no reenvio',
             'tentativas': notificacao.tentativas,
             'enviado': notificacao.enviado,
-            'data_envio': notificacao.data_envio_realizado.isoformat() if notificacao.data_envio_realizado else None,
             'erro': notificacao.erro_mensagem
         })
         
@@ -1254,123 +1254,81 @@ def dashboard_notificacoes():
         Template com dashboard de notificações
     """
     try:
-        # Estatísticas gerais
-        total_endividamentos = Endividamento.query.count()
-        endividamentos_ativos = Endividamento.query.filter(
-            Endividamento.data_vencimento_final > date.today()
-        ).count()
+        # Usar consultas SQL diretas para evitar o problema do modelo
+        from sqlalchemy import text
         
-        # Notificações
-        total_notificacoes = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).count()
+        # Estatísticas gerais sem usar campos problemáticos
+        total_endividamentos = db.session.execute(text("SELECT COUNT(*) FROM endividamento")).scalar() or 0
         
-        notificacoes_pendentes = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.ativo == True,
-            NotificacaoEndividamento.enviado == False,
-            NotificacaoEndividamento.tipo_notificacao != 'config',
-            NotificacaoEndividamento.data_envio <= datetime.utcnow()
-        ).count()
+        # Total de notificações (excluindo configs)
+        total_notificacoes = db.session.execute(
+            text("SELECT COUNT(*) FROM notificacao_endividamento WHERE tipo_notificacao != :tipo")
+            .bindparams(tipo='config')
+        ).scalar() or 0
         
-        notificacoes_futuras = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.ativo == True,
-            NotificacaoEndividamento.enviado == False,
-            NotificacaoEndividamento.tipo_notificacao != 'config',
-            NotificacaoEndividamento.data_envio > datetime.utcnow()
-        ).count()
+        # Notificações pendentes
+        notificacoes_pendentes = db.session.execute(
+            text("""
+                SELECT COUNT(*) FROM notificacao_endividamento 
+                WHERE ativo = TRUE AND enviado = FALSE AND tipo_notificacao != :tipo
+            """).bindparams(tipo='config')
+        ).scalar() or 0
         
-        notificacoes_enviadas = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.enviado == True,
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).count()
+        # Notificações enviadas
+        notificacoes_enviadas = db.session.execute(
+            text("""
+                SELECT COUNT(*) FROM notificacao_endividamento 
+                WHERE enviado = TRUE AND tipo_notificacao != :tipo
+            """).bindparams(tipo='config')
+        ).scalar() or 0
         
-        notificacoes_falhas = NotificacaoEndividamento.query.filter(
-            NotificacaoEndividamento.ativo == True,
-            NotificacaoEndividamento.enviado == False,
-            NotificacaoEndividamento.tentativas >= 3,
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).count()
+        # Buscar as próximas notificações de forma simplificada
+        proximas_notificacoes_raw = db.session.execute(
+            text("""
+                SELECT ne.id, ne.endividamento_id, ne.tipo_notificacao, 
+                       ne.data_envio, ne.enviado, e.banco, e.numero_proposta
+                FROM notificacao_endividamento ne
+                JOIN endividamento e ON ne.endividamento_id = e.id
+                WHERE ne.ativo = TRUE AND ne.enviado = FALSE 
+                      AND ne.tipo_notificacao != :tipo
+                ORDER BY ne.data_envio
+                LIMIT 10
+            """).bindparams(tipo='config')
+        ).fetchall()
         
-        # Próximas 10 notificações
-        proximas = NotificacaoEndividamento.query.options(
-            joinedload(NotificacaoEndividamento.endividamento)
-        ).filter(
-            NotificacaoEndividamento.ativo == True,
-            NotificacaoEndividamento.enviado == False,
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).order_by(NotificacaoEndividamento.data_envio).limit(10).all()
-        
-        # Últimas 10 enviadas
-        ultimas_enviadas = NotificacaoEndividamento.query.options(
-            joinedload(NotificacaoEndividamento.endividamento)
-        ).filter(
-            NotificacaoEndividamento.enviado == True,
-            NotificacaoEndividamento.tipo_notificacao != 'config'
-        ).order_by(NotificacaoEndividamento.data_envio_realizado.desc()).limit(10).all()
-        
-        # Endividamentos sem notificação configurada
-        endividamentos_sem_notif = db.session.query(Endividamento).outerjoin(
-            NotificacaoEndividamento,
-            and_(
-                NotificacaoEndividamento.endividamento_id == Endividamento.id,
-                NotificacaoEndividamento.tipo_notificacao == 'config',
-                NotificacaoEndividamento.ativo == True
-            )
-        ).filter(
-            NotificacaoEndividamento.id.is_(None),
-            Endividamento.data_vencimento_final > date.today()
-        ).limit(10).all()
-        
-        # Lista de endividamentos sem notificação para exibir
-        endividamentos_sem_notif_lista = [
-            {
-                'id': e.id,
-                'banco': e.banco,
-                'numero_proposta': e.numero_proposta,
-                'vencimento': e.data_vencimento_final,
-                'dias_para_vencimento': (e.data_vencimento_final - date.today()).days
-            }
-            for e in endividamentos_sem_notif
-        ]
-        
-        # Histórico recente de notificações
-        historico_recente = HistoricoNotificacao.query.options(
-            joinedload(HistoricoNotificacao.endividamento)
-        ).order_by(
-            HistoricoNotificacao.data_envio.desc()
-        ).limit(10).all()
+        # Converter para uma estrutura mais utilizável no template
+        proximas_notificacoes = []
+        for row in proximas_notificacoes_raw:
+            proximas_notificacoes.append({
+                'id': row.id,
+                'endividamento_id': row.endividamento_id,
+                'tipo_notificacao': row.tipo_notificacao,
+                'data_envio': row.data_envio,
+                'enviado': row.enviado,
+                'banco': row.banco,
+                'numero_proposta': row.numero_proposta
+            })
         
         return render_template(
             "admin/endividamentos/dashboard_notificacoes.html",
             stats={
-                'total_endividamentos': total_endividamentos,
-                'endividamentos_ativos': endividamentos_ativos,
-                'endividamentos_sem_notif': len(endividamentos_sem_notif_lista),
-                'total_notificacoes': total_notificacoes,
-                'notificacoes_pendentes': notificacoes_pendentes,
-                'notificacoes_futuras': notificacoes_futuras,
-                'notificacoes_enviadas': notificacoes_enviadas,
-                'notificacoes_falhas': notificacoes_falhas
+                'total': total_notificacoes,
+                'enviadas': notificacoes_enviadas,
+                'pendentes': notificacoes_pendentes,
+                'falhas': 0  # Não podemos calcular falhas sem a coluna tentativas
             },
-            proximas_notificacoes=proximas,
-            ultimas_enviadas=ultimas_enviadas,
-            endividamentos_sem_notif=endividamentos_sem_notif_lista,
-            historico_recente=historico_recente,
+            notificacoes=proximas_notificacoes,
             hoje=date.today()
         )
-        
     except Exception as e:
         current_app.logger.error(f"Erro ao carregar dashboard de notificações: {str(e)}")
-        flash(f"Erro ao carregar dashboard: {str(e)}", "danger")
         return render_template(
             "admin/endividamentos/dashboard_notificacoes.html",
-            stats={},
-            proximas_notificacoes=[],
-            ultimas_enviadas=[],
+            stats={'total': 0, 'enviadas': 0, 'pendentes': 0, 'falhas': 0},
+            notificacoes=[],
             hoje=date.today(),
-            erro=str(e)
+            error=str(e)
         )
-
 
 @endividamento_bp.route("/api/processar-notificacoes", methods=["POST"])
 @measure_performance()

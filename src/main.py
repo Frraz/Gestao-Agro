@@ -5,7 +5,7 @@ import sys
 import datetime
 import logging
 import time
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 from logging.handlers import RotatingFileHandler
 
@@ -51,9 +51,13 @@ from src.utils.filters import register_filters
 from src.utils.performance import PerformanceMiddleware, init_performance_optimizations
 from src.config import config_by_name, parse_str_env
 from src.utils.tasks_notificacao import criar_tarefas_notificacao
+from src.utils.notificacao_utils import formatar_email_notificacao
 
 # Inicializar proteção CSRF
 csrf = CSRFProtect()
+
+# Dicionário para armazenar as tarefas do Celery
+celery_tasks = {}
 
 
 def configure_logging(app: Flask) -> Flask:
@@ -108,6 +112,7 @@ def allowed_file(filename: str) -> bool:
 
 def create_app(test_config=None):
     global celery
+    global celery_tasks
 
     app = Flask(__name__)
 
@@ -141,7 +146,7 @@ def create_app(test_config=None):
     celery = make_celery(app)
 
     # Registrar tarefas de notificação
-    criar_tarefas_notificacao(celery)
+    celery_tasks = criar_tarefas_notificacao(celery)
 
     # Log de confirmação
     app.logger.info(f"Celery inicializado com broker: {app.config.get('CELERY_BROKER_URL')}")
@@ -287,6 +292,7 @@ def create_app(test_config=None):
             # Verificar também o Celery/Redis
             celery_status = "disconnected"
             redis_status = "disconnected"
+            workers = []
 
             try:
                 # Testar conexão com Redis
@@ -301,20 +307,28 @@ def create_app(test_config=None):
                 stats = i.stats()
                 if stats:
                     celery_status = "connected"
+                    workers = list(stats.keys())
             except Exception as e:
                 app.logger.warning(f"Celery/Redis check failed: {e}")
 
-            return jsonify({
+            all_connected = (redis_status == "connected" and celery_status == "connected")
+            
+            response = {
                 "status": "ok",
                 "database": "connected",
                 "redis": redis_status,
                 "celery": celery_status,
-                "workers": workers
-            },
-            "version": app.config.get("VERSION", "1.0.0")
-        }
-        
-        return jsonify(response), 200 if all_connected else 503
+                "workers": workers,
+                "version": app.config.get("VERSION", "1.0.0")
+            }
+            
+            return jsonify(response), 200 if all_connected else 503
+        except Exception as e:
+            app.logger.error(f"Health check failed: {e}")
+            return jsonify({
+                "status": "error",
+                "error": str(e)
+            }), 503
 
     @app.route("/test-celery")
     def test_celery_route():
@@ -375,6 +389,11 @@ def create_app(test_config=None):
 
                 count_end = service_end.verificar_e_enviar_notificacoes()
                 count_doc = service_doc.verificar_e_enviar_notificacoes()
+                
+                resultado = {
+                    "endividamentos": count_end,
+                    "documentos": count_doc
+                }
 
                 return jsonify({
                     "status": "ok",
@@ -399,10 +418,17 @@ def create_app(test_config=None):
             i = current_celery_app.control.inspect()
 
             # Obter informações
-            stats = i.stats()
-            registered = i.registered()
-            active = i.active()
-            scheduled = i.scheduled()
+            stats = i.stats() or {}
+            registered = i.registered() or {}
+            active = i.active() or {}
+            scheduled = i.scheduled() or {}
+            reserved = i.reserved() or {}
+            
+            # Informações locais
+            local_tasks = list(celery.tasks.keys())
+            
+            # Beat schedule
+            beat_schedule = getattr(celery.conf, 'beat_schedule', {})
 
             return jsonify({
                 "status": "ok",
@@ -518,8 +544,6 @@ def create_app(test_config=None):
     # Rota temporária para testar o template de notificação por e-mail
     @app.route("/testar-email-notificacao")
     def testar_email_notificacao():
-
-
         class DummyDoc:
             nome = "Licença Ambiental"
             tipo = type("Tipo", (), {"value": "Certidão"})

@@ -1,7 +1,3 @@
-# /src/models/endividamento.py
-
-# /src/models/endividamento.py
-
 """
 Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda, vínculo com área e parcelas.
 
@@ -11,12 +7,14 @@ Inclui:
 - Parcela: Detalhes de cada parcela do endividamento.
 """
 
-from datetime import datetime
+from datetime import datetime, date
+from typing import Dict, Any, List, Optional
+
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from src.models.db import db
 # Importar a classe EndividamentoArea em vez de redefini-la
 from src.models.endividamento_area import EndividamentoArea
-
 
 
 class Endividamento(db.Model):

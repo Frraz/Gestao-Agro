@@ -1,10 +1,10 @@
 # /src/routes/admin.py
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import (
     Blueprint, flash, jsonify, redirect, render_template,
-    request, url_for
+    request, url_for, current_app
 )
 from flask_login import login_required
 
@@ -18,7 +18,6 @@ from src.utils.auditoria import registrar_auditoria
 from src.utils.email_service import (
     EmailService, formatar_email_notificacao, verificar_documentos_vencendo
 )
-from flask import render_template, request, flash, current_app
 from sqlalchemy import func
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -26,8 +25,6 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 @admin_bp.route("/")
 @login_required
-
-
 def index():
     """Página inicial do painel administrativo."""
     return redirect(url_for("admin.dashboard"))
@@ -35,51 +32,37 @@ def index():
 
 @admin_bp.route("/dashboard")
 @login_required
-
-
 def dashboard():
-    hoje = date.today()
+    try:
+        hoje = date.today()
 
-    # Obter parâmetros de paginação
-    prox_page = int(request.args.get("prox_page", 1))
-    venc_page = int(request.args.get("venc_page", 1))
-    per_page = 10
+        # Obter parâmetros de paginação
+        prox_page = int(request.args.get("prox_page", 1))
+        venc_page = int(request.args.get("venc_page", 1))
+        per_page = 10
 
-    # Documentos próximos do vencimento
-    docs_proximos_query = Documento.query.filter(
-        Documento.data_vencimento >= hoje
-    ).order_by(Documento.data_vencimento.asc())
+        # Documentos próximos do vencimento
+        docs_proximos_query = Documento.query.filter(
+            Documento.data_vencimento >= hoje
+        ).order_by(Documento.data_vencimento.asc())
 
-    docs_proximos, total_proximos, total_pag_proximos = paginate_query(
-        docs_proximos_query, prox_page, per_page
-    )
+        docs_proximos, total_proximos, total_pag_proximos = paginate_query(
+            docs_proximos_query, prox_page, per_page
+        )
 
-    # Documentos vencidos
-    docs_vencidos_query = Documento.query.filter(
-        Documento.data_vencimento < hoje
-    ).order_by(Documento.data_vencimento.asc())
+        # Documentos vencidos
+        docs_vencidos_query = Documento.query.filter(
+            Documento.data_vencimento < hoje
+        ).order_by(Documento.data_vencimento.asc())
 
-    docs_vencidos, total_vencidos, total_pag_vencidos = paginate_query(
-        docs_vencidos_query, venc_page, per_page
-    )
+        docs_vencidos, total_vencidos, total_pag_vencidos = paginate_query(
+            docs_vencidos_query, venc_page, per_page
+        )
 
-    # Contadores gerais usando função segura
-    total_pessoas = safe_count(Pessoa)
-    total_fazendas = safe_count(Fazenda)
-    total_documentos = safe_count(Documento)
-
-    return render_template(
-        "admin/index.html",
-        total_pessoas=total_pessoas,
-        total_fazendas=total_fazendas,
-        total_documentos=total_documentos,
-        documentos_proximos=docs_proximos,
-        documentos_vencidos=docs_vencidos,
-        prox_page=prox_page,
-        total_pag_proximos=total_pag_proximos,
-        venc_page=venc_page,
-        total_pag_vencidos=total_pag_vencidos,
-    )
+        # Contadores gerais usando função segura
+        total_pessoas = safe_count(Pessoa)
+        total_fazendas = safe_count(Fazenda)
+        total_documentos = safe_count(Documento)
 
         return render_template(
             "admin/index.html",
@@ -92,7 +75,7 @@ def dashboard():
             total_pag_proximos=total_pag_proximos,
             venc_page=venc_page,
             total_pag_vencidos=total_pag_vencidos,
-            now=datetime.datetime.now()  # Adicionando a variável now aqui
+            now=datetime.now()  # Forma correta de usar datetime
         )
     
     except Exception as e:
@@ -102,14 +85,12 @@ def dashboard():
         return render_template(
             "admin/dashboard_error.html",
             error=str(e),
-            now=datetime.datetime.now()  # Adicionando now também para o template de erro
+            now=datetime.now()  # Forma correta de usar datetime
         )
 
 # --- Rotas para Pessoas ---
 @admin_bp.route("/pessoas")
 @login_required
-
-
 def listar_pessoas():
     pessoas = Pessoa.query.all()
     return render_template("admin/pessoas/listar.html", pessoas=pessoas)
@@ -117,8 +98,6 @@ def listar_pessoas():
 
 @admin_bp.route("/pessoas/nova", methods=["GET", "POST"])
 @login_required
-
-
 def nova_pessoa():
     if request.method == "POST":
         nome = request.form.get("nome")
@@ -161,8 +140,6 @@ def nova_pessoa():
 
 @admin_bp.route("/pessoas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
-
-
 def editar_pessoa(id):
     pessoa = Pessoa.query.get_or_404(id)
     if request.method == "POST":
@@ -215,8 +192,6 @@ def editar_pessoa(id):
 
 @admin_bp.route("/pessoas/<int:id>/excluir", methods=["POST"])
 @login_required
-
-
 def excluir_pessoa(id):
     pessoa = Pessoa.query.get_or_404(id)
     if pessoa.fazendas:
@@ -254,8 +229,6 @@ def excluir_pessoa(id):
 
 @admin_bp.route("/pessoas/<int:id>/fazendas")
 @login_required
-
-
 def listar_fazendas_pessoa(id):
     """Lista as fazendas associadas a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(id)
@@ -264,8 +237,6 @@ def listar_fazendas_pessoa(id):
 
 @admin_bp.route("/pessoas/<int:pessoa_id>/associar-fazenda", methods=["GET", "POST"])
 @login_required
-
-
 def associar_fazenda_pessoa(pessoa_id):
     """Associa uma fazenda a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
@@ -363,8 +334,6 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
 # Rotas para Fazendas
 @admin_bp.route("/fazendas")
 @login_required
-
-
 def listar_fazendas():
     """Lista todas as fazendas cadastradas."""
     fazendas = Fazenda.query.all()
@@ -373,8 +342,6 @@ def listar_fazendas():
 
 @admin_bp.route("/fazendas/nova", methods=["GET", "POST"])
 @login_required
-
-
 def nova_fazenda():
     """Cadastra uma nova fazenda."""
     if request.method == "POST":
@@ -461,8 +428,6 @@ def nova_fazenda():
 
 @admin_bp.route("/fazendas/<int:id>")
 @login_required
-
-
 def visualizar_fazenda(id):
     """Visualiza detalhes de uma fazenda."""
     from src.models.endividamento import EndividamentoFazenda
@@ -492,8 +457,6 @@ def visualizar_fazenda(id):
 
 @admin_bp.route("/fazendas/<int:id>/editar", methods=["GET", "POST"])
 @login_required
-
-
 def editar_fazenda(id):
     """Edita uma fazenda existente."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -610,8 +573,6 @@ def editar_fazenda(id):
 
 @admin_bp.route("/fazendas/<int:id>/excluir", methods=["POST"])
 @login_required
-
-
 def excluir_fazenda(id):
     """Exclui uma fazenda do sistema."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -658,8 +619,6 @@ def excluir_fazenda(id):
 
 @admin_bp.route("/fazendas/<int:id>/documentos")
 @login_required
-
-
 def listar_documentos_fazenda(id):
     """Lista os documentos associados a uma fazenda."""
     fazenda = Fazenda.query.get_or_404(id)
@@ -672,8 +631,6 @@ def listar_documentos_fazenda(id):
 # Rotas para Documentos
 @admin_bp.route("/documentos")
 @login_required
-
-
 def listar_documentos():
     """Lista todos os documentos cadastrados, com filtros."""
     fazendas = Fazenda.query.order_by(Fazenda.nome).all()
@@ -707,8 +664,6 @@ def listar_documentos():
 
 @admin_bp.route("/documentos/novo", methods=["GET", "POST"])
 @login_required
-
-
 def novo_documento():
     """Cadastra um novo documento."""
     fazendas = Fazenda.query.all()
@@ -758,9 +713,9 @@ def novo_documento():
             )
         # Converter datas
         try:
-            data_emissao = datetime.datetime.strptime(data_emissao, "%Y-%m-%d").date()
+            data_emissao = datetime.strptime(data_emissao, "%Y-%m-%d").date()
             data_vencimento = (
-                datetime.datetime.strptime(data_vencimento, "%Y-%m-%d").date()
+                datetime.strptime(data_vencimento, "%Y-%m-%d").date()
                 if data_vencimento
                 else None
             )
@@ -821,8 +776,6 @@ def novo_documento():
 
 @admin_bp.route("/documentos/<int:id>/editar", methods=["GET", "POST"])
 @login_required
-
-
 def editar_documento(id):
     """Edita um documento existente."""
     documento = Documento.query.get_or_404(id)
@@ -882,9 +835,9 @@ def editar_documento(id):
 
         # Converter datas
         try:
-            data_emissao = datetime.datetime.strptime(data_emissao, "%Y-%m-%d").date()
+            data_emissao = datetime.strptime(data_emissao, "%Y-%m-%d").date()
             if data_vencimento:
-                data_vencimento = datetime.datetime.strptime(
+                data_vencimento = datetime.strptime(
                     data_vencimento, "%Y-%m-%d"
                 ).date()
             else:
@@ -963,8 +916,6 @@ def editar_documento(id):
 
 @admin_bp.route("/documentos/<int:id>/excluir", methods=["POST"])
 @login_required
-
-
 def excluir_documento(id):
     """Exclui um documento do sistema."""
     documento = Documento.query.get_or_404(id)
@@ -998,11 +949,9 @@ def excluir_documento(id):
 
 @admin_bp.route("/documentos/vencidos")
 @login_required
-
-
 def listar_documentos_vencidos():
     """Lista documentos vencidos ou próximos do vencimento."""
-    hoje = datetime.date.today()
+    hoje = date.today()
 
     documentos_vencidos = (
         Documento.query.filter(Documento.data_vencimento < hoje)
@@ -1010,7 +959,7 @@ def listar_documentos_vencidos():
         .all()
     )
 
-    data_limite = hoje + datetime.timedelta(days=30)
+    data_limite = hoje + timedelta(days=30)
     documentos_proximos = (
         Documento.query.filter(
             Documento.data_vencimento >= hoje,
@@ -1036,8 +985,6 @@ def listar_documentos_vencidos():
 
 @admin_bp.route("/documentos/notificacoes", methods=["GET", "POST"])
 @login_required
-
-
 def notificacoes_documentos():
     """Gerencia notificações de vencimento de documentos."""
     documentos_por_prazo = verificar_documentos_vencendo()
@@ -1087,8 +1034,6 @@ def notificacoes_documentos():
 
 @admin_bp.route("/testar-email", methods=["POST"])
 @login_required
-
-
 def testar_email():
     emails = request.form.get("emails", "")
     if not emails:

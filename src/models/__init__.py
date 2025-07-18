@@ -10,8 +10,7 @@ incluindo pessoas, fazendas, documentos, endividamentos e notificações.
 from .documento import Documento, TipoDocumento
 from .endividamento import Endividamento, EndividamentoFazenda, Parcela
 from .fazenda import Fazenda, TipoPosse
-from .notificacao_endividamento import (HistoricoNotificacao,
-                                        NotificacaoEndividamento)
+from .notificacao_endividamento import NotificacaoEndividamento
 from .pessoa import Pessoa
 
 __all__ = [
@@ -24,5 +23,4 @@ __all__ = [
     "EndividamentoFazenda",
     "Parcela",
     "NotificacaoEndividamento",
-    "HistoricoNotificacao",
 ]

@@ -7,20 +7,42 @@ Responsável por verificar, criar e enviar notificações para endividamentos co
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import and_, or_, func, desc
 
 from src.models.db import db
 from src.models.endividamento import Endividamento
-from src.models.notificacao_endividamento import (
-    HistoricoNotificacao,
-    NotificacaoEndividamento
-)
+from src.models.notificacao_endividamento import NotificacaoEndividamento
 from src.utils.email_service import email_service, enviar_notificacao_lote
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
+from typing import Dict, Any, Optional, List, Union, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+# Definindo a classe HistoricoNotificacao que estava faltando
+class HistoricoNotificacao(db.Model):
+    """
+    Modelo para histórico de notificações enviadas.
+    
+    Armazena informações sobre notificações enviadas, incluindo 
+    detalhes de sucesso e falhas.
+    """
+    __tablename__ = 'historico_notificacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    endividamento_id = db.Column(db.Integer, db.ForeignKey('endividamento.id'), nullable=False)
+    notificacao_id = db.Column(db.Integer, db.ForeignKey('notificacao_endividamento.id'), nullable=True)
+    tipo_notificacao = db.Column(db.String(50), nullable=False)
+    emails_enviados = db.Column(db.Text, nullable=False)
+    data_envio = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    sucesso = db.Column(db.Boolean, default=True, nullable=False)
+    erro_mensagem = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    endividamento = db.relationship('Endividamento', backref=db.backref('historicos_notificacao', lazy=True))
+    notificacao = db.relationship('NotificacaoEndividamento', backref=db.backref('historicos', lazy=True))
 
 
 class NotificacaoEndividamentoService:
@@ -67,6 +89,7 @@ class NotificacaoEndividamentoService:
             "criadas": 0
         }
         notificacoes_enviadas = 0
+        hoje = date.today()
 
         try:
             # Buscar todos os endividamentos ativos com notificações configuradas
@@ -317,6 +340,7 @@ class NotificacaoEndividamentoService:
             )
             
             # Criar notificações para as próximas não agendadas
+            novas_criadas = 0
             for notif in proximas:
                 prazo = notif['prazo']
                 tipo_notificacao = f"{prazo}_dias" if prazo != 1 else "1_dia"
@@ -354,6 +378,32 @@ class NotificacaoEndividamentoService:
         except Exception as e:
             logger.error(f"Erro ao criar notificações para endividamento {endividamento.id}: {e}")
             db.session.rollback()
+            return 0
+
+    def _verificar_e_criar_notificacoes(self, endividamento) -> int:
+        """
+        Verifica e cria notificações faltantes para um endividamento
+        
+        Args:
+            endividamento: Objeto Endividamento
+            
+        Returns:
+            Número de novas notificações criadas
+        """
+        try:
+            # Implementação do método que estava sendo chamado mas não estava definido
+            config = NotificacaoEndividamento.query.filter_by(
+                endividamento_id=endividamento.id,
+                tipo_notificacao='config',
+                ativo=True
+            ).first()
+            
+            if not config or not config.emails:
+                return 0
+                
+            return self._enviar_notificacao(endividamento, 'config')
+        except Exception as e:
+            logger.error(f"Erro ao verificar e criar notificações: {str(e)}")
             return 0
 
     def _processar_notificacoes_urgentes(self) -> int:

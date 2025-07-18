@@ -25,7 +25,6 @@ class NotificacaoEndividamento(db.Model):  # type: ignore
         tipo_notificacao (str): Tipo da notificação ('30_dias', '15_dias', 'config', etc.)
         data_envio (datetime): Data agendada para envio
         enviado (bool): Se a notificação já foi enviada
-        data_envio_realizado (datetime): Data real do envio
         emails (str): Lista de emails em formato JSON
         ativo (bool): Se a notificação está ativa
         tentativas (int): Número de tentativas de envio
@@ -47,7 +46,7 @@ class NotificacaoEndividamento(db.Model):  # type: ignore
     tipo_notificacao: str = db.Column(db.String(20), nullable=False, index=True)  # '30_dias', '15_dias', etc.
     data_envio: datetime = db.Column(db.DateTime, nullable=False, index=True)  # Quando deve ser enviada
     enviado: bool = db.Column(db.Boolean, default=False, index=True)  # Se já foi enviada
-    data_envio_realizado: Optional[datetime] = db.Column(db.DateTime, nullable=True)  # Quando foi enviada de fato
+    # Removida a coluna data_envio_realizado que não existe no banco de dados
     
     emails: str = db.Column(db.Text, nullable=False)  # JSON string com lista de emails
     ativo: bool = db.Column(db.Boolean, default=True, index=True)
@@ -89,9 +88,24 @@ class NotificacaoEndividamento(db.Model):  # type: ignore
             "tipo_notificacao": self.tipo_notificacao,
             "data_envio": self.data_envio.isoformat() if self.data_envio else None,
             "enviado": self.enviado,
-            "data_envio_realizado": self.data_envio_realizado.isoformat() if self.data_envio_realizado else None,
-            "emails": self.emails_lista,
+            "emails": self.emails_lista if hasattr(self, 'emails_lista') else self.emails,
             "ativo": self.ativo,
             "tentativas": self.tentativas,
             "erro_mensagem": self.erro_mensagem,
         }
+    
+    @property
+    def emails_lista(self) -> List[str]:
+        """
+        Converte o texto JSON de emails em uma lista Python.
+        
+        Returns:
+            Lista de endereços de email
+        """
+        if not self.emails:
+            return []
+        try:
+            return json.loads(self.emails)
+        except json.JSONDecodeError:
+            # Fallback: assume que é uma string simples separada por vírgulas
+            return [email.strip() for email in self.emails.split(',') if email.strip()]

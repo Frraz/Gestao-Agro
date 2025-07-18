@@ -1,11 +1,21 @@
-# /src/forms/notificacao_endividamento.py
-
 """Formulário para Notificações de Endividamento"""
 from typing import List, Optional
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, TextAreaField, SelectMultipleField, widgets, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
 import re
+
+
+# Define o campo personalizado MultiCheckboxField
+class MultiCheckboxField(SelectMultipleField):
+    """
+    Um campo SelectMultipleField personalizado que renderiza checkboxes.
+    
+    Permite a seleção de múltiplas opções usando checkboxes em vez
+    de um select múltiplo padrão.
+    """
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
 
 
 class NotificacaoEndividamentoForm(FlaskForm):

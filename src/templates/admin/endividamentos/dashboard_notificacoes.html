@@ -1,0 +1,124 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Dashboard de Notificações{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Dashboard de Notificações de Endividamentos</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('endividamento.listar') }}">Endividamentos</a></li>
+        <li class="breadcrumb-item active">Notificações</li>
+    </ol>
+
+    {% if error %}
+    <div class="alert alert-danger">
+        <h5>Erro ao carregar dados</h5>
+        <p>{{ error }}</p>
+        <p>Estamos trabalhando para resolver o problema. Por favor, tente novamente mais tarde.</p>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <h4>{{ stats.total }}</h4>
+                    <div>Total de Notificações</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{{ url_for('endividamento.listar') }}">Detalhes</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <h4>{{ stats.enviadas }}</h4>
+                    <div>Notificações Enviadas</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{{ url_for('endividamento.listar') }}">Detalhes</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-warning text-white mb-4">
+                <div class="card-body">
+                    <h4>{{ stats.pendentes }}</h4>
+                    <div>Notificações Pendentes</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{{ url_for('endividamento.listar') }}">Detalhes</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-danger text-white mb-4">
+                <div class="card-body">
+                    <h4>{{ stats.falhas }}</h4>
+                    <div>Notificações com Falha</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" href="{{ url_for('endividamento.listar') }}">Detalhes</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-table me-1"></i>
+            Notificações Recentes
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Endividamento</th>
+                            <th>Tipo</th>
+                            <th>Data de Envio</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notificacao in notificacoes %}
+                        <tr>
+                            <td>{{ notificacao.id }}</td>
+                            <td>
+                                <a href="{{ url_for('endividamento.visualizar', id=notificacao.endividamento_id) }}">
+                                    {{ notificacao.banco }} - {{ notificacao.numero_proposta or "Sem Número" }}
+                                </a>
+                            </td>
+                            <td>{{ notificacao.tipo_notificacao }}</td>
+                            <td>{{ notificacao.data_envio.strftime('%d/%m/%Y %H:%M') if notificacao.data_envio else '-' }}</td>
+                            <td>
+                                {% if notificacao.enviado %}
+                                <span class="badge bg-success">Enviada</span>
+                                {% else %}
+                                <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not notificacoes %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhuma notificação encontrada</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

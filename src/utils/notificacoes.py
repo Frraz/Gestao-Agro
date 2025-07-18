@@ -5,6 +5,9 @@ Utilitários para gerenciamento e exibição de notificações e alertas
 relacionados aos documentos e seus vencimentos.
 """
 
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Tuple, Any
+
 from flask import current_app, flash
 from sqlalchemy import and_, or_, func
 
@@ -24,8 +27,8 @@ def verificar_documentos_vencimento(filtro_dias: int = 90) -> Tuple[List[Documen
         Tupla (documentos_vencidos, documentos_proximos_vencimento)
     """
     try:
-        hoje = datetime.date.today()
-        data_limite = hoje + datetime.timedelta(days=filtro_dias)
+        hoje = date.today()
+        data_limite = hoje + timedelta(days=filtro_dias)
         
         # Buscar documentos com data de vencimento que estão no período relevante
         documentos = Documento.query.filter(
@@ -102,7 +105,7 @@ def agrupar_documentos_por_prazo(documentos: List[Documento]) -> Dict[str, List[
     Returns:
         Dicionário com documentos agrupados por prazo
     """
-    hoje = datetime.date.today()
+    hoje = date.today()
     
     agrupados = {
         "vencidos": [],
@@ -140,7 +143,7 @@ def contar_documentos_por_vencimento() -> Dict[str, int]:
         Dicionário com contagem por categoria
     """
     try:
-        hoje = datetime.date.today()
+        hoje = date.today()
         
         # Contar documentos vencidos
         vencidos = Documento.query.filter(
@@ -155,13 +158,13 @@ def contar_documentos_por_vencimento() -> Dict[str, int]:
         # Contar documentos que vencem em até 7 dias
         semana = Documento.query.filter(
             Documento.data_vencimento > hoje,
-            Documento.data_vencimento <= hoje + datetime.timedelta(days=7)
+            Documento.data_vencimento <= hoje + timedelta(days=7)
         ).count()
         
         # Contar documentos que vencem em até 30 dias
         mes = Documento.query.filter(
-            Documento.data_vencimento > hoje + datetime.timedelta(days=7),
-            Documento.data_vencimento <= hoje + datetime.timedelta(days=30)
+            Documento.data_vencimento > hoje + timedelta(days=7),
+            Documento.data_vencimento <= hoje + timedelta(days=30)
         ).count()
         
         # Contar total de documentos com vencimento
