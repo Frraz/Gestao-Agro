@@ -5,13 +5,12 @@ Tarefas agendadas para notificações via Celery
 Define jobs para processamento assíncrono de notificações de documentos e endividamentos
 """
 import logging
-import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any
 
-from celery import Task, signature
+from celery import Task
 from flask import current_app
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 
 logger = logging.getLogger(__name__)
 
@@ -29,32 +28,26 @@ def criar_tarefas_notificacao(celery):
 
         try:
             with current_app.app_context():
-                logger.info(f"[{self.request.id}] Iniciando processamento de notificações de endividamento - {datetime.now()}")
+                start_time = datetime.now()
+                task_id = self.request.id
+
+                logger.info(f"[{task_id}] Iniciando processamento de notificações de endividamento - {start_time}")
 
                 service = NotificacaoEndividamentoService()
                 notificacoes_enviadas = service.verificar_e_enviar_notificacoes()
 
-                logger.info(
-                    f"[{task_id}] Iniciando processamento de notificações de endividamento - {start_time}"
-                )
-                
-                # Executar serviço de notificações
-                notificacoes_enviadas = notificacao_endividamento_service.verificar_e_enviar_notificacoes()
-                
-                # Calcular duração
                 duration = (datetime.now() - start_time).total_seconds()
-                
-                # Registrar informações de performance
-                if duration > 60:  # Alerta se demorar mais de 1 minuto
+
+                if duration > 60:
                     logger.warning(
                         f"[{task_id}] Processamento de notificações de endividamento demorou {duration:.2f}s"
                     )
-                
+
                 logger.info(
                     f"[{task_id}] Processamento de notificações de endividamento concluído. "
                     f"{notificacoes_enviadas} notificações enviadas em {duration:.2f}s"
                 )
-                
+
                 return {
                     'status': 'success',
                     'notificacoes_enviadas': notificacoes_enviadas,
@@ -68,7 +61,6 @@ def criar_tarefas_notificacao(celery):
                 f"[{self.request.id}] Erro ao processar notificações de endividamento: {str(e)}",
                 exc_info=True
             )
-            # Retry com backoff exponencial
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
 
     @celery.task(name='tasks.processar_notificacoes_documentos', bind=True, max_retries=3)
@@ -78,32 +70,26 @@ def criar_tarefas_notificacao(celery):
 
         try:
             with current_app.app_context():
-                logger.info(f"[{self.request.id}] Iniciando processamento de notificações de documentos - {datetime.now()}")
+                start_time = datetime.now()
+                task_id = self.request.id
+
+                logger.info(f"[{task_id}] Iniciando processamento de notificações de documentos - {start_time}")
 
                 service = NotificacaoDocumentoService()
                 notificacoes_enviadas = service.verificar_e_enviar_notificacoes()
 
-                logger.info(
-                    f"[{task_id}] Iniciando processamento de notificações de documentos - {start_time}"
-                )
-                
-                # Executar serviço de notificações
-                notificacoes_enviadas = notificacao_documento_service.verificar_e_enviar_notificacoes()
-                
-                # Calcular duração
                 duration = (datetime.now() - start_time).total_seconds()
-                
-                # Registrar informações de performance
-                if duration > 60:  # Alerta se demorar mais de 1 minuto
+
+                if duration > 60:
                     logger.warning(
                         f"[{task_id}] Processamento de notificações de documentos demorou {duration:.2f}s"
                     )
-                
+
                 logger.info(
                     f"[{task_id}] Processamento de notificações de documentos concluído. "
                     f"{notificacoes_enviadas} notificações enviadas em {duration:.2f}s"
                 )
-                
+
                 return {
                     'status': 'success',
                     'notificacoes_enviadas': notificacoes_enviadas,
@@ -128,34 +114,27 @@ def criar_tarefas_notificacao(celery):
     def processar_todas_notificacoes(self) -> Dict[str, Any]:
         """
         Processa todas as notificações pendentes (endividamentos e documentos)
-        
-        Returns:
-            Dicionário com resultados consolidados
         """
         try:
             with current_app.app_context():
-                logger.info(f"[{self.request.id}] === INICIANDO PROCESSAMENTO DE TODAS AS NOTIFICAÇÕES ===")
+                start_time = datetime.now()
+                task_id = self.request.id
 
-                # Processar notificações de endividamento
-                try:
-                    _registrar_metricas_inicio_processamento()
-                except Exception as e:
-                    logger.error(f"Erro ao registrar métricas de início: {e}")
-                
-                # Processar notificações de endividamento com timeout
+                logger.info(f"[{task_id}] === INICIANDO PROCESSAMENTO DE TODAS AS NOTIFICAÇÕES ===")
+
                 try:
                     resultado_endividamento = processar_notificacoes_endividamento.apply_async().get(timeout=300)
                 except Exception as e:
                     logger.error(f"Erro em notificações de endividamento: {e}")
                     resultado_endividamento = {'notificacoes_enviadas': 0, 'status': 'error', 'error': str(e)}
 
-                # Processar notificações de documentos
                 try:
                     resultado_documentos = processar_notificacoes_documentos.apply_async().get(timeout=300)
                 except Exception as e:
                     logger.error(f"Erro em notificações de documentos: {e}")
                     resultado_documentos = {'notificacoes_enviadas': 0, 'status': 'error', 'error': str(e)}
 
+                duration = (datetime.now() - start_time).total_seconds()
                 total_enviadas = (
                     resultado_endividamento.get('notificacoes_enviadas', 0) +
                     resultado_documentos.get('notificacoes_enviadas', 0)
@@ -190,14 +169,11 @@ def criar_tarefas_notificacao(celery):
 
     @celery.task(
         name='tasks.test_notificacoes',
-        time_limit=30  # 30 segundos no máximo para diagnóstico
+        time_limit=30
     )
     def test_notificacoes() -> Dict[str, Any]:
         """
         Testa se o sistema de notificações está acessível
-        
-        Returns:
-            Dicionário com informações de diagnóstico
         """
         try:
             with current_app.app_context():
@@ -205,20 +181,22 @@ def criar_tarefas_notificacao(celery):
                 from src.models.endividamento import Endividamento
                 from src.models.documento import Documento
 
-                # Conta notificações pendentes de endividamento
-                notif_endividamento = NotificacaoEndividamento.query.filter_by(
+                notif_endividamento_pendentes = NotificacaoEndividamento.query.filter_by(
                     ativo=True
                 ).count()
-
-                # Conta endividamentos ativos
                 endividamentos_ativos = Endividamento.query.filter(
                     Endividamento.data_vencimento_final > datetime.now().date()
                 ).count()
-
-                # Conta documentos com vencimento
-                docs_com_vencimento = Documento.query.filter(
+                docs_vencimento_proximo = Documento.query.filter(
                     Documento.data_vencimento.isnot(None)
                 ).count()
+                docs_vencidos = Documento.query.filter(
+                    Documento.data_vencimento < datetime.now().date()
+                ).count()
+                query_time = 0.0  # Aqui você pode calcular o tempo das queries se desejar
+
+                def obter_status_banco_dados():
+                    return {}
 
                 return {
                     'status': 'ok',
@@ -242,65 +220,50 @@ def criar_tarefas_notificacao(celery):
     @celery.task(
         name='tasks.limpar_notificacoes_antigas',
         bind=True,
-        rate_limit='1/h'  # Máximo 1 vez por hora
+        rate_limit='1/h'
     )
     def limpar_notificacoes_antigas(self, dias: int = 90) -> Dict[str, Any]:
         """
         Remove notificações antigas já processadas
-        
-        Args:
-            dias: Idade em dias para considerar um registro como antigo
-            
-        Returns:
-            Dicionário com resultado da operação
         """
         from src.models.notificacao_endividamento import HistoricoNotificacao, NotificacaoEndividamento
         from src.models.db import db
-        
+
         try:
             with current_app.app_context():
                 task_id = self.request.id or 'task-no-id'
                 logger.info(f"[{task_id}] Iniciando limpeza de notificações antigas (>{dias} dias)")
-                
+
                 data_limite = datetime.now() - timedelta(days=dias)
                 stats = {'historico': 0, 'notificacoes': 0}
-                
+
                 # 1. Limpar histórico antigo
                 try:
-                    # Contar antes de deletar
                     total_historico = HistoricoNotificacao.query.filter(
                         HistoricoNotificacao.data_envio < data_limite
                     ).count()
-                    
+
                     if total_historico > 0:
-                        # Deletar em lotes para evitar timeout
                         batch_size = 1000
                         deletados = 0
-                        
                         while True:
                             batch = HistoricoNotificacao.query.filter(
                                 HistoricoNotificacao.data_envio < data_limite
                             ).limit(batch_size).all()
-                            
                             if not batch:
                                 break
-                            
                             for item in batch:
                                 db.session.delete(item)
-                            
                             db.session.commit()
                             deletados += len(batch)
-                            
                             logger.info(f"Deletados {deletados}/{total_historico} registros de histórico...")
-                        
                         stats['historico'] = deletados
                 except Exception as e:
                     logger.error(f"Erro ao limpar histórico: {e}")
                     db.session.rollback()
-                
+
                 # 2. Limpar notificações antigas enviadas
                 try:
-                    # Contar antes de deletar
                     total_notificacoes = NotificacaoEndividamento.query.filter(
                         and_(
                             NotificacaoEndividamento.data_envio < data_limite,
@@ -308,12 +271,10 @@ def criar_tarefas_notificacao(celery):
                             NotificacaoEndividamento.tipo_notificacao != 'config'
                         )
                     ).count()
-                    
+
                     if total_notificacoes > 0:
-                        # Deletar em lotes para evitar timeout
                         batch_size = 1000
                         deletados = 0
-                        
                         while True:
                             batch = NotificacaoEndividamento.query.filter(
                                 and_(
@@ -322,38 +283,33 @@ def criar_tarefas_notificacao(celery):
                                     NotificacaoEndividamento.tipo_notificacao != 'config'
                                 )
                             ).limit(batch_size).all()
-                            
                             if not batch:
                                 break
-                            
                             for item in batch:
                                 db.session.delete(item)
-                            
                             db.session.commit()
                             deletados += len(batch)
-                            
                             logger.info(f"Deletados {deletados}/{total_notificacoes} registros de notificações...")
-                        
                         stats['notificacoes'] = deletados
                 except Exception as e:
                     logger.error(f"Erro ao limpar notificações: {e}")
                     db.session.rollback()
-                
+
                 total_deletados = stats['historico'] + stats['notificacoes']
-                    
+
                 logger.info(
                     f"[{task_id}] Limpeza concluída. "
                     f"Removidos {total_deletados} registros antigos "
                     f"({stats['historico']} histórico, {stats['notificacoes']} notificações)"
                 )
-                
+
                 return {
                     'status': 'success',
                     'stats': stats,
                     'total_deletados': total_deletados,
                     'timestamp': datetime.now().isoformat()
                 }
-                    
+
         except Exception as e:
             logger.error(
                 f"[{self.request.id}] Erro ao limpar notificações antigas: {e}",
@@ -372,9 +328,6 @@ def criar_tarefas_notificacao(celery):
     def test_celery() -> Dict[str, str]:
         """
         Tarefa simples para testar se o Celery está funcionando
-        
-        Returns:
-            Dicionário com informações do worker
         """
         return {
             'status': 'ok',
@@ -383,7 +336,6 @@ def criar_tarefas_notificacao(celery):
             'worker': celery.current_task.request.hostname
         }
 
-    # Armazenar referências das tarefas
     global celery_tasks
     celery_tasks = {
         'processar_notificacoes_endividamento': processar_notificacoes_endividamento,
@@ -395,9 +347,6 @@ def criar_tarefas_notificacao(celery):
     }
 
     return celery_tasks
-
-
-# Funções auxiliares para execução direta (sem Celery)
 
 
 def processar_notificacoes_endividamento():

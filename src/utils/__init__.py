@@ -1,4 +1,4 @@
-# /src/uils/__init__.py
+# src/utils/__init__.py
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy

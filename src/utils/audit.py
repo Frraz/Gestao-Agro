@@ -1,9 +1,9 @@
-# /src/uils/audit.py
+# src/utils/audit.py
 
 from flask import request
 from flask_login import current_user
 
-from src.models.audit_log import AuditLog
+from src.models.auditoria import AuditLog
 from src.models.db import db
 
 

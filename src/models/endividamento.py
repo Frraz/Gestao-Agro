@@ -1,3 +1,5 @@
+# src/models/endividamento.py
+
 """
 Modelos relacionados ao endividamento, incluindo endividamento principal, vínculo com fazenda, vínculo com área e parcelas.
 

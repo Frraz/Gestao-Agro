@@ -1,0 +1,148 @@
+<!-- src/templates/admin/pessoas/detalhes.html -->
+
+{% extends 'layouts/base.html' %}
+{% block title %}Detalhes de {{ pessoa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fas fa-user"></i> Detalhes da Pessoa</h2>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4 class="card-title">{{ pessoa.nome }}</h4>
+            <p><b>CPF/CNPJ:</b> {{ pessoa.cpf_cnpj }}</p>
+            <p><b>Email:</b> {{ pessoa.email or '-' }}</p>
+            <p><b>Telefone:</b> {{ pessoa.telefone or '-' }}</p>
+            <p><b>Endereço:</b> {{ pessoa.endereco or '-' }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <b>Fazendas Associadas</b>
+                </div>
+                <div class="card-body p-0">
+                    {% if fazendas %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo de Associação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fazenda in fazendas %}
+                                    <tr>
+                                        <td>{{ fazenda.nome }}</td>
+                                        <td>
+                                            {{ fazenda.tipo_posse.value if fazenda.tipo_posse else '-' }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Nenhuma fazenda associada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <b>Documentos Associados</b>
+                </div>
+                <div class="card-body p-0">
+                    {% if documentos %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Fazenda</th>
+                                    <th>Vencimento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documentos %}
+                                    <tr>
+                                        <td>{{ doc.nome }}</td>
+                                        <td>{{ doc.tipo.value }}</td>
+                                        <td>{{ doc.fazenda.nome if doc.fazenda else '-' }}</td>
+                                        <td>{{ doc.data_vencimento.strftime('%d/%m/%Y') if doc.data_vencimento else '-' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Nenhum documento associado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <b>Endividamentos Associados</b>
+                </div>
+                <div class="card-body p-0">
+                    {% if endividamentos %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Banco</th>
+                                    <th>Nº Proposta</th>
+                                    <th>Valor</th>
+                                    <th>Fazendas Relacionadas</th>
+                                    <th>Vencimento</th>
+                                    <th>Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for endiv in endividamentos %}
+                                    <tr>
+                                        <td>{{ endiv.banco }}</td>
+                                        <td>{{ endiv.numero_proposta }}</td>
+                                        <td>R$ {{ "{:,.2f}".format(endiv.valor_operacao or 0) }}</td>
+                                        <td>
+                                            {% if endiv.fazenda_vinculos %}
+                                                {% for vinculo in endiv.fazenda_vinculos %}
+                                                    {{ vinculo.fazenda.nome }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if endiv.data_vencimento_final %}
+                                                {{ endiv.data_vencimento_final.strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if endiv.data_vencimento_final and endiv.data_vencimento_final < hoje %}
+                                                <span class="badge bg-danger">Vencido</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Em dia</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Nenhum endividamento associado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('admin.listar_pessoas') }}" class="btn btn-secondary mt-2"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 # /src/utils/tasks.py
+
 """
 Tarefas Celery complementares ao sistema de notificações
 Usa a configuração centralizada de celery_config.py
@@ -230,11 +231,14 @@ def process_document_upload(
 
 def make_celery(app):
     """Integra Celery com contexto Flask se necessário."""
-    celery.conf.update(
-        result_backend=app.config.get("CELERY_RESULT_BACKEND", CELERY_RESULT_BACKEND),
-        broker_url=app.config.get("CELERY_BROKER_URL", CELERY_BROKER_URL),
-    )
+    # Defina valores default caso as variáveis não estejam no config do app
+    DEFAULT_CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+    DEFAULT_CELERY_BROKER_URL = "redis://localhost:6379/0"
 
+    celery.conf.update(
+        result_backend=app.config.get("CELERY_RESULT_BACKEND", DEFAULT_CELERY_RESULT_BACKEND),
+        broker_url=app.config.get("CELERY_BROKER_URL", DEFAULT_CELERY_BROKER_URL),
+    )
 
     class ContextTask(celery.Task):
 

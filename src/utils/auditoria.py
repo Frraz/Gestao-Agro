@@ -1,4 +1,4 @@
-# /src/uils/auditoria.py
+# src/utils/auditoria.py
 
 import json
 from datetime import datetime

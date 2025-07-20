@@ -1,3 +1,5 @@
+<!-- src/templates/admin/pessoas/listar.html -->
+
 {% extends 'layouts/base.html' %}
 
 {% block title %}Pessoas - Sistema de Gestão de Fazendas{% endblock %}
@@ -42,16 +44,19 @@
                                     <td>{{ pessoa.telefone or '-' }}</td>
                                     <td>
                                         <span class="badge bg-info">{{ pessoa.fazendas|length }}</span>
-                                        <a href="{{ url_for('admin.listar_fazendas_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-outline-info">
+                                        <a href="{{ url_for('admin.listar_fazendas_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-outline-info" title="Fazendas Associadas">
                                             <i class="fas fa-eye"></i> Ver
                                         </a>
                                     </td>
-                                    <td>
-                                        <a href="{{ url_for('admin.editar_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-primary">
+                                    <td class="text-nowrap">
+                                        <a href="{{ url_for('admin.detalhes_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-info" title="Detalhes">
+                                            <i class="fas fa-user"></i> Detalhes
+                                        </a>
+                                        <a href="{{ url_for('admin.editar_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-primary" title="Editar">
                                             <i class="fas fa-edit"></i> Editar
                                         </a>
-                                        <form action="{{ url_for('admin.excluir_pessoa', id=pessoa.id) }}" method="POST" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-danger btn-delete">
+                                        <form action="{{ url_for('admin.excluir_pessoa', id=pessoa.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta pessoa?');">
+                                            <button type="submit" class="btn btn-sm btn-danger btn-delete" title="Excluir">
                                                 <i class="fas fa-trash"></i> Excluir
                                             </button>
                                         </form>

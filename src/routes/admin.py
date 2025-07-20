@@ -220,6 +220,25 @@ def editar_pessoa(id):
     return render_template("admin/pessoas/form.html", pessoa=pessoa)
 
 
+@admin_bp.route("/pessoas/<int:id>")
+@login_required
+def detalhes_pessoa(id):
+    from src.models.documento import Documento
+
+    pessoa = Pessoa.query.get_or_404(id)
+    fazendas = pessoa.fazendas
+    documentos = Documento.query.filter_by(pessoa_id=id).all()
+    endividamentos = pessoa.endividamentos
+
+    return render_template(
+        "admin/pessoas/detalhes.html",
+        pessoa=pessoa,
+        fazendas=fazendas,
+        documentos=documentos,
+        endividamentos=endividamentos,
+        hoje=date.today(),  # <<--- Adicione esta linha
+    )
+
 @admin_bp.route("/pessoas/<int:id>/excluir", methods=["POST"])
 @login_required
 def excluir_pessoa(id):

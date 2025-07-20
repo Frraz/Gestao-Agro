@@ -39,12 +39,29 @@ def listar_pessoas():
         return jsonify({"erro": "Erro ao listar pessoas", "detalhes": str(e)}), 500
 
 
+from datetime import datetime
+from src.models.endividamento import Endividamento
+
 @pessoa_bp.route("/<int:id>", methods=["GET"])
 def obter_pessoa(id):
     """Obtém detalhes de uma pessoa específica."""
     try:
         pessoa = Pessoa.query.get_or_404(id)
         fazendas = [{"id": f.id, "nome": f.nome} for f in pessoa.fazendas]
+
+        # Buscando endividamentos por fazenda associada
+        fazenda_ids = [f.id for f in pessoa.fazendas]
+        endividamentos = [
+            {
+                "id": e.id,
+                "descricao": e.descricao,
+                "valor": e.valor,
+                "fazenda": {"id": e.fazenda.id, "nome": e.fazenda.nome} if e.fazenda else None,
+                "data_vencimento": e.data_vencimento.isoformat() if e.data_vencimento else None,
+                "situacao": "Vencido" if e.data_vencimento and e.data_vencimento < datetime.utcnow().date() else "Em dia"
+            }
+            for e in Endividamento.query.filter(Endividamento.fazenda_id.in_(fazenda_ids)).all()
+        ]
 
         return jsonify(
             {
@@ -55,12 +72,12 @@ def obter_pessoa(id):
                 "telefone": pessoa.telefone,
                 "endereco": pessoa.endereco,
                 "fazendas": fazendas,
+                "endividamentos": endividamentos,
             }
         )
     except Exception as e:
         current_app.logger.error(f"Erro ao obter pessoa {id}: {str(e)}")
         return jsonify({"erro": f"Erro ao obter pessoa {id}", "detalhes": str(e)}), 500
-
 
 @pessoa_bp.route("/", methods=["POST"])
 def criar_pessoa():
