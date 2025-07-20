@@ -1,23 +1,126 @@
+<!-- src/templates/register.html -->
+
 {% extends "layouts/auth_base.html" %}
-{% block title %}Criar Conta - Gestão Agrícola{% endblock %}
+
+{% block title %}Registrar - Sistema de Gestão Agrícola{% endblock %}
+
 {% block content %}
-<form method="POST" class="p-4 rounded bg-white border shadow-sm">
-    <div class="mb-3">
-        <label for="nome" class="form-label">Nome</label>
-        <input type="text" name="nome" class="form-control" required>
+<div class="text-center mb-4">
+    <h2 class="h3 mb-3 fw-normal">
+        <i class="fas fa-seedling text-success me-2"></i>Sistema de Gestão Agrícola
+    </h2>
+    <p class="text-muted">Crie sua conta para acessar o sistema</p>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <form method="POST" class="needs-validation" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="mb-3">
+                <label for="nome" class="form-label">Nome</label>
+                <input type="text" name="nome" id="nome" class="form-control" required autofocus>
+                <div class="invalid-feedback">
+                    Por favor, informe seu nome.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail</label>
+                <input type="email" name="email" id="email" class="form-control" required>
+                <div class="invalid-feedback">
+                    Por favor, informe um e-mail válido.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="senha" class="form-label">Senha</label>
+                <div class="input-group">
+                    <input type="password" name="senha" id="senha" class="form-control" required minlength="5">
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword1" tabindex="-1">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="invalid-feedback">
+                    Por favor, informe uma senha.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="confirmar_senha" class="form-label">Confirme a Senha</label>
+                <div class="input-group">
+                    <input type="password" name="senha_confirmacao" id="confirmar_senha" class="form-control" required minlength="5">
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword2" tabindex="-1">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="invalid-feedback" id="confirmarSenhaFeedback">
+                    Por favor, repita a senha corretamente.
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">
+                Registrar
+            </button>
+            <div class="mt-3 text-center">
+                <a href="{{ url_for('auth.login') }}">Já tenho conta</a>
+            </div>
+        </form>
     </div>
-    <div class="mb-3">
-        <label for="email" class="form-label">E-mail</label>
-        <input type="email" name="email" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label for="senha" class="form-label">Senha</label>
-        <input type="password" name="senha" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary w-100">Registrar</button>
-    <div class="mt-3 text-center">
-        <a href="{{ url_for('auth.login') }}">Já tenho conta</a>
-    </div>
-</form>
+</div>
+
 {% include 'components/assinatura.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Mostrar/ocultar senha
+    function togglePassword(inputId, toggleId) {
+        const input = document.getElementById(inputId);
+        const toggle = document.getElementById(toggleId);
+        toggle.addEventListener('click', function() {
+            const type = input.type === 'password' ? 'text' : 'password';
+            input.type = type;
+            this.querySelector('i').classList.toggle('fa-eye');
+            this.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+    togglePassword('senha', 'togglePassword1');
+    togglePassword('confirmar_senha', 'togglePassword2');
+
+    // Validação de formulário
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function (event) {
+        let valid = true;
+
+        // Checar se senhas coincidem
+        const senha = document.getElementById('senha').value;
+        const confirmarSenha = document.getElementById('confirmar_senha').value;
+        const confirmarSenhaInput = document.getElementById('confirmar_senha');
+        const feedback = document.getElementById('confirmarSenhaFeedback');
+
+        if (senha !== confirmarSenha) {
+            confirmarSenhaInput.classList.add('is-invalid');
+            feedback.textContent = "As senhas digitadas não coincidem.";
+            valid = false;
+        } else {
+            confirmarSenhaInput.classList.remove('is-invalid');
+            feedback.textContent = "";
+        }
+
+        if (!form.checkValidity() || !valid) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    }, false);
+});
+</script>
 {% endblock %}

@@ -1,3 +1,5 @@
+<!-- src/templates/layouts/auth_base.html -->
+
 <!DOCTYPE html>
 <html lang="pt-br" data-theme="light">
 <head>
@@ -20,15 +22,17 @@
                 <h2 class="mb-0">Gestão Agrícola</h2>
                 <small class="text-muted">Acesso ao sistema</small>
             </div>
-            <!-- Flash Messages -->
+            <!-- Flash messages centralizadas -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
+                    <div class="mb-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
                 {% endif %}
             {% endwith %}
             {% block content %}{% endblock %}

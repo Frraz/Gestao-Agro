@@ -397,6 +397,24 @@ def enviar_notificacao_lote(emails: List[Dict], batch_size: int = 10) -> Dict:
     
     return stats
 
+def enviar_email(destinatario, assunto, corpo):
+    """
+    Função compatível com importação direta para envio de e-mail simples.
+    Usa a configuração já existente da classe EmailService.
+
+    Args:
+        destinatario: string (email) ou lista de emails
+        assunto: string
+        corpo: string (HTML ou texto)
+    Returns:
+        True se enviado, False caso contrário
+    """
+    if isinstance(destinatario, str):
+        destinatarios = [destinatario]
+    else:
+        destinatarios = destinatario
+    return EmailService().send_email(destinatarios, assunto, corpo, html=True)
+
 
 # Instância global do serviço
 email_service = EmailService()

@@ -4,6 +4,7 @@
 Modelo unificado para cadastro e autenticação de usuários do sistema.
 
 Inclui username, email (ambos únicos), senha segura (hash) e integração com Flask-Login.
+Campos para controle de status, auditoria, recuperação de senha e último login.
 """
 
 from datetime import datetime
@@ -12,7 +13,6 @@ from typing import Optional
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.models.db import db
-
 
 class Usuario(db.Model):  # type: ignore
     """
@@ -25,18 +25,25 @@ class Usuario(db.Model):  # type: ignore
         email (str): Email do usuário (único).
         senha_hash (str): Hash da senha.
         criado_em (datetime): Data de criação do usuário.
+        ativo (bool): Se o usuário está ativo.
+        ultimo_login (datetime): Data/hora do último login.
+        token_recuperacao (str): Token de recuperação de senha.
+        token_expiracao (datetime): Data/hora de expiração do token de recuperação.
     """
 
     __tablename__ = "usuario"
 
     id: int = db.Column(db.Integer, primary_key=True)
     nome: str = db.Column(db.String(100), nullable=False)
-    username: Optional[str] = db.Column(
-        db.String(80), unique=True, nullable=True
-    )  # Deixe nullable=True se opcional
+    username: Optional[str] = db.Column(db.String(80), unique=True, nullable=True)
     email: str = db.Column(db.String(120), unique=True, nullable=False)
     senha_hash: str = db.Column(db.String(512), nullable=False)
     criado_em: datetime = db.Column(db.DateTime, default=datetime.utcnow)
+    ativo: bool = db.Column(db.Boolean, default=True, nullable=False)
+    ultimo_login: Optional[datetime] = db.Column(db.DateTime, nullable=True)
+    token_recuperacao: Optional[str] = db.Column(db.String(128), nullable=True)
+    token_expiracao: Optional[datetime] = db.Column(db.DateTime, nullable=True)
+    # role: str = db.Column(db.String(20), default="usuario")  # Descomente para roles/perfis
 
     def set_password(self, senha: str) -> None:
         """Define a senha do usuário (armazenando o hash)."""
@@ -54,7 +61,7 @@ class Usuario(db.Model):  # type: ignore
     @property
     def is_active(self) -> bool:
         """Indica se o usuário está ativo (integração com Flask-Login)."""
-        return True
+        return self.ativo
 
     @property
     def is_anonymous(self) -> bool:
@@ -69,9 +76,14 @@ class Usuario(db.Model):  # type: ignore
         return f"<Usuario {self.username or self.email}>"
 
     def to_dict(self) -> dict:
+        """Retorna um dicionário seguro com os dados do usuário."""
         return {
             "id": self.id,
             "nome": self.nome,
             "username": self.username,
             "email": self.email,
+            "ativo": self.ativo,
+            "criado_em": self.criado_em.isoformat() if self.criado_em else None,
+            "ultimo_login": self.ultimo_login.isoformat() if self.ultimo_login else None,
+            # "role": self.role,
         }
