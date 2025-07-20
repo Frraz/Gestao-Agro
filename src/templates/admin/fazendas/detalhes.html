@@ -1,84 +1,207 @@
 <!-- /src/templates/admin/fazendas/detahes.html -->
 
 {% extends "layouts/base.html" %}
-{% block title %}{{ fazenda.nome }} — Detalhes{% endblock %}
+{% block title %}Detalhes da Fazenda {{ fazenda.nome }}{% endblock %}
+
 {% block content %}
-<div class="container">
-  <div class="row">
-    <div class="col-12">
-      <h2 class="mt-3">{{ fazenda.nome }} <small class="text-muted">(Matrícula: {{ fazenda.matricula }})</small></h2>
-      <p><strong>Matrícula:</strong> {{ fazenda.matricula }}</p>
-      <p><strong>Município/UF:</strong> {{ fazenda.municipio }} / {{ fazenda.estado }}</p>
-      <p><strong>Área consolidada:</strong> {{ fazenda.tamanho_total }} ha</p>
-      <p><strong>Saldo disponível para crédito:</strong>
-        <span class="{% if saldo_disponivel < 0 %}text-danger{% endif %}">
-          {{ saldo_disponivel }}
-        </span> ha
-      </p>
-      <p><strong>Área já consumida em crédito:</strong> {{ total_consumido }} ha</p>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-tractor"></i> Detalhes da Fazenda
+            <span class="text-muted small">({{ fazenda.nome }} — Matrícula: {{ fazenda.matricula }})</span>
+        </h2>
+        <div>
+            <a href="{{ url_for('admin.editar_fazenda', id=fazenda.id) }}" class="btn btn-warning me-2">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+            <a href="{{ url_for('admin.listar_documentos_fazenda', id=fazenda.id) }}" class="btn btn-info me-2">
+                <i class="fas fa-file-alt"></i> Documentos
+            </a>
+            <a href="{{ url_for('admin.listar_fazendas') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
     </div>
-  </div>
 
-  <div class="row mt-4">
-    <div class="col-12">
-      <h4>Endividamentos como Crédito</h4>
-      <table class="table table-bordered table-sm">
-        <thead>
-          <tr>
-            <th>Endividamento</th>
-            <th>Hectares usados</th>
-            <th>Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for vinculo in vinculos_credito %}
-          <tr>
-            <td>
-              <a href="{{ url_for('endividamento.visualizar', id=vinculo.endividamento_id) }}">
-                {{ vinculo.endividamento.banco }} — {{ vinculo.endividamento.numero_proposta }}
-              </a>
-            </td>
-            <td>{{ vinculo.hectares }}</td>
-            <td>{{ vinculo.descricao or '-' }}</td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="3" class="text-muted text-center">Nenhum uso como crédito.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="row gy-4">
+        <!-- Informações Básicas -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Informações Básicas
+                </div>
+                <div class="card-body">
+                    <p><b>Nome:</b> {{ fazenda.nome }}</p>
+                    <p><b>Matrícula:</b> {{ fazenda.matricula }}</p>
+                    <p>
+                        <b>Tipo de Posse:</b>
+                        <span class="badge bg-success">{{ fazenda.tipo_posse.value if fazenda.tipo_posse else '-' }}</span>
+                    </p>
+                    <p><b>Localização:</b> {{ fazenda.municipio }} / {{ fazenda.estado }}</p>
+                    <p><b>Recibo CAR:</b> {{ fazenda.recibo_car or '-' }}</p>
+                </div>
+            </div>
+        </div>
+        <!-- Informações de Área -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Informações de Área
+                </div>
+                <div class="card-body">
+                    <p><b>Tamanho Total:</b> {{ fazenda.tamanho_total }} ha</p>
+                    <p><b>Área Consolidada:</b> {{ fazenda.area_consolidada }} ha</p>
+                    <p><b>Área Disponível:</b> {{ fazenda.tamanho_disponivel }} ha</p>
+                    <p>
+                        <b>Área Usada em Créditos:</b>
+                        <span class="badge bg-success">{{ area_usada_credito }} ha</span>
+                    </p>
+                    <p>
+                        <b>Área Disponível para Crédito:</b>
+                        <span class="badge bg-success">{{ area_disponivel_credito }} ha</span>
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="row mt-4">
-    <div class="col-12">
-      <h4>Endividamentos como Garantia</h4>
-      <table class="table table-bordered table-sm">
-        <thead>
-          <tr>
-            <th>Endividamento</th>
-            <th>Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for vinculo in vinculos_garantia %}
-          <tr>
-            <td>
-              <a href="{{ url_for('endividamento.visualizar', id=vinculo.endividamento_id) }}">
-                {{ vinculo.endividamento.banco }} — {{ vinculo.endividamento.numero_proposta }}
-              </a>
-            </td>
-            <td>{{ vinculo.descricao or '-' }}</td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="2" class="text-muted text-center">Nenhum uso como garantia.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="row gy-4 mt-2">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white fw-bold">
+                    Pessoas Associadas
+                </div>
+                <div class="card-body p-0">
+                    {% if fazenda.associacoes_pessoa %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF/CNPJ</th>
+                                    <th>Email</th>
+                                    <th>Telefone</th>
+                                    <th>Tipo de Associação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assoc in fazenda.associacoes_pessoa %}
+                                    <tr>
+                                        <td>{{ assoc.pessoa.nome }}</td>
+                                        <td>{{ assoc.pessoa.cpf_cnpj }}</td>
+                                        <td>{{ assoc.pessoa.email or '-' }}</td>
+                                        <td>{{ assoc.pessoa.telefone or '-' }}</td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {{ assoc.tipo_associacao or '-' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Nenhuma pessoa associada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white fw-bold">
+                    Documentos Associados
+                </div>
+                <div class="card-body p-0">
+                    {% if documentos %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Pessoa</th>
+                                    <th>Vencimento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documentos %}
+                                    <tr>
+                                        <td>{{ doc.nome }}</td>
+                                        <td>{{ doc.tipo.value }}</td>
+                                        <td>{{ doc.pessoa.nome if doc.pessoa else '-' }}</td>
+                                        <td>{{ doc.data_vencimento.strftime('%d/%m/%Y') if doc.data_vencimento else '-' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Nenhum documento associado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <div class="row gy-4 mt-2">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white fw-bold">
+                    Endividamentos Relacionados
+                </div>
+                <div class="card-body p-0">
+                    {% if vinculos_endividamento %}
+                        <table class="table table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Banco</th>
+                                    <th>Nº Proposta</th>
+                                    <th>Valor Operação</th>
+                                    <th>Tipo do Vínculo</th>
+                                    <th>Hectares</th>
+                                    <th>Descrição</th>
+                                    <th>Vencimento Final</th>
+                                    <th>Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vinc in vinculos_endividamento %}
+                                    <tr>
+                                        <td>{{ vinc.endividamento.banco }}</td>
+                                        <td>{{ vinc.endividamento.numero_proposta }}</td>
+                                        <td>R$ {{ "{:,.2f}".format(vinc.endividamento.valor_operacao or 0) }}</td>
+                                        <td>
+                                            {% if vinc.tipo == 'objeto_credito' %}
+                                                <span class="badge bg-primary">Objeto do Crédito</span>
+                                            {% elif vinc.tipo == 'garantia' %}
+                                                <span class="badge bg-warning text-dark">Garantia</span>
+                                            {% else %}
+                                                {{ vinc.tipo }}
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ vinc.hectares or '-' }}</td>
+                                        <td>{{ vinc.descricao or '-' }}</td>
+                                        <td>
+                                            {% if vinc.endividamento.data_vencimento_final %}
+                                                {{ vinc.endividamento.data_vencimento_final.strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if vinc.endividamento.data_vencimento_final and vinc.endividamento.data_vencimento_final < hoje %}
+                                                <span class="badge bg-danger">Vencido</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Em dia</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="p-3 mb-0 text-muted">Esta fazenda não está vinculada a nenhum endividamento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

@@ -15,9 +15,7 @@ from sqlalchemy import Column, Enum, Float, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.models.db import db
-
-from .pessoa import pessoa_fazenda
-
+from .pessoa import PessoaFazenda  # Corrigido para importar o modelo de associação
 
 class TipoPosse(enum.Enum):
     """Enumeração dos tipos de posse da fazenda."""
@@ -25,7 +23,6 @@ class TipoPosse(enum.Enum):
     ARRENDADA = "Arrendada"
     COMODATO = "Comodato"
     POSSE = "Posse"
-
 
 class Fazenda(db.Model):  # type: ignore
     """
@@ -44,7 +41,8 @@ class Fazenda(db.Model):  # type: ignore
         recibo_car (Optional[str]): Número do recibo do CAR.
         data_criacao (datetime.date): Data de criação.
         data_atualizacao (datetime.date): Data de atualização.
-        pessoas (List[Pessoa]): Pessoas associadas.
+        associacoes_pessoa (List[PessoaFazenda]): Vínculos de associação com pessoas.
+        pessoas (List[Pessoa]): Pessoas associadas (viewonly).
         documentos (List[Documento]): Documentos associados.
         endividamentos_vinculados (List[EndividamentoFazenda]): Vínculos de endividamento (por fazenda).
         areas (List[Area]): Áreas pertencentes à fazenda.
@@ -73,8 +71,13 @@ class Fazenda(db.Model):  # type: ignore
         nullable=False,
     )
 
+    # Association object para acessar tipo de associação
+    associacoes_pessoa = relationship(
+        "PessoaFazenda", back_populates="fazenda", cascade="all, delete-orphan"
+    )
+    # Pessoas associadas (viewonly, para consultas rápidas)
     pessoas = relationship(
-        "Pessoa", secondary=pessoa_fazenda, back_populates="fazendas", lazy="selectin"
+        "Pessoa", secondary="pessoa_fazenda", viewonly=True, back_populates="fazendas"
     )
     documentos = relationship(
         "Documento",

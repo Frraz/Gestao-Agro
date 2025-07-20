@@ -3,36 +3,33 @@
 """
 Modelo para cadastro de pessoas e associação com fazendas/áreas, documentos e endividamentos.
 
-Inclui tabela de associação pessoa_fazenda, campos de auditoria, relacionamentos e utilitários para análise e formatação de dados.
+Inclui tabela de associação pessoa_fazenda (agora como modelo com campo tipo_associacao), 
+campos de auditoria, relacionamentos e utilitários para análise e formatação de dados.
 """
 
 import datetime
 from typing import List, Optional
 
-from sqlalchemy import Column, ForeignKey, Index, Integer, String, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import relationship, backref
 
 from src.models.db import db
 
-# Tabela de associação entre Pessoa e Fazenda (relação muitos-para-muitos)
-pessoa_fazenda = Table(
-    "pessoa_fazenda",
-    db.Model.metadata,
-    Column(
-        "pessoa_id",
-        Integer,
-        ForeignKey("pessoa.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "fazenda_id",
-        Integer,
-        ForeignKey("fazenda.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Index("idx_pessoa_fazenda", "pessoa_id", "fazenda_id"),
-)
+class PessoaFazenda(db.Model):
+    """
+    Modelo de associação entre Pessoa e Fazenda, com campo extra tipo_associacao.
+    """
+    __tablename__ = "pessoa_fazenda"
 
+    pessoa_id = Column(Integer, ForeignKey("pessoa.id", ondelete="CASCADE"), primary_key=True)
+    fazenda_id = Column(Integer, ForeignKey("fazenda.id", ondelete="CASCADE"), primary_key=True)
+    tipo_associacao = Column(String(50), nullable=False, default="Proprietário")  # Exemplo: Proprietário, Arrendatário, etc
+
+    pessoa = relationship("Pessoa", back_populates="associacoes_fazenda")
+    fazenda = relationship("Fazenda", back_populates="associacoes_pessoa")
+
+    def __repr__(self):
+        return f"<PessoaFazenda pessoa_id={self.pessoa_id} fazenda_id={self.fazenda_id} tipo={self.tipo_associacao}>"
 
 class Pessoa(db.Model):  # type: ignore
     """
@@ -47,7 +44,8 @@ class Pessoa(db.Model):  # type: ignore
         endereco (Optional[str]): Endereço.
         data_criacao (datetime.date): Data de criação.
         data_atualizacao (datetime.date): Data de atualização.
-        fazendas (List[Fazenda]): Fazendas associadas.
+        fazendas (List[Fazenda]): Fazendas associadas (viewonly).
+        associacoes_fazenda (List[PessoaFazenda]): Relacionamentos completos com tipo.
         documentos (List[Documento]): Documentos associados.
         endividamentos (List[Endividamento]): Endividamentos associados.
     """
@@ -71,8 +69,11 @@ class Pessoa(db.Model):  # type: ignore
         nullable=False,
     )
 
+    associacoes_fazenda = relationship(
+        "PessoaFazenda", back_populates="pessoa", cascade="all, delete-orphan"
+    )
     fazendas = relationship(
-        "Fazenda", secondary=pessoa_fazenda, back_populates="pessoas", lazy="selectin"
+        "Fazenda", secondary="pessoa_fazenda", viewonly=True, back_populates="pessoas"
     )
     documentos = relationship(
         "Documento",

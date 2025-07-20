@@ -607,6 +607,26 @@ def editar_fazenda(id):
         "admin/fazendas/form.html", fazenda=fazenda, tipos_posse=TipoPosse
     )
 
+@admin_bp.route("/fazendas/<int:id>")
+@login_required
+def detalhes_fazenda(id):
+    from src.models.documento import Documento
+    from src.models.endividamento import EndividamentoFazenda
+
+    fazenda = Fazenda.query.get_or_404(id)
+    pessoas = fazenda.pessoas  # relationship, normalmente definido no modelo Fazenda
+    documentos = Documento.query.filter_by(fazenda_id=id).all()
+    vinculos_endividamento = EndividamentoFazenda.query.filter_by(fazenda_id=id).all()
+
+    return render_template(
+        "admin/fazendas/detalhes.html",
+        fazenda=fazenda,
+        pessoas=pessoas,
+        documentos=documentos,
+        vinculos_endividamento=vinculos_endividamento,
+        hoje=date.today()
+    )
+
 
 @admin_bp.route("/fazendas/<int:id>/excluir", methods=["POST"])
 @login_required

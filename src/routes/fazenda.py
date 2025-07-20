@@ -4,13 +4,12 @@ import traceback
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from werkzeug.exceptions import NotFound  # <-- adicionado
+from werkzeug.exceptions import NotFound
 
 from src.models.db import db
 from src.models.fazenda import Fazenda, TipoPosse
 
 fazenda_bp = Blueprint("fazenda", __name__, url_prefix="/api/fazendas")
-
 
 @fazenda_bp.route("/", methods=["GET"])
 def listar_fazendas():
@@ -20,7 +19,14 @@ def listar_fazendas():
         resultado = []
 
         for fazenda in fazendas:
-            pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas]
+            pessoas = [
+                {
+                    "id": assoc.pessoa.id,
+                    "nome": assoc.pessoa.nome,
+                    "tipo_associacao": assoc.tipo_associacao
+                }
+                for assoc in fazenda.associacoes_pessoa
+            ]
             resultado.append(
                 {
                     "id": fazenda.id,
@@ -42,13 +48,19 @@ def listar_fazendas():
         current_app.logger.error(f"Erro ao listar fazendas: {str(e)}")
         return jsonify({"erro": "Erro ao listar fazendas", "detalhes": str(e)}), 500
 
-
 @fazenda_bp.route("/<int:id>", methods=["GET"])
 def obter_fazenda(id):
     """Obtém detalhes de uma fazenda/área específica."""
     try:
         fazenda = Fazenda.query.get_or_404(id)
-        pessoas = [{"id": p.id, "nome": p.nome} for p in fazenda.pessoas]
+        pessoas = [
+            {
+                "id": assoc.pessoa.id,
+                "nome": assoc.pessoa.nome,
+                "tipo_associacao": assoc.tipo_associacao
+            }
+            for assoc in fazenda.associacoes_pessoa
+        ]
         return jsonify(
             {
                 "id": fazenda.id,
@@ -77,7 +89,6 @@ def obter_fazenda(id):
             ),
             500,
         )
-
 
 @fazenda_bp.route("/", methods=["POST"])
 def criar_fazenda():
@@ -207,7 +218,6 @@ def criar_fazenda():
         )
         return jsonify({"erro": "Erro ao criar fazenda", "detalhes": str(e)}), 500
 
-
 @fazenda_bp.route("/<int:id>", methods=["PUT"])
 def atualizar_fazenda(id):
     """Atualiza os dados de uma fazenda/área existente."""
@@ -324,7 +334,7 @@ def atualizar_fazenda(id):
             ),
             400,
         )
-    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+    except NotFound as e:
         current_app.logger.error(
             f"Fazenda não encontrada ao atualizar fazenda {id}: {str(e)}"
         )
@@ -341,7 +351,6 @@ def atualizar_fazenda(id):
             f"Erro ao atualizar fazenda {id}: {str(e)}\n{traceback.format_exc()}"
         )
         return jsonify({"erro": "Erro ao atualizar fazenda", "detalhes": str(e)}), 500
-
 
 @fazenda_bp.route("/<int:id>", methods=["DELETE"])
 def excluir_fazenda(id):
@@ -361,10 +370,10 @@ def excluir_fazenda(id):
             )
 
         # Verificar se a fazenda tem pessoas associadas
-        if fazenda.pessoas and len(fazenda.pessoas) > 0:
-            # Remover associações com pessoas
-            for pessoa in fazenda.pessoas:
-                pessoa.fazendas.remove(fazenda)
+        if fazenda.associacoes_pessoa and len(fazenda.associacoes_pessoa) > 0:
+            for assoc in fazenda.associacoes_pessoa:
+                db.session.delete(assoc)
+            db.session.flush()  # Garante que as associações sejam removidas antes de deletar a fazenda
 
         nome = fazenda.nome
         db.session.delete(fazenda)
@@ -373,7 +382,7 @@ def excluir_fazenda(id):
         current_app.logger.info(f"Fazenda excluída com sucesso: {nome} (ID: {id})")
 
         return jsonify({"mensagem": f"Fazenda {nome} excluída com sucesso"}), 200
-    except NotFound as e:  # <-- adicionado: trata 404 explicitamente
+    except NotFound as e:
         current_app.logger.error(
             f"Fazenda não encontrada ao excluir fazenda {id}: {str(e)}"
         )
@@ -397,25 +406,22 @@ def excluir_fazenda(id):
         current_app.logger.error(f"Erro ao excluir fazenda {id}: {str(e)}")
         return jsonify({"erro": "Erro ao excluir fazenda", "detalhes": str(e)}), 500
 
-
 @fazenda_bp.route("/<int:id>/pessoas", methods=["GET"])
 def listar_pessoas_fazenda(id):
     """Lista todas as pessoas associadas a uma fazenda/área."""
     try:
         fazenda = Fazenda.query.get_or_404(id)
-        pessoas = []
-
-        for pessoa in fazenda.pessoas:
-            pessoas.append(
-                {
-                    "id": pessoa.id,
-                    "nome": pessoa.nome,
-                    "cpf_cnpj": pessoa.cpf_cnpj,
-                    "email": pessoa.email,
-                    "telefone": pessoa.telefone,
-                }
-            )
-
+        pessoas = [
+            {
+                "id": assoc.pessoa.id,
+                "nome": assoc.pessoa.nome,
+                "cpf_cnpj": assoc.pessoa.cpf_cnpj,
+                "email": assoc.pessoa.email,
+                "telefone": assoc.pessoa.telefone,
+                "tipo_associacao": assoc.tipo_associacao,
+            }
+            for assoc in fazenda.associacoes_pessoa
+        ]
         return jsonify(pessoas)
     except Exception as e:
         current_app.logger.error(f"Erro ao listar pessoas da fazenda {id}: {str(e)}")
@@ -425,7 +431,6 @@ def listar_pessoas_fazenda(id):
             ),
             500,
         )
-
 
 @fazenda_bp.route("/<int:id>/documentos", methods=["GET"])
 def listar_documentos_fazenda(id):
