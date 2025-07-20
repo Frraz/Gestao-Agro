@@ -127,7 +127,7 @@
                             <div class="text-center mt-3">
                                 <h6>Documentos</h6>
                                 <div class="d-flex justify-content-center">
-                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ total_documentos - documentos_proximos|length - documentos_vencidos|length }})</span>
+                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ docs_em_dia }})</span>
                                     <span class="me-3"><i class="fas fa-circle text-warning me-1"></i> Próximos ({{ documentos_proximos|length }})</span>
                                     <span><i class="fas fa-circle text-danger me-1"></i> Vencidos ({{ documentos_vencidos|length }})</span>
                                 </div>
@@ -140,7 +140,7 @@
                             <div class="text-center mt-3">
                                 <h6>Endividamentos</h6>
                                 <div class="d-flex justify-content-center">
-                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ endividamentos_em_dia }})</span>
+                                    <span class="me-3"><i class="fas fa-circle text-success me-1"></i> Em dia ({{ end_em_dia }})</span>
                                     <span class="me-3"><i class="fas fa-circle text-warning me-1"></i> Próximos ({{ endividamentos_proximos|length }})</span>
                                     <span><i class="fas fa-circle text-danger me-1"></i> Vencidos ({{ endividamentos_vencidos|length }})</span>
                                 </div>
@@ -511,10 +511,10 @@
 
 <!-- Elemento para passar dados do backend para JavaScript -->
 <div id="dashboard-data" 
-     data-docs-em-dia="{{ total_documentos - documentos_proximos|length - documentos_vencidos|length }}"
+     data-docs-em-dia="{{ docs_em_dia }}"
      data-docs-proximos="{{ documentos_proximos|length }}"
      data-docs-vencidos="{{ documentos_vencidos|length }}"
-     data-end-em-dia="{{ endividamentos_em_dia }}"
+     data-end-em-dia="{{ end_em_dia }}"
      data-end-proximos="{{ endividamentos_proximos|length }}"
      data-end-vencidos="{{ endividamentos_vencidos|length }}"
      style="display: none;">
@@ -544,17 +544,17 @@
         const dashData = document.getElementById('dashboard-data').dataset;
         
         // Extrair dados para os gráficos
-        const docsEmDia = parseInt(dashData.docsEmDia) || 0;
-        const docsProximos = parseInt(dashData.docsProximos) || 0;
-        const docsVencidos = parseInt(dashData.docsVencidos) || 0;
+        const docsEmDia = Math.max(0, parseInt(dashData.docsEmDia) || 0);
+        const docsProximos = Math.max(0, parseInt(dashData.docsProximos) || 0);
+        const docsVencidos = Math.max(0, parseInt(dashData.docsVencidos) || 0);
         
-        const endEmDia = parseInt(dashData.endEmDia) || 0;
-        const endProximos = parseInt(dashData.endProximos) || 0;
-        const endVencidos = parseInt(dashData.endVencidos) || 0;
+        const endEmDia = Math.max(0, parseInt(dashData.endEmDia) || 0);
+        const endProximos = Math.max(0, parseInt(dashData.endProximos) || 0);
+        const endVencidos = Math.max(0, parseInt(dashData.endVencidos) || 0);
         
         // Gráfico de Documentos
         const docCtx = document.getElementById('documentosChart').getContext('2d');
-        const documentosChart = new Chart(docCtx, {
+        new Chart(docCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Em dia', 'Próximos ao vencimento', 'Vencidos'],
@@ -567,9 +567,7 @@
             options: {
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 },
                 cutout: '70%'
             }
@@ -577,7 +575,7 @@
         
         // Gráfico de Endividamentos
         const endCtx = document.getElementById('endividamentosChart').getContext('2d');
-        const endividamentosChart = new Chart(endCtx, {
+        new Chart(endCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Em dia', 'Próximos ao vencimento', 'Vencidos'],
@@ -590,9 +588,7 @@
             options: {
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 },
                 cutout: '70%'
             }
@@ -602,11 +598,8 @@
         document.getElementById('refreshDashboard').addEventListener('click', function() {
             const button = this;
             const originalHtml = button.innerHTML;
-            
             button.disabled = true;
             button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Atualizando...';
-            
-            // Simular atualização
             setTimeout(() => {
                 location.reload();
             }, 500);

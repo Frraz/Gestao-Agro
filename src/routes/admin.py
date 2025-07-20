@@ -12,6 +12,7 @@ from src.utils.database import paginate_query, safe_count
 from src.utils.notificacao_utils import calcular_proximas_notificacoes_programadas
 from src.models.db import db
 from src.models.documento import Documento, TipoDocumento
+from src.models.endividamento import Endividamento  # Adicionado para dashboard
 from src.models.fazenda import Fazenda, TipoPosse
 from src.models.pessoa import Pessoa
 from src.utils.auditoria import registrar_auditoria
@@ -35,17 +36,19 @@ def index():
 def dashboard():
     try:
         hoje = date.today()
+        dias_proximos_doc = 30
+        dias_proximos_end = 30
 
         # Obter parâmetros de paginação
         prox_page = int(request.args.get("prox_page", 1))
         venc_page = int(request.args.get("venc_page", 1))
         per_page = 10
 
-        # Documentos próximos do vencimento
+        # Documentos próximos (até 30 dias)
         docs_proximos_query = Documento.query.filter(
-            Documento.data_vencimento >= hoje
+            Documento.data_vencimento >= hoje,
+            Documento.data_vencimento <= hoje + timedelta(days=dias_proximos_doc)
         ).order_by(Documento.data_vencimento.asc())
-
         docs_proximos, total_proximos, total_pag_proximos = paginate_query(
             docs_proximos_query, prox_page, per_page
         )
@@ -54,15 +57,37 @@ def dashboard():
         docs_vencidos_query = Documento.query.filter(
             Documento.data_vencimento < hoje
         ).order_by(Documento.data_vencimento.asc())
-
         docs_vencidos, total_vencidos, total_pag_vencidos = paginate_query(
             docs_vencidos_query, venc_page, per_page
         )
 
-        # Contadores gerais usando função segura
+        # Documentos em dia
+        total_documentos = safe_count(Documento)
+        docs_em_dia = max(0, total_documentos - len(docs_proximos) - len(docs_vencidos))
+
+        # Endividamentos próximos (até 30 dias)
+        end_proximos_query = Endividamento.query.filter(
+            Endividamento.data_vencimento_final >= hoje,
+            Endividamento.data_vencimento_final <= hoje + timedelta(days=dias_proximos_end)
+        ).order_by(Endividamento.data_vencimento_final.asc())
+        endividamentos_proximos = end_proximos_query.all()
+
+        # Endividamentos vencidos
+        end_vencidos_query = Endividamento.query.filter(
+            Endividamento.data_vencimento_final < hoje
+        ).order_by(Endividamento.data_vencimento_final.asc())
+        endividamentos_vencidos = end_vencidos_query.all()
+
+        # Endividamentos em dia
+        total_endividamentos = safe_count(Endividamento)
+        end_em_dia = max(0, total_endividamentos - len(endividamentos_proximos) - len(endividamentos_vencidos))
+
+        # Contadores gerais
         total_pessoas = safe_count(Pessoa)
         total_fazendas = safe_count(Fazenda)
-        total_documentos = safe_count(Documento)
+
+        # Notificações pendentes (implemente conforme sua lógica)
+        notificacoes_pendentes = []  # Substitua pela busca real
 
         return render_template(
             "admin/index.html",
@@ -71,21 +96,26 @@ def dashboard():
             total_documentos=total_documentos,
             documentos_proximos=docs_proximos,
             documentos_vencidos=docs_vencidos,
+            docs_em_dia=docs_em_dia,
             prox_page=prox_page,
             total_pag_proximos=total_pag_proximos,
             venc_page=venc_page,
             total_pag_vencidos=total_pag_vencidos,
-            now=datetime.now()  # Forma correta de usar datetime
+            total_endividamentos=total_endividamentos,
+            endividamentos_proximos=endividamentos_proximos,
+            endividamentos_vencidos=endividamentos_vencidos,
+            end_em_dia=end_em_dia,
+            notificacoes_pendentes=notificacoes_pendentes,
+            now=datetime.now()
         )
-    
+
     except Exception as e:
         current_app.logger.error(f"Erro no dashboard: {e}", exc_info=True)
         flash("Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.", "danger")
-        # Retornar um template alternativo ou versão simplificada do dashboard
         return render_template(
             "admin/dashboard_error.html",
             error=str(e),
-            now=datetime.now()  # Forma correta de usar datetime
+            now=datetime.now()
         )
 
 # --- Rotas para Pessoas ---
@@ -240,8 +270,6 @@ def listar_fazendas_pessoa(id):
 def associar_fazenda_pessoa(pessoa_id):
     """Associa uma fazenda a uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
-
-    # Obter fazendas que ainda não estão associadas a esta pessoa
     fazendas_associadas = [f.id for f in pessoa.fazendas]
     fazendas_disponiveis = (
         Fazenda.query.filter(~Fazenda.id.in_(fazendas_associadas)).all()
@@ -251,7 +279,6 @@ def associar_fazenda_pessoa(pessoa_id):
 
     if request.method == "POST":
         fazenda_id = request.form.get("fazenda_id")
-
         if not fazenda_id:
             flash("Selecione uma fazenda para associar.", "danger")
             return render_template(
@@ -259,17 +286,12 @@ def associar_fazenda_pessoa(pessoa_id):
                 pessoa=pessoa,
                 fazendas=fazendas_disponiveis,
             )
-
         fazenda = Fazenda.query.get_or_404(fazenda_id)
-
-        # Verificar se já está associada
         if fazenda in pessoa.fazendas:
             flash(
                 f"A fazenda {fazenda.nome} já está associada a esta pessoa.", "warning"
             )
             return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
-
-        # Associar fazenda à pessoa
         pessoa.fazendas.append(fazenda)
         registrar_auditoria(
             acao="associação_fazenda",
@@ -283,7 +305,6 @@ def associar_fazenda_pessoa(pessoa_id):
             },
         )
         db.session.commit()
-
         flash(
             f"Fazenda {fazenda.nome} associada com sucesso à pessoa {pessoa.nome}!",
             "success",
@@ -305,11 +326,9 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
     """Desassocia uma fazenda de uma pessoa."""
     pessoa = Pessoa.query.get_or_404(pessoa_id)
     fazenda = Fazenda.query.get_or_404(fazenda_id)
-
     if fazenda not in pessoa.fazendas:
         flash(f"A fazenda {fazenda.nome} não está associada a esta pessoa.", "warning")
         return redirect(url_for("admin.listar_fazendas_pessoa", id=pessoa.id))
-
     pessoa.fazendas.remove(fazenda)
     registrar_auditoria(
         acao="desassociação_fazenda",
@@ -323,7 +342,6 @@ def desassociar_fazenda_pessoa(pessoa_id, fazenda_id):
         valor_novo=None,
     )
     db.session.commit()
-
     flash(
         f"Fazenda {fazenda.nome} desassociada com sucesso da pessoa {pessoa.nome}!",
         "success",
